@@ -97,7 +97,7 @@ class ConsensSeqStatusBar(GenericStatusBar):
             self.setSeqLabelTexts()
 
     def consSettingsChanged(self):
-        warnstr = '<span foreground="#AA0000">consensus settings have changed</span>'
+        warnstr = '<span foreground="#AA0000">working sequence settings have changed</span>'
         self.status_label.set_markup(warnstr)
 
 

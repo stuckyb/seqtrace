@@ -28,7 +28,9 @@ class ConsensSeqSettings(Observable):
         self.do_autotrim = True
         self.autotrim_winsize = 10 
         self.autotrim_basecnt = 8
+        self.trim_endgaps = True
 
+        # a flag to indicate if a setAll() operation is in progress
         self.notify_all = True
 
         # initialize observable events
@@ -40,8 +42,9 @@ class ConsensSeqSettings(Observable):
         self.do_autotrim = settings.getDoAutoTrim()
         self.autotrim_winsize = settings.getAutoTrimParams()[0]
         self.autotrim_basecnt = settings.getAutoTrimParams()[1]
+        self.trim_endgaps = settings.getTrimEndGaps()
 
-    def setAll(self, min_confscore, do_autotrim, autotrim_params):
+    def setAll(self, min_confscore, do_autotrim, autotrim_params, trim_endgaps):
         self.notify_all = False
         self.change_made = False
 
@@ -49,6 +52,7 @@ class ConsensSeqSettings(Observable):
             self.setMinConfScore(min_confscore)
             self.setDoAutoTrim(do_autotrim)
             self.setAutoTrimParams(*autotrim_params)
+            self.setTrimEndGaps(trim_endgaps)
         finally:
             self.notify_all = True
             if self.change_made:
@@ -92,6 +96,18 @@ class ConsensSeqSettings(Observable):
         if (self.autotrim_winsize != windowsize) or (self.autotrim_basecnt != basecount):
             self.autotrim_winsize = windowsize
             self.autotrim_basecnt = basecount
+            self.notifyObservers('autotrim_change', ())
+            if self.notify_all:
+                self.notifyObservers('settings_change', ())
+            else:
+                self.change_made = True
+
+    def getTrimEndGaps(self):
+        return self.trim_endgaps
+
+    def setTrimEndGaps(self, newval):
+        if self.trim_endgaps != newval:
+            self.trim_endgaps = newval
             self.notifyObservers('autotrim_change', ())
             if self.notify_all:
                 self.notifyObservers('settings_change', ())
@@ -145,6 +161,9 @@ class ConsensSeqBuilder:
             self.makeFRConsensus(min_confscore)
 
         if self.settings.getDoAutoTrim():
+            if self.settings.getTrimEndGaps():
+                self.trimEndGaps()
+
             winsize, basecnt = self.settings.getAutoTrimParams()
             self.trimConsensus(winsize, basecnt)
 
@@ -217,6 +236,34 @@ class ConsensSeqBuilder:
 
         self.consensus = ''.join(cons)
         self.consconf = consconf
+
+    def trimEndGaps(self):
+        if self.numseqs == 1:
+            return
+
+        # get the index of the end of the left end gap
+        lgindex = 0
+        if self.seq1aligned[0] == '-':
+            while self.seq1aligned[lgindex] == '-':
+                lgindex += 1
+        elif self.seq2aligned[0] == '-':
+            while self.seq2aligned[lgindex] == '-':
+                lgindex += 1
+        #print lgindex
+
+        # get the index of the end of the right end gap
+        rgindex = len(self.seq1aligned) - 1
+        if self.seq1aligned[rgindex] == '-':
+            while self.seq1aligned[rgindex] == '-':
+                rgindex -= 1
+        elif self.seq2aligned[rgindex] == '-':
+            while self.seq2aligned[rgindex] == '-':
+                rgindex -= 1
+        #print rgindex
+
+        # construct the consensus sequence without the end gap portions
+        self.consensus = ((' ' * lgindex) + self.consensus[lgindex:rgindex + 1]
+                + (' ' * (len(self.consensus) - rgindex - 1)))
 
     def trimConsensus(self, winsize, basecnt):
         if len(self.consensus) < winsize:
@@ -311,6 +358,7 @@ class ConsensSeqBuilder:
             return self.seq1indexed[alignment_index]
         else:
             return self.seq2indexed[alignment_index]
+
 
 class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
     def __init__(self, sequencetraces, settings=None):

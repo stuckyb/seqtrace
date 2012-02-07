@@ -149,12 +149,15 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         self.autotrim_winsize_adj.connect('value_changed', self.autoTrimWinSizeChanged)
 
         hb2.pack_start(gtk.Label(' bases are correctly called.'), False)
+        vb_trim.pack_start(hb2)
+
+        self.trimgaps_checkbox = gtk.CheckButton('trim alignment end gaps')
+        self.trimgaps_checkbox.set_active(cssettings.getTrimEndGaps())
+        vb_trim.pack_start(self.trimgaps_checkbox)
 
         self.autotrim_checkbox.set_active(cssettings.getDoAutoTrim())
         self.autotrim_checkbox.toggled()
 
-        vb_trim.pack_start(hb2)
-        
         vb.pack_start(vb_trim)
         frame = gtk.Frame('Sequence settings')
         frame.add(vb)
@@ -209,7 +212,8 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         cssettings.setAll(
                 self.getMinConfScore(),
                 self.autotrim_checkbox.get_active(),
-                (int(self.autotrim_winsize_adj.get_value()), int(self.autotrim_basecnt_adj.get_value()))
+                (int(self.autotrim_winsize_adj.get_value()), int(self.autotrim_basecnt_adj.get_value())),
+                self.trimgaps_checkbox.get_active()
                 )
 
     def chooseDirectory(self, widget, entry):
@@ -241,9 +245,11 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         if self.autotrim_checkbox.get_active():
             self.autotrim_basecnt_spin.set_sensitive(True)
             self.autotrim_winsize_spin.set_sensitive(True)
+            self.trimgaps_checkbox.set_sensitive(True)
         else:
             self.autotrim_basecnt_spin.set_sensitive(False)
             self.autotrim_winsize_spin.set_sensitive(False)
+            self.trimgaps_checkbox.set_sensitive(False)
 
     def autoTrimWinSizeChanged(self, adj):
         winsize = self.autotrim_winsize_adj.get_value()
