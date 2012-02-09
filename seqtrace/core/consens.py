@@ -241,25 +241,30 @@ class ConsensSeqBuilder:
         if self.numseqs == 1:
             return
 
-        # get the index of the end of the left end gap
+        # get the index of the start of the left end gap
         lgindex = 0
         if self.seq1aligned[0] == '-':
-            while self.seq1aligned[lgindex] == '-':
+            while (lgindex < len(self.seq1aligned)) and (self.seq1aligned[lgindex] == '-'):
                 lgindex += 1
         elif self.seq2aligned[0] == '-':
-            while self.seq2aligned[lgindex] == '-':
+            while (lgindex < len(self.seq1aligned)) and (self.seq2aligned[lgindex] == '-'):
                 lgindex += 1
         #print lgindex
 
-        # get the index of the end of the right end gap
+        # get the index of the start of the right end gap
         rgindex = len(self.seq1aligned) - 1
         if self.seq1aligned[rgindex] == '-':
-            while self.seq1aligned[rgindex] == '-':
+            while (rgindex >= 0) and (self.seq1aligned[rgindex] == '-'):
                 rgindex -= 1
         elif self.seq2aligned[rgindex] == '-':
-            while self.seq2aligned[rgindex] == '-':
+            while (rgindex >= 0) and (self.seq2aligned[rgindex] == '-'):
                 rgindex -= 1
         #print rgindex
+
+        # see if we encountered an empty sequence (this should never happen with real data)
+        # and adjust the index values to result in a blank string of appropriate length
+        if rgindex == -1:
+            lgindex = 0
 
         # construct the consensus sequence without the end gap portions
         self.consensus = ((' ' * lgindex) + self.consensus[lgindex:rgindex + 1]

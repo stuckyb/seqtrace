@@ -151,7 +151,7 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         hb2.pack_start(gtk.Label(' bases are correctly called.'), False)
         vb_trim.pack_start(hb2)
 
-        self.trimgaps_checkbox = gtk.CheckButton('trim alignment end gaps')
+        self.trimgaps_checkbox = gtk.CheckButton('trim alignment end gap regions')
         self.trimgaps_checkbox.set_active(cssettings.getTrimEndGaps())
         vb_trim.pack_start(self.trimgaps_checkbox)
 

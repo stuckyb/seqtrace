@@ -115,8 +115,75 @@ class TestConsensus(unittest.TestCase):
             cons.makeConsensusSequence()
             self.assertEqual(cons.getConsensus(), 'ANGCTACCTGACANGANTTACG')
 
+    # Test the trimming of the end gap portion of the sequence.
+    def test_trimEndGaps(self):
+        self.settings.setMinConfScore(10)
+        self.settings.setDoAutoTrim(False)
+        cons = ConsensSeqBuilder((self.seqt2, self.seqt2), self.settings)
+        
+        # verify that the consensus sequence and alignment are as expected
+        self.assertEqual(cons.getAlignedSequence(0), 'GCTCCTGACACGAATTAC')
+        self.assertEqual(cons.getAlignedSequence(1), 'GCTCCTGACACGAATTAC')
+        self.assertEqual(cons.getConsensus(), 'GCTCNTGACACGAATTAC')
+
+        # no gap to trim
+        cons.trimEndGaps()
+        self.assertEqual(cons.getConsensus(), 'GCTCNTGACACGAATTAC')
+
+        # define a bunch of test cases
+        # each test case is defined as: ['aligned_sequence_1', 'aligned_sequence_2', 'trimmed_consensus']
+        gaptrimtests = [
+                # multi-base gap on each end
+                ['----CTGACACGAATTAC',
+                 'GCTCCTGACACGAA----',
+                 '    NTGACACGAA    '],
+                # single-base gap on each end
+                ['-CTCCTGACACGAATTAC',
+                 'GCTCCTGACACGAATTA-',
+                 ' CTCNTGACACGAATTA '],
+                # adjacent gaps
+                ['--TCCTGACACGA--TAC',
+                 'GC-CCTGACACGAAT---',
+                 '  TCNTGACACGAAT   '],
+                # both gaps in one sequence
+                ['---CCTGACACGAATT--',
+                 'GCTCCTGACACGAATTAC',
+                 '   CNTGACACGAATT  '],
+                # single base
+                ['------G-----------',
+                 'GCTCCTGACACGAATTAC',
+                 '      G           '],
+                # single-base overlap
+                ['------GACACGAATTAC',
+                 'GCTCCTG-----------',
+                 '      G           '],
+                # no overlap
+                ['-------ACACGAATTAC',
+                 'GCTCCTG-----------',
+                 '                  '],
+                # no sequence
+                ['------------------',
+                 'GCTCCTGACACGAATTAC',
+                 '                  '],
+                ]
+
+        for cnt in range(2):
+            for gttest in gaptrimtests:
+                if cnt == 0:
+                    cons.seq1aligned = gttest[0]
+                    cons.seq2aligned = gttest[1]
+                else:
+                    # switch the order the second time around
+                    cons.seq1aligned = gttest[1]
+                    cons.seq2aligned = gttest[0]
+
+                cons.setConsensSequence('GCTCNTGACACGAATTAC')
+                cons.trimEndGaps()
+                self.assertEqual(cons.getConsensus(), gttest[2])
+
+
     # Test the automatic trimming of sequence ends.
-    def test_autoTrim(self):
+    def test_trimConsensus(self):
         # Test consensus construction with end trimming by testing a bunch of different
         # confscore/windowsize/num good bases combinations, including special cases.
         self.settings.setMinConfScore(30)
