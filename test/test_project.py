@@ -42,6 +42,7 @@ class TestProject(unittest.TestCase):
         self.assertEqual(csettings.getMinConfScore(), 30)
         self.assertEqual(csettings.getDoAutoTrim(), True)
         self.assertEqual(csettings.getAutoTrimParams(), (10, 8))
+        self.assertTrue(csettings.getTrimEndGaps())
 
         self.assertEqual(self.proj.getProjectFileName(), os.path.abspath(self.filename))
         self.assertEqual(self.proj.getProjectDir(), os.getcwd())
@@ -221,6 +222,7 @@ class TestProject(unittest.TestCase):
         csettings.setMinConfScore(20)
         csettings.setDoAutoTrim(False)
         csettings.setAutoTrimParams(20, 18)
+        csettings.setTrimEndGaps(False)
 
         self.proj.clearProject()
 
@@ -237,6 +239,7 @@ class TestProject(unittest.TestCase):
         self.assertEqual(csettings.getMinConfScore(), 30)
         self.assertEqual(csettings.getDoAutoTrim(), True)
         self.assertEqual(csettings.getAutoTrimParams(), (10, 8))
+        self.assertTrue(csettings.getTrimEndGaps())
 
     def test_projectItem(self):
         self.proj.addFiles(self.tracefiles)
@@ -311,6 +314,7 @@ class TestProject(unittest.TestCase):
         csettings.setMinConfScore(20)
         csettings.setDoAutoTrim(False)
         csettings.setAutoTrimParams(10, 6)
+        csettings.setTrimEndGaps(False)
 
         # create an associative item
         a_item = self.proj.associateItems((self.proj.getItemById(2), self.proj.getItemById(3)), 'new item')
@@ -350,6 +354,7 @@ class TestProject(unittest.TestCase):
         self.assertEqual(csettings.getMinConfScore(), 20)
         self.assertEqual(csettings.getDoAutoTrim(), False)
         self.assertEqual(csettings.getAutoTrimParams(), (10, 6))
+        self.assertFalse(csettings.getTrimEndGaps())
 
         self.proj.setTraceFileDir('.')
         for file in self.tracefiles:
