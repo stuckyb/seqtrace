@@ -40,10 +40,7 @@ class SeqTraceProjWriter:
         self.proj_data['consseqsettings'] = {}
         self.proj_data['items'] = []
 
-        self.proj_data['formatversion'] = '1.0'
-
-    def setVersion(self, versionstr):
-        self.proj_data['version'] = versionstr
+        self.proj_data['formatversion'] = '0.8'
 
     def addProperty(self, key, value):
         self.proj_data['properties'][key] = value
@@ -53,6 +50,7 @@ class SeqTraceProjWriter:
         self.proj_data['consseqsettings']['do_autotrim'] = settings.getDoAutoTrim()
         self.proj_data['consseqsettings']['autotrim_winsize'] = settings.getAutoTrimParams()[0]
         self.proj_data['consseqsettings']['autotrim_basecnt'] = settings.getAutoTrimParams()[1]
+        self.proj_data['consseqsettings']['trim_endgaps'] = settings.getTrimEndGaps()
 
     def addProjectItem(self, item):
         itemdata = ProjectItemData()
@@ -95,7 +93,7 @@ class SeqTraceProjReader:
             raise FileDataError
 
         # check the project data file format version
-        if self.proj_data['formatversion'] != '1.0':
+        if self.proj_data['formatversion'] != '0.8':
             raise FileFormatVersionError
 
         # a simple check to make sure the required data are present
@@ -115,6 +113,7 @@ class SeqTraceProjReader:
         settings.setAutoTrimParams(
             self.proj_data['consseqsettings']['autotrim_winsize'], self.proj_data['consseqsettings']['autotrim_basecnt']
             )
+        settings.setTrimEndGaps(self.proj_data['consseqsettings']['trim_endgaps'])
 
         return settings
 
