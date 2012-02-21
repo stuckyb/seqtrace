@@ -27,6 +27,9 @@ import seqtrace.gui.dialgs as dialgs
 from seqtrace.gui.dialgs import CommonDialogs, EntryDialog, ProgressBarDialog
 from seqtrace.gui.statusbar import ProjectStatusBar
 
+# get the location of the GUI image files
+from seqtrace.gui import images_folder
+
 import pygtk
 pygtk.require('2.0')
 import gtk
@@ -327,9 +330,6 @@ class TraceWindowManager:
 
 
 class ProjectViewer(gtk.ScrolledWindow, Observable):
-    # set location of the supporting image files
-    images_folder = os.path.dirname(__file__) + '/images'
-
     def __init__(self, project):
         gtk.ScrolledWindow.__init__(self)
 
@@ -350,9 +350,9 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
         self.col1.set_sort_column_id(stproject.FILE_NAME)
 
         # set up cell renderer for forward/reverse icons
-        self.isfwdrev_both = gtk.gdk.pixbuf_new_from_file(self.images_folder + '/isfwdrev_both.png')
-        self.isfwdrev_fwd = gtk.gdk.pixbuf_new_from_file(self.images_folder + '/isfwdrev_fwd.png')
-        self.isfwdrev_rev = gtk.gdk.pixbuf_new_from_file(self.images_folder + '/isfwdrev_rev.png')
+        self.isfwdrev_both = gtk.gdk.pixbuf_new_from_file(images_folder + '/isfwdrev_both.png')
+        self.isfwdrev_fwd = gtk.gdk.pixbuf_new_from_file(images_folder + '/isfwdrev_fwd.png')
+        self.isfwdrev_rev = gtk.gdk.pixbuf_new_from_file(images_folder + '/isfwdrev_rev.png')
         self.isrev_ren = gtk.CellRendererPixbuf()
         self.col1.pack_start(self.isrev_ren, False)
         self.col1.set_cell_data_func(self.isrev_ren, self.showFrwdRev)
@@ -377,8 +377,8 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
 
         # third column: for has sequence icons
         hasseqren = gtk.CellRendererPixbuf()
-        self.hasseq_no = gtk.gdk.pixbuf_new_from_file(self.images_folder + '/hasseq_no.png')
-        self.hasseq_yes = gtk.gdk.pixbuf_new_from_file(self.images_folder + '/hasseq_yes.png')
+        self.hasseq_no = gtk.gdk.pixbuf_new_from_file(images_folder + '/hasseq_no.png')
+        self.hasseq_yes = gtk.gdk.pixbuf_new_from_file(images_folder + '/hasseq_yes.png')
         col3 = gtk.TreeViewColumn('Seq. Saved', hasseqren)
         col3.set_cell_data_func(hasseqren, self.renderHasSeq)
         col3.set_sort_column_id(stproject.HAS_CONS)
@@ -1493,9 +1493,6 @@ class MainWindow(gtk.Window, CommonDialogs):
             self.showMessage('No matching forward and reverse sequencing trace files were found.', gtk.MESSAGE_INFO)
 
     def showAbout(self, widget):
-        # set location of the supporting image files
-        images_folder = os.path.dirname(__file__) + '/images'
-
         diag = gtk.AboutDialog()
         diag.set_name('SeqTrace')
         #diag.set_program_name('Simple Trace Viewer')

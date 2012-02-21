@@ -19,13 +19,13 @@ import os
 
 
 
-# get location of the icon image files
-images_folder = os.path.dirname(__file__) + '/images/icons'
+# get location of the GUI image files
+images_folder = os.path.dirname(__file__) + '/images'
 
 # set up the icons for use by all application windows
 gtk.window_set_default_icon_list(
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/16.png'),
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/32.png'),
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/48.png'),
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/64.png'))
+        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/16.png'),
+        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/32.png'),
+        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/48.png'),
+        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/64.png'))
 
