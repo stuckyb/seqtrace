@@ -16,11 +16,15 @@
 
 import gtk
 import os
+import sys
 
 
-
-# get location of the GUI image files
-images_folder = os.path.dirname(__file__) + '/images'
+# Set the location of the GUI image files depending on whether we're
+# running as a normal Python program or a "frozen" binary.
+if hasattr(sys, 'frozen'):
+    images_folder = os.path.join(os.path.dirname(sys.executable), 'images')
+else:
+    images_folder = os.path.dirname(__file__) + '/images'
 
 # set up the icons for use by all application windows
 gtk.window_set_default_icon_list(
