@@ -54,7 +54,7 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
                 'G': gtk.gdk.color_parse('#ccc'),
                 'T': gtk.gdk.color_parse('#fcc'),
                 '-': gtk.gdk.color_parse('#ff9'),
-                'N': gtk.gdk.color_parse('#999')}
+                'N': gtk.gdk.color_parse('#fff')}
         self.margins = 6
         self.padding = 6
 
@@ -430,7 +430,8 @@ class SequenceTraceViewer:
         self.tracecolors = {'A': gtk.gdk.color_parse('#009000'),
                 'C': gtk.gdk.color_parse('blue'),
                 'G': gtk.gdk.color_parse('black'),
-                'T': gtk.gdk.color_parse('red')}
+                'T': gtk.gdk.color_parse('red'),
+                'N': gtk.gdk.color_parse('#999')}
         self.bottom_margin = 2
         self.bcpadding = 4
 
@@ -606,11 +607,12 @@ class SequenceTraceViewer:
             dwin.draw_layout(gc, x - (txtwidth/2), y, self.bclayout)
 
             # calculate the y coordinate of the trace location for this base
-            traceval = self.seqt.getTraceSample(base, pos)
-            ysamp = int((self.sigmax - traceval) * yscale + 0.5)
+            if base != 'N':
+                traceval = self.seqt.getTraceSample(base, pos)
+                ysamp = int((self.sigmax - traceval) * yscale + 0.5)
 
-            # draw the line to the trace
-            dwin.draw_line(gc, x, ysamp, x, y-(self.bcpadding/2))
+                # draw the line to the trace
+                dwin.draw_line(gc, x, ysamp, x, y-(self.bcpadding/2))
 
     def highlightBase(self, bindex):
         # draw the highlight, if needed
