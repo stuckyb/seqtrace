@@ -29,15 +29,19 @@ class TestConsensus(unittest.TestCase):
         # set up some simple sequence trace data
         self.seqt1 = SequenceTrace()
         self.seqt2 = SequenceTrace()
+        self.seqt3 = SequenceTrace()
         self.seqt1.basecalls = 'AAGCTACCTGACATGATTTACG'
         self.seqt2.basecalls = 'GCTCCTGACACGAATTAC'
-        # alignment of the above:   'AAGCTACCTGACATGATTTACG'
-        #                           '--GCT-CCTGACACGAATTAC-'
+        self.seqt3.basecalls = 'AAGCTACCTGACATGATTTACG'
+        # alignment of sequences 1 and 2:   'AAGCTACCTGACATGATTTACG'
+        #                                   '--GCT-CCTGACACGAATTAC-'
 
         #                    A  A   G   C   T   A  C   C   T   G   A   C   A   T   G   A   T   T   T   A   C   G
         self.seqt1.bcconf = [5, 4, 20, 24, 34, 12, 8, 30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 46, 32, 12, 24]
         #                           G   C   T       C  C   T   G   A   C   A   C   G   A   A   T   T   A   C
         self.seqt2.bcconf = [      20, 24, 34,     12, 8, 30, 16, 34, 40, 52, 42, 61, 61, 30, 61, 46, 32, 12    ]
+        #                    A  A  G  C  T  A  C  C  T  G  A  C  A  T  G  A  T  T  T  A  C  G
+        self.seqt3.bcconf = [5, 4, 0, 4, 4, 2, 8, 0, 2, 6, 4, 0, 2, 1, 1, 1, 8, 1, 6, 2, 2, 4]
         #print len(self.seqt1.getBaseCalls())
         #print len(self.seqt1.bcconf)
 
@@ -74,9 +78,19 @@ class TestConsensus(unittest.TestCase):
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '             TGANT    ')
 
+        # test the special case where none of the confidence scores exceed the quality threshold
+        self.settings.setMinConfScore(10)
+        cons = ConsensSeqBuilder((self.seqt3,), self.settings)
+        self.assertEqual(cons.getConsensus(), '                      ')
+
     # Test consensus sequence construction with two (forward/reverse) sequence traces.
     def test_doubleConsensus(self):
         self.settings.setDoAutoTrim(False)
+
+        # first, test the special case where none of the confidence scores exceed the quality threshold
+        self.settings.setMinConfScore(10)
+        cons = ConsensSeqBuilder((self.seqt3, self.seqt3), self.settings)
+        self.assertEqual(cons.getConsensus(), '                      ')
 
         cons = ConsensSeqBuilder((self.seqt1, self.seqt2), self.settings)
 
