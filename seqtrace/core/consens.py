@@ -198,7 +198,7 @@ class ConsensSeqBuilder:
 
         # remove 'N's from the beginning and end of the consensus sequence
         cnt = 0
-        while cons[cnt] == 'N':
+        while (cnt < len(cons)) and (cons[cnt] == 'N'):
             cons[cnt] = ' '
             cnt += 1
         cnt = len(cons) - 1
@@ -226,7 +226,7 @@ class ConsensSeqBuilder:
 
         # remove 'N's from the beginning and end of the consensus sequence
         cnt = 0
-        while cons[cnt] == 'N':
+        while (cnt < len(cons)) and (cons[cnt] == 'N'):
             cons[cnt] = ' '
             cnt += 1
         cnt = len(cons) - 1

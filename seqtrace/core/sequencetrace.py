@@ -1006,6 +1006,7 @@ class ABISequenceTrace(SequenceTrace):
             raise ABIError('Mismatched base call data entries were found in the ABI file.  The file might be damaged.')
         else:
             self.basecalls = sequences[0].upper()
+            print self.basecalls
     
     # There is an inconsistency in the ABIF file format documentation regarding the data format of the
     # confidence scores.  The data format ID (as actually found in a .ab1 file) is 2, indicating the
