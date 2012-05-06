@@ -150,30 +150,30 @@ class TestSequenceTrace:
 
     def test_dataLoaded(self):
         # test several properties of the loaded data
-        self.assertEquals(self.trace.getNumBaseCalls(), self.num_base_calls)
-        self.assertEquals(self.trace.getTraceLength(), self.trace_length)
-        self.assertEquals(self.trace.getMaxTraceVal(), self.max_trace_val)
+        self.assertEqual(self.trace.getNumBaseCalls(), self.num_base_calls)
+        self.assertEqual(self.trace.getTraceLength(), self.trace_length)
+        self.assertEqual(self.trace.getMaxTraceVal(), self.max_trace_val)
 
         # test if the base calls are correct
-        self.assertEquals(self.trace.getBaseCalls(), self.base_calls)
+        self.assertEqual(self.trace.getBaseCalls(), self.base_calls)
 
         for cnt in range(len(self.base_calls)):
-            self.assertEquals(self.trace.getBaseCall(cnt), self.base_calls[cnt])
+            self.assertEqual(self.trace.getBaseCall(cnt), self.base_calls[cnt])
 
         # test if the base call locations are correct
         for cnt in range(len(self.base_pos)):
-            self.assertEquals(self.trace.getBaseCallPos(cnt), self.base_pos[cnt])
+            self.assertEqual(self.trace.getBaseCallPos(cnt), self.base_pos[cnt])
 
         # test if the confidence scores are correct
         for cnt in range(len(self.bc_conf)):
-            self.assertEquals(self.trace.getBaseCallConf(cnt), self.bc_conf[cnt])
+            self.assertEqual(self.trace.getBaseCallConf(cnt), self.bc_conf[cnt])
 
         # test if the loaded trace values are correct (only tests the first 800 sample values)
         for cnt in range(len(self.start_tracesamps_A)):
-            self.assertEquals(self.trace.getTraceSample('A', cnt), self.start_tracesamps_A[cnt])
+            self.assertEqual(self.trace.getTraceSample('A', cnt), self.start_tracesamps_A[cnt])
 
     def test_getFileName(self):
-        self.assertEquals(self.trace.getFileName(), os.path.basename(self.filename))
+        self.assertEqual(self.trace.getFileName(), os.path.basename(self.filename))
 
     def test_reverseComplement(self):
         self.assertFalse(self.trace.isReverseComplemented())
@@ -181,18 +181,18 @@ class TestSequenceTrace:
         # test reverse complementing
         self.trace.reverseComplement()
         self.assertTrue(self.trace.isReverseComplemented())
-        self.assertEquals(self.trace.getBaseCalls(), self.rev_compl)
+        self.assertEqual(self.trace.getBaseCalls(), self.rev_compl)
 
         # test reverse complementing back to the original
         self.trace.reverseComplement()
         self.assertFalse(self.trace.isReverseComplemented())
-        self.assertEquals(self.trace.getBaseCalls(), self.base_calls)
+        self.assertEqual(self.trace.getBaseCalls(), self.base_calls)
 
     def test_getPrevBaseCallIndex(self):
         # test that exact base call locations work
         for cnt in range(len(self.base_pos)):
             index = self.trace.getPrevBaseCallIndex(self.base_pos[cnt])
-            self.assertEquals(index, cnt)
+            self.assertEqual(index, cnt)
 
         # test that non-base call locations work
         for cnt in range(len(self.base_pos) - 1):
@@ -202,20 +202,20 @@ class TestSequenceTrace:
 
             # see if we get the correct base call index back
             index = self.trace.getPrevBaseCallIndex(sampnum)
-            self.assertEquals(index, cnt)
+            self.assertEqual(index, cnt)
 
         # test extreme values at the beginning and end of the trace
         index = self.trace.getPrevBaseCallIndex(1)
-        self.assertEquals(index, 0)
+        self.assertEqual(index, 0)
         endsamp = self.base_pos[len(self.base_calls) - 1] + 2
         index = self.trace.getPrevBaseCallIndex(endsamp)
-        self.assertEquals(index, len(self.base_calls) - 1)
+        self.assertEqual(index, len(self.base_calls) - 1)
 
     def test_getNextBaseCallIndex(self):
         # test that exact base call locations work
         for cnt in range(len(self.base_pos)):
             index = self.trace.getNextBaseCallIndex(self.base_pos[cnt])
-            self.assertEquals(index, cnt)
+            self.assertEqual(index, cnt)
 
         # test that non-base call locations work
         for cnt in range(len(self.base_pos) - 1):
@@ -225,14 +225,14 @@ class TestSequenceTrace:
 
             # see if we get the correct base call index back
             index = self.trace.getNextBaseCallIndex(sampnum)
-            self.assertEquals(index, cnt + 1)
+            self.assertEqual(index, cnt + 1)
 
         # test extreme values at the beginning and end of the trace
         index = self.trace.getNextBaseCallIndex(1)
-        self.assertEquals(index, 0)
+        self.assertEqual(index, 0)
         endsamp = self.base_pos[len(self.base_calls) - 1] + 2
         index = self.trace.getNextBaseCallIndex(endsamp)
-        self.assertEquals(index, len(self.base_calls) - 1)
+        self.assertEqual(index, len(self.base_calls) - 1)
 
     def test_comments(self):
         self.assertEqual(self.trace.getComment('BCAL'), 'KB.bcp')
@@ -283,7 +283,12 @@ class TestABISequenceTrace(unittest.TestCase, TestSequenceTrace):
     def test_errors(self):
         self.assertRaises(ABIVersionError, self.trace.loadFile, test_data + 'error-wrong_version.ab1')
         self.assertRaises(ABIIndexError, self.trace.loadFile, test_data + 'error-bad_index.ab1')
-        self.assertRaises(ABIError, self.trace.loadFile, test_data + 'error-mismatch_base_calls.ab1')
+
+    # Test a trace file where the user-edited base calls differ from the basecaller-assigned base calls.
+    # In this case, the user-edited base calls should be used.
+    def test_mismatch_bases(self):
+        self.trace.loadFile(test_data + 'mismatch_base_calls.ab1')
+        self.assertEqual(self.trace.getBaseCalls(), self.base_calls)
 
     def test_comments(self):
         super(TestABISequenceTrace, self).test_comments()
