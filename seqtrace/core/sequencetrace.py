@@ -82,8 +82,8 @@ class SequenceTraceFactory:
 class SequenceTrace:
     def __init__(self):
         # set up reverse complement lookup table
-        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 's': 's', 'w': 'w', 'y': 'r', 'r': 'y',
-                         'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'S': 'S', 'W': 'W', 'Y': 'R', 'R': 'Y'}
+        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 's': 's', 'w': 'w', 'y': 'r', 'r': 'y', 'n': 'n',
+                        'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'S': 'S', 'W': 'W', 'Y': 'R', 'R': 'Y', 'N': 'N'}
         self.isreverse_comped = False
         self.fname = ''
         self.tracesamps = {}

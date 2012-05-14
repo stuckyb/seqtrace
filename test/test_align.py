@@ -58,6 +58,12 @@ class TestPairwiseAlignment(unittest.TestCase):
         self.assertEquals(self.align.getAlignedSequences(), ('--TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT'))
         self.assertEquals(self.align.getAlignmentScore(), 18)
 
+        # sequences of different lengths with 2 mismatched bases and 6 ambiguous bases
+        self.align.setSequences('CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG')
+        self.align.doAlignment()
+        self.assertEquals(self.align.getAlignedSequences(), ('CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG--'))
+        self.assertEquals(self.align.getAlignmentScore(), 10)
+
         # sequences of different lengths with 2 mismatched bases
         self.align.setSequences('CATGCATCCATTATAAGGTT', 'CATGCATTTATTATAAGG')
         self.align.doAlignment()
