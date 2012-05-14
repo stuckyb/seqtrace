@@ -173,10 +173,10 @@ class ConsensSeqBuilder:
 
         for cnt in range(len(self.seq1aligned)):
             cscore = cscore2 = 0
-            if self.seq1aligned[cnt] != '-':
+            if (self.seq1aligned[cnt] != '-') and (self.seq1aligned[cnt] != 'N'):
                 cbase = self.seq1aligned[cnt]
                 cscore = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
-            if self.seq2aligned[cnt] != '-':
+            if (self.seq2aligned[cnt] != '-') and (self.seq2aligned[cnt] != 'N'):
                 cbase2 = self.seq2aligned[cnt]
                 cscore2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
 

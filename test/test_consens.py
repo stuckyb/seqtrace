@@ -31,15 +31,15 @@ class TestConsensus(unittest.TestCase):
         self.seqt2 = SequenceTrace()
         self.seqt3 = SequenceTrace()
         self.seqt1.basecalls = 'AAGCTACCTGACATGATTTACG'
-        self.seqt2.basecalls = 'GCTCCTGACACGAATTAC'
+        self.seqt2.basecalls = 'GCTCCTGNCACGAATTAC'
         self.seqt3.basecalls = 'AAGCTACCTGACATGATTTACG'
         # alignment of sequences 1 and 2:   'AAGCTACCTGACATGATTTACG'
-        #                                   '--GCT-CCTGACACGAATTAC-'
+        #                                   '--GCT-CCTGNCACGAATTAC-'
 
         #                    A  A   G   C   T   A  C   C   T   G   A   C   A   T   G   A   T   T   T   A   C   G
         self.seqt1.bcconf = [5, 4, 20, 24, 34, 12, 8, 30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 46, 32, 12, 24]
-        #                           G   C   T       C  C   T   G   A   C   A   C   G   A   A   T   T   A   C
-        self.seqt2.bcconf = [      20, 24, 34,     12, 8, 30, 16, 34, 40, 52, 42, 61, 61, 30, 61, 46, 32, 12    ]
+        #                           G   C   T      C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
+        self.seqt2.bcconf = [      20, 24, 34,    12,  8, 30, 16, 34, 40, 52, 42, 61, 61, 30, 61, 46, 32, 12    ]
         #                    A  A  G  C  T  A  C  C  T  G  A  C  A  T  G  A  T  T  T  A  C  G
         self.seqt3.bcconf = [5, 4, 0, 4, 4, 2, 8, 0, 2, 6, 4, 0, 2, 1, 1, 1, 8, 1, 6, 2, 2, 4]
         #print len(self.seqt1.getBaseCalls())
@@ -96,11 +96,11 @@ class TestConsensus(unittest.TestCase):
 
         # verify the alignment is correct
         self.assertEqual(cons.getAlignedSequence(0), 'AAGCTACCTGACATGATTTACG')
-        self.assertEqual(cons.getAlignedSequence(1), '--GCT-CCTGACACGAATTAC-')
+        self.assertEqual(cons.getAlignedSequence(1), '--GCT-CCTGNCACGAATTAC-')
 
         #                    A  A   G   C   T   A  C   C   T   G   A   C   A   T   G   A   T   T   T   A   C   G
         #                   [5, 4, 20, 24, 34, 12, 8, 30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 46, 32, 12, 24]
-        #                           G   C   T       C  C   T   G   A   C   A   C   G   A   A   T   T   A   C
+        #                           G   C   T       C  C   T   G   N   C   A   C   G   A   A   T   T   A   C
         #                   [      20, 24, 34,     12, 8, 30, 16, 34, 40, 52, 42, 61, 61, 30, 61, 46, 32, 12    ]
 
         # run each set of tests with seqt1 first, then with seqt2 first
@@ -136,13 +136,13 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt2, self.seqt2), self.settings)
         
         # verify that the consensus sequence and alignment are as expected
-        self.assertEqual(cons.getAlignedSequence(0), 'GCTCCTGACACGAATTAC')
-        self.assertEqual(cons.getAlignedSequence(1), 'GCTCCTGACACGAATTAC')
-        self.assertEqual(cons.getConsensus(), 'GCTCNTGACACGAATTAC')
+        self.assertEqual(cons.getAlignedSequence(0), 'GCTCCTGNCACGAATTAC')
+        self.assertEqual(cons.getAlignedSequence(1), 'GCTCCTGNCACGAATTAC')
+        self.assertEqual(cons.getConsensus(), 'GCTCNTGNCACGAATTAC')
 
         # no gap to trim
         cons.trimEndGaps()
-        self.assertEqual(cons.getConsensus(), 'GCTCNTGACACGAATTAC')
+        self.assertEqual(cons.getConsensus(), 'GCTCNTGNCACGAATTAC')
 
         # define a bunch of test cases
         # each test case is defined as: ['aligned_sequence_1', 'aligned_sequence_2', 'trimmed_consensus']
