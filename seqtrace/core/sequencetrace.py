@@ -82,8 +82,8 @@ class SequenceTraceFactory:
 class SequenceTrace:
     def __init__(self):
         # set up reverse complement lookup table
-        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 's': 's', 'w': 'w', 'y': 'r', 'r': 'y',
-                         'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'S': 'S', 'W': 'W', 'Y': 'R', 'R': 'Y'}
+        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 's': 's', 'w': 'w', 'y': 'r', 'r': 'y', 'n': 'n',
+                        'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'S': 'S', 'W': 'W', 'Y': 'R', 'R': 'Y', 'N': 'N'}
         self.isreverse_comped = False
         self.fname = ''
         self.tracesamps = {}
@@ -984,28 +984,19 @@ class ABISequenceTrace(SequenceTrace):
     
         return lst
 
+    # According to the ABIF documentation, ABIF files (after base calling) should contain two base
+    # call entries ("PBAS"): one containing "sequence characters edited by user" (entry number 1),
+    # and one containing "sequence characters as called by Basecaller" (entry number 2).  These
+    # two entries will, in most cases, contain identical sequence data.  This method follows the same
+    # convention used by the Staden package (see seqIOABI.c), which is to only look at entry 1 (the
+    # user-edited sequence) and ignore entry 2.
     def readBaseCalls(self):
-        sequences = list()
-    
-        rows = self.getIndexEntriesById('PBAS')
-    
-        # read the base calls from the file
-        for row in rows:
-            sequences.append(self.readString(row).upper())
-    
-        # if we got multiple base call entries, verify that they
-        # are all identical
-        all_match = True
-        for cnt in range(1, len(sequences)):
-            if sequences[0] != sequences[cnt]:
-                all_match = False
-    
-        if (len(sequences) == 0):
+        row = self.getIndexEntry('PBAS', 1)
+        if row is None:
             raise ABIError('No base call data were found in the ABI file.  The file might be damaged.')
-        elif not(all_match):
-            raise ABIError('Mismatched base call data entries were found in the ABI file.  The file might be damaged.')
-        else:
-            self.basecalls = sequences[0].upper()
+
+        # read the base calls from the file
+        self.basecalls = self.readString(row).upper()
     
     # There is an inconsistency in the ABIF file format documentation regarding the data format of the
     # confidence scores.  The data format ID (as actually found in a .ab1 file) is 2, indicating the
@@ -1013,53 +1004,36 @@ class ABISequenceTrace(SequenceTrace):
     # from 0-255 (i.e., an unsigned 1-byte integer).  In practice, the actual values do not appear to
     # exceed 61, making the distinction between signed/unsigned irrelevant.  For now, the data format ID
     # is taken as the correct indication of the underlying data format.
+    #
+    # According to the ABIF documentation, ABIF files (after base calling) should contain two quality
+    # value (QV) entries ("PCON"): one containing QVs "as edited by user" (entry number 1), and one
+    # containing QVs "as called by Basecaller" (entry number 2).  These two entries will, in most cases,
+    # contain identical values.  This method follows the same convention used by the Staden package
+    # (see seqIOABI.c), which is to only look at entry 1 (the user-edited QVs) and ignore entry 2.
     def readConfScores(self):
-        scores = list()
-    
-        rows = self.getIndexEntriesById('PCON')
+        row = self.getIndexEntry('PCON', 1)
+        if row is None:
+            raise ABIError('No confidence score data were found in the ABI file.  SeqTrace requires confidence scores for all base calls.')
     
         # read the base call confidence scores from the file
-        for row in rows:
-            scores.append(self.read1ByteInts(row))
+        self.bcconf = self.read1ByteInts(row)
     
-        # if we got multiple confidence score entries, verify that
-        # they are all identical
-        all_match = True
-        for cnt in range(1, len(scores)):
-            if scores[0] != scores[cnt]:
-                all_match = False
+        return True
     
-        if (len(scores) == 0):
-            raise ABIError('No confidence score data were found in the ABI file.  The file might be damaged.')
-        elif not(all_match):
-            raise ABIError('Mismatched confidence score data entries were found in the ABI file.  The file might be damaged.')
-        else:
-            self.bcconf = scores[0]
-            return True
-    
+    # According to the ABIF documentation, ABIF files (after base calling) should contain two peak
+    # location (PL) entries ("PLOC"): one containing PLs "edited by user" (entry number 1), and one
+    # containing PLs "as called by Basecaller" (entry number 2).  These two entries will, in most cases,
+    # contain identical information.  This method follows the same convention used by the Staden package
+    # (see seqIOABI.c), which is to only look at entry 1 (the user-edited PLs) and ignore entry 2.
     def readBaseLocations(self):
-        locs = list()
-    
-        rows = self.getIndexEntriesById('PLOC')
+        row = self.getIndexEntry('PLOC', 1)
+        if row is None:
+            raise ABIError('No base location data were found in the ABI file.  The file might be damaged.')
     
         # read the base call locations from the file
-        for row in rows:
-            locs.append(self.read2ByteInts(row))
-    
-        # if we got multiple location entries, verify that
-        # they are all identical
-        all_match = True
-        for cnt in range(1, len(locs)):
-            if locs[0] != locs[cnt]:
-                all_match = False
-    
-        if (len(locs) == 0):
-            raise ABIError('No base location data were found in the ABI file.  The file might be damaged.')
-        elif not(all_match):
-            raise ABIError('Mismatched base location data entries were found in the ABI file.  The file might be damaged.')
-        else:
-            self.basepos = locs[0]
-            return True
+        self.basepos = self.read2ByteInts(row)
+
+        return True
 
     def getBaseDataOrder(self):
         # retrieve the "filter wheel order" row from the file index

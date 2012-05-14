@@ -82,7 +82,7 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
             self.fc_checkbox.set_active(False)
         else:
             self.fc_checkbox.set_active(True)
-        self.fc_checkbox.connect('toggled', self.useRelPathToggled)
+        self.fc_cb_hid = self.fc_checkbox.connect('toggled', self.useRelPathToggled)
         vb.pack_start(self.fc_checkbox)
 
         tracevb.pack_start(vb)
@@ -119,7 +119,7 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         # get the consensus sequence settings
         cssettings = self.project.getConsensSeqSettings()
 
-        # set up UI components for choosing the phred score cutoff value
+        # set up UI components for choosing the confidence score cutoff value
         vb = gtk.VBox(False, 20)
         vb.set_border_width(10)
         hb1 = gtk.HBox()
@@ -231,14 +231,35 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
             return
 
         if self.fc_checkbox.get_active():
-            fname = os.path.relpath(fname, self.project.getProjectDir())
+            # On Windows, there is no root location for all drives, so getting a relative path between
+            # drives is impossible.  So, we need to check if the CWD and the chosen directory are on
+            # different drives, and if so, switch to using an absolute path.  We can check this by seeing
+            # if relpath throws a ValueError exception, then toggle the "relative path" checkbox if needed.
+            try:
+                tmpname = os.path.relpath(fname, self.project.getProjectDir())
+                fname = tmpname
+            except ValueError:
+                self.fc_checkbox.handler_block(self.fc_cb_hid)
+                self.fc_checkbox.set_active(False)
+                self.fc_checkbox.handler_unblock(self.fc_cb_hid)
+
         entry.set_text(fname)
 
     def useRelPathToggled(self, button):
         # toggle the display of the currently-selected trace file folder, making sure that paths
         # are always relative to the location of the project file
         if self.fc_checkbox.get_active():
-            self.fc_entry.set_text(os.path.relpath(self.fc_entry.get_text(), self.project.getProjectDir()))
+            # On Windows, there is no root location for all drives, so getting a relative path between
+            # drives is impossible.  We can check for this by seeing if relpath throws a ValueError
+            # exception, then uncheck the "relative path" checkbox if needed.
+            try:
+                tmpname = os.path.relpath(self.fc_entry.get_text(), self.project.getProjectDir())
+                self.fc_entry.set_text(tmpname)
+            except ValueError:
+                self.fc_checkbox.handler_block(self.fc_cb_hid)
+                self.fc_checkbox.set_active(False)
+                self.showMessage('Relative paths cannot be used when the trace files and project file are located on different drives.')
+                self.fc_checkbox.handler_unblock(self.fc_cb_hid)
         else:
             self.fc_entry.set_text(os.path.abspath(
                 os.path.join(self.project.getProjectDir(), self.fc_entry.get_text())
