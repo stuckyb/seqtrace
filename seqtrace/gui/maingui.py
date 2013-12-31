@@ -87,22 +87,22 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
 
         tracevb.pack_start(vb)
 
-        # set up UI components for the forward/reverse trace file search strings
+        # Set up UI components for the forward/reverse trace file search strings.
         vb = gtk.VBox()
         tfs_hb1 = gtk.HBox()
         tfs_hb1.pack_start(gtk.Label('Search strings for identifying forward and reverse trace files:'), False)
 
-        # create a layout table for the labels and text entries
+        # Create a layout table for the labels and text entries.
         table = gtk.Table(2, 2)
 
         self.tfs_fwd_entry = gtk.Entry()
-        self.tfs_fwd_entry.set_width_chars(6)
+        self.tfs_fwd_entry.set_width_chars(12)
         self.tfs_fwd_entry.set_text(self.project.getFwdTraceSearchStr())
         table.attach(gtk.Label('Forward: '), 0, 1, 0, 1, xoptions=0)
         table.attach(self.tfs_fwd_entry, 1, 2, 0, 1, xoptions=0)
         
         self.tfs_rev_entry = gtk.Entry()
-        self.tfs_rev_entry.set_width_chars(6)
+        self.tfs_rev_entry.set_width_chars(12)
         self.tfs_rev_entry.set_text(self.project.getRevTraceSearchStr())
         table.attach(gtk.Label('Reverse: '), 0, 1, 1, 2, xoptions=0)
         table.attach(self.tfs_rev_entry, 1, 2, 1, 2, xoptions=0)
