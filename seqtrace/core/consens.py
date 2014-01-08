@@ -55,7 +55,6 @@ class ConsensSeqSettings(Observable):
     def setAll(self, min_confscore, consensus_algorithm, do_autotrim, autotrim_params, trim_endgaps):
         self.notify_all = False
         self.change_made = False
-        print consensus_algorithm
 
         try:
             self.setMinConfScore(min_confscore)

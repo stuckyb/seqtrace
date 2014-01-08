@@ -29,24 +29,26 @@ from seqtrace.core.observable import Observable
 
 
 class SeqTraceProjWriter:
-    """ Writes project data to an external file.  The pickle module is currently used to serialize the
+    """
+    Writes project data to an external file.  The pickle module is currently used to serialize the
     data to a file, but no class instances are serialized directly.  Instead, only the relevant data are
     serialized, which makes the file format independent of any future changes to the names or structure of
-    the project classes, modules, or packages. """
-
+    the project classes, modules, or packages.
+    """
     def __init__(self):
         self.proj_data = {}
         self.proj_data['properties'] = {}
         self.proj_data['consseqsettings'] = {}
         self.proj_data['items'] = []
 
-        self.proj_data['formatversion'] = '0.8'
+        self.proj_data['formatversion'] = '0.9'
 
     def addProperty(self, key, value):
         self.proj_data['properties'][key] = value
 
     def setConsensSeqSettings(self, settings):
         self.proj_data['consseqsettings']['min_confscore'] = settings.getMinConfScore()
+        self.proj_data['consseqsettings']['consensus_algorithm'] = settings.getConsensusAlgorithm()
         self.proj_data['consseqsettings']['do_autotrim'] = settings.getDoAutoTrim()
         self.proj_data['consseqsettings']['autotrim_winsize'] = settings.getAutoTrimParams()[0]
         self.proj_data['consseqsettings']['autotrim_basecnt'] = settings.getAutoTrimParams()[1]
@@ -92,8 +94,8 @@ class SeqTraceProjReader:
         if 'formatversion' not in self.proj_data:
             raise FileDataError
 
-        # check the project data file format version
-        if self.proj_data['formatversion'] != '0.8':
+        # Check the project data file format version.
+        if not(self.proj_data['formatversion'] == '0.8' or self.proj_data['formatversion'] == '0.9'):
             raise FileFormatVersionError
 
         # a simple check to make sure the required data are present
@@ -114,6 +116,12 @@ class SeqTraceProjReader:
             self.proj_data['consseqsettings']['autotrim_winsize'], self.proj_data['consseqsettings']['autotrim_basecnt']
             )
         settings.setTrimEndGaps(self.proj_data['consseqsettings']['trim_endgaps'])
+
+        # Handle settings not included in the 0.8 version of the file format.
+        if self.proj_data['formatversion'] == '0.8':
+            settings.setConsensusAlgorithm('legacy')
+        else:
+            settings.setConsensusAlgorithm(self.proj_data['consseqsettings']['consensus_algorithm'])
 
         return settings
 
@@ -164,12 +172,13 @@ class ProjectItemData:
             self.setChildren(child1, child2)
 
     def toDict(self):
-        """ Convert the item's data, including any children, to a simple Python dictionary.
+        """
+        Convert the item's data, including any children, to a simple Python dictionary.
         The result will be similar, but not identical, to the __dict__ builtin.  This method
         is designed to be used for saving project data to an external file in a way that does
         not depend on package and module names and structures.  This makes it more robust than
-        simply serializing a ProjectItemData instance directly. """
-
+        simply serializing a ProjectItemData instance directly.
+        """
         res = {}
         res['id'] = self.getId()
         res['name'] = self.getName()
