@@ -40,8 +40,8 @@ class TestConsensus(unittest.TestCase):
         self.seqt1.bcconf = [5, 4, 20, 24, 34, 12, 8, 30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 46, 32, 12, 24]
         #                           G   C   T      C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
         self.seqt2.bcconf = [      20, 24, 34,    12,  8, 30, 16, 34, 40, 52, 42, 61, 61, 30, 61, 46, 32, 12    ]
-        #                    A  A  G  C  T  A  C  C  T  G  A  C  A  T  G  A  T  T  T  A  C  G
-        self.seqt3.bcconf = [5, 4, 0, 4, 4, 2, 8, 0, 2, 6, 4, 0, 2, 1, 1, 1, 8, 1, 6, 2, 2, 4]
+        #                    A  A   G   C   T   A  C   C   T   G   A   C   A   T   G   A   T   T   T   A   C   G
+        self.seqt3.bcconf = [5, 4,  0,  4,  4,  2, 8,  0,  2,  6,  4,  0,  2,  1,  1,  1,  8,  1,  6,  2,  2,  4]
         #print len(self.seqt1.getBaseCalls())
         #print len(self.seqt1.bcconf)
 

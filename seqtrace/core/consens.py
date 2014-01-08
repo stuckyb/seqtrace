@@ -23,8 +23,13 @@ class ConsensSeqSettingsError(Exception):
     pass
 
 class ConsensSeqSettings(Observable):
+    """
+    Manages the settings that specify how SeqTrace calculates consensus sequences
+    from matching forward and reverse traces.
+    """
     def __init__(self):
         self.min_confscore = 30
+        self.consensus_algorithm = 'Bayesian'
         self.do_autotrim = True
         self.autotrim_winsize = 10 
         self.autotrim_basecnt = 8
@@ -33,23 +38,28 @@ class ConsensSeqSettings(Observable):
         # a flag to indicate if a setAll() operation is in progress
         self.notify_all = True
 
-        # initialize observable events
+        # Initialize observable events.  The event "settings_change" is triggered whenever 
+        # the value of any setting is changed.  The remaining events give notification of
+        # specific settings changes.
         self.defineObservableEvents(['settings_change', 'min_confscore_change',
-            'autotrim_change'])
+            'autotrim_change', 'consensus_algorithm_change'])
 
     def copyFrom(self, settings):
         self.min_confscore = settings.getMinConfScore()
+        self.consensus_algorithm = settings.getConsensusAlgorithm()
         self.do_autotrim = settings.getDoAutoTrim()
         self.autotrim_winsize = settings.getAutoTrimParams()[0]
         self.autotrim_basecnt = settings.getAutoTrimParams()[1]
         self.trim_endgaps = settings.getTrimEndGaps()
 
-    def setAll(self, min_confscore, do_autotrim, autotrim_params, trim_endgaps):
+    def setAll(self, min_confscore, consensus_algorithm, do_autotrim, autotrim_params, trim_endgaps):
         self.notify_all = False
         self.change_made = False
+        print consensus_algorithm
 
         try:
             self.setMinConfScore(min_confscore)
+            self.setConsensusAlgorithm(consensus_algorithm)
             self.setDoAutoTrim(do_autotrim)
             self.setAutoTrimParams(*autotrim_params)
             self.setTrimEndGaps(trim_endgaps)
@@ -69,6 +79,21 @@ class ConsensSeqSettings(Observable):
             oldval = self.min_confscore
             self.min_confscore = newval
             self.notifyObservers('min_confscore_change', (self.min_confscore, oldval))
+            if self.notify_all:
+                self.notifyObservers('settings_change', ())
+            else:
+                self.change_made = True
+
+    def getConsensusAlgorithm(self):
+        return self.consensus_algorithm
+
+    def setConsensusAlgorithm(self, newval):
+        if newval not in ('Bayesian', 'legacy'):
+            raise ConsensSeqSettingsError('Invalid consensus algorithm specification.')
+
+        if self.consensus_algorithm != newval:
+            self.consensus_algorithm = newval
+            self.notifyObservers('consensus_algorithm_change', ())
             if self.notify_all:
                 self.notifyObservers('settings_change', ())
             else:
@@ -119,6 +144,13 @@ class ConsensSeqBuilderError(Exception):
     pass
 
 class ConsensSeqBuilder:
+    """
+    Constructs a consensus sequence from matching forward and reverse
+    sequencing trace data.  After building the consensus sequence, or
+    if only one sequence is provided, ConsensSeqBuilder can also perform
+    finishing operations on the final sequence, such as automatic end
+    quality trimming.
+    """
     def __init__(self, sequencetraces, settings=None):
         self.numseqs = len(sequencetraces)
         self.settings = settings
@@ -366,6 +398,10 @@ class ConsensSeqBuilder:
 
 
 class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
+    """
+    Extends ConsensSeqBuilder to allow for user editing of the consensus
+    sequence with support for unlimited undo/redo functinality.
+    """
     def __init__(self, sequencetraces, settings=None):
         ConsensSeqBuilder.__init__(self, sequencetraces, settings)
 

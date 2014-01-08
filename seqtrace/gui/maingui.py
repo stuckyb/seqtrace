@@ -131,11 +131,27 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
 
         vb.pack_start(hb1)
 
+        # Create the UI components for choosing a consensus algorithm.
+        hb1 = gtk.HBox()
+        hb1.pack_start(gtk.Label('Consensus algorithm:  '), False)
+        self.cons_bayes_rb = gtk.RadioButton(None, 'Bayesian   ')
+        hb1.pack_start(self.cons_bayes_rb, False)
+        self.cons_legacy_rb = gtk.RadioButton(self.cons_bayes_rb, 'SeqTrace 0.8')
+
+        if cssettings.getConsensusAlgorithm() == 'Bayesian':
+            self.cons_bayes_rb.set_active(True)
+        else:
+            self.cons_legacy_rb.set_active(True)
+
+        hb1.pack_start(self.cons_legacy_rb)
+
+        vb.pack_start(hb1)
+
         # set up UI components for sequence trimming settings
-        vb_trim = gtk.VBox()
+        vb2 = gtk.VBox()
         self.autotrim_checkbox = gtk.CheckButton('automatically trim sequence ends')
         self.autotrim_checkbox.connect('toggled', self.autoTrimToggled)
-        vb_trim.pack_start(self.autotrim_checkbox)
+        vb2.pack_start(self.autotrim_checkbox)
 
         autotrim_winsize, autotrim_basecnt = cssettings.getAutoTrimParams()
 
@@ -152,16 +168,16 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         self.autotrim_winsize_adj.connect('value_changed', self.autoTrimWinSizeChanged)
 
         hb2.pack_start(gtk.Label(' bases are correctly called.'), False)
-        vb_trim.pack_start(hb2)
+        vb2.pack_start(hb2)
 
         self.trimgaps_checkbox = gtk.CheckButton('trim alignment end gap regions')
         self.trimgaps_checkbox.set_active(cssettings.getTrimEndGaps())
-        vb_trim.pack_start(self.trimgaps_checkbox)
+        vb2.pack_start(self.trimgaps_checkbox)
 
         self.autotrim_checkbox.set_active(cssettings.getDoAutoTrim())
         self.autotrim_checkbox.toggled()
 
-        vb.pack_start(vb_trim)
+        vb.pack_start(vb2)
         frame = gtk.Frame('Sequence settings')
         frame.add(vb)
 
@@ -179,6 +195,12 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
 
     def getMinConfScore(self):
         return int(self.ph_adj.get_value())
+
+    def getConsensusAlgorithm(self):
+        if self.cons_bayes_rb.get_active():
+            return 'Bayesian'
+        else:
+            return 'legacy'
 
     def getTraceFileFolder(self):
         return self.fc_entry.get_text()
@@ -214,6 +236,7 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         # update event for any listeners
         cssettings.setAll(
                 self.getMinConfScore(),
+                self.getConsensusAlgorithm(),
                 self.autotrim_checkbox.get_active(),
                 (int(self.autotrim_winsize_adj.get_value()), int(self.autotrim_basecnt_adj.get_value())),
                 self.trimgaps_checkbox.get_active()
