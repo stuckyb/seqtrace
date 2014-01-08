@@ -15,7 +15,8 @@
 
 
 class PairwiseAlignment:
-    """ Provides the ability to calculate an optimal, global, pairwise alignment of two
+    """
+    Provides the ability to calculate an optimal, global, pairwise alignment of two
     DNA sequences.  This is accomplished by an implementation of the Needleman-Wunsch
     pairwise alignment algorithm.
     The default algorithm parameters/assumptions used here are designed for aligning forward
@@ -26,8 +27,8 @@ class PairwiseAlignment:
     which are "free".  Second, mismatched bases (or "substitutions", as they are called in the
     literature) are penalized exactly the same as gaps.  The reasoning is the same:  mismatches in
     the alignment, like gaps, do not represent anything biologically real and are all simply
-    sequencing mistakes.  Therefore, they should be weighted the same. """
-
+    sequencing mistakes.  Therefore, they should be weighted the same.
+    """
     def __init__(self):
         # substitution score matrix
         self.svals = {

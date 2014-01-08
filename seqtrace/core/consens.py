@@ -187,9 +187,12 @@ class ConsensSeqBuilder:
         min_confscore = self.settings.getMinConfScore()
 
         if self.numseqs == 1:
-            self.makeFConsensus(min_confscore)
+            self.makeSingleConsensus(min_confscore)
         else:
-            self.makeFRConsensus(min_confscore)
+            if self.settings.getConsensusAlgorithm() == 'Bayesian':
+                self.makeBayesianConsensus(min_confscore)
+            else:
+                self.makeLegacyConsensus(min_confscore)
 
         if self.settings.getDoAutoTrim():
             if self.settings.getTrimEndGaps():
@@ -198,12 +201,76 @@ class ConsensSeqBuilder:
             winsize, basecnt = self.settings.getAutoTrimParams()
             self.trimConsensus(winsize, basecnt)
 
-    def makeFRConsensus(self, min_confscore):
+    def makeBayesianConsensus(self, min_confscore):
+        """
+        Constructs a consensus sequence by using Bayesian inference to assign base
+        probabilities to each position in the alignment.
+        """
         cons = list()
         consconf = list()
 
+        # Calculate the right-hand end gap indices for each trace sequence.
+        seq1rgapi = len(self.seqt1.getBaseCalls()) * -1 - 1
+        seq2rgapi = len(self.seqt2.getBaseCalls()) * -1 - 1
+
+        # Create a dictionary to use for nucleotide posterior probability distributions.
+        nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
+
         for cnt in range(len(self.seq1aligned)):
-            cscore = cscore2 = 0
+            # Initialize variables to indicate no usable data at this position.
+            cscore1 = cscore2 = -1
+            cbase1 = cbase2 = 'N'
+
+            # First, handle the cases where we have an internal gap.
+            #if (self.seq1aligned[cnt] == '-' and self.seq1indexed[cnt] != -1
+            #        and self.seq1indexed[cnt] != seq1rgapi:
+            #        pass
+            #if (self.seq2aligned[cnt] == '-' and self.seq2indexed[cnt] != -1
+            #        and self.seq2indexed[cnt] != seq2rgapi:
+            #        pass
+
+            # See which traces have usable data at this position.
+            if (self.seq1aligned[cnt] != '-') and (self.seq1aligned[cnt] != 'N'):
+                cbase1 = self.seq1aligned[cnt]
+                cscore1 = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
+            if (self.seq2aligned[cnt] != '-') and (self.seq2aligned[cnt] != 'N'):
+                cbase2 = self.seq2aligned[cnt]
+                cscore2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
+
+            if cbase1 != 'N' and cbase2 == 'N':
+                # Only the first sequence had usable data.
+                self.defineBasePrDist(cbase1, cscore1, nppd)
+
+    def defineBasePrDist(self, basecall, score, distdict):
+        """
+        Defines a nucleotide probability distribution based on a given base call
+        and Phred-type quality score.  The argument "distdict" is expected to be a
+        dictionary with elements indexed by 'A', 'T', 'G', and 'C'.
+        """
+        # Calculate the error probability.
+        eprob = 10.0 ** (score / -10.0)
+
+        # Fill in the probabilities for each base.
+        distdict[basecall] = 1 - eprob
+        for base in ('A', 'T', 'G', 'C'):
+            if base != basecall:
+                distdict[base] = eprob / 3.0
+
+    def makeLegacyConsensus(self, min_confscore):
+        """
+        Uses the algorithm from versions of SeqTrace prior to 0.9.0 to construct a
+        consensus sequence.  This algorithm does not use the quality score information
+        as effectively as the Bayesian approach, so the latter should generally be
+        used instead.
+        """
+        cons = list()
+        consconf = list()
+        #print self.seq2aligned
+        #print self.seq2indexed
+        #print len(self.seqt2.getBaseCalls())
+
+        for cnt in range(len(self.seq1aligned)):
+            cscore = cscore2 = -1
             if (self.seq1aligned[cnt] != '-') and (self.seq1aligned[cnt] != 'N'):
                 cbase = self.seq1aligned[cnt]
                 cscore = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
@@ -240,7 +307,12 @@ class ConsensSeqBuilder:
         self.consensus = ''.join(cons)
         self.consconf = consconf
 
-    def makeFConsensus(self, min_confscore):
+    def makeSingleConsensus(self, min_confscore):
+        """
+        Constructs a "consensus sequence" from a single trace file.  With only one
+        trace file, this requires simply checking the quality score for each base
+        call to see if it exceeds the minimum quality threshold.
+        """
         cons = list()
         consconf = list()
 

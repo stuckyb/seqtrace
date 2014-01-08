@@ -83,9 +83,44 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt3,), self.settings)
         self.assertEqual(cons.getConsensus(), '                      ')
 
-    # Test consensus sequence construction with two (forward/reverse) sequence traces.
-    def test_doubleConsensus(self):
+    def test_defineBasePrDist(self):
+        """
+        Test the definition of a nucleotide probability distribution derived from a base call
+        and quality score.
+        """
+        cons = ConsensSeqBuilder((self.seqt1,), self.settings)
+        nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
+
+        # Define some test cases and expected results.
+        cases = [
+                {'call': 'A', 'quality': 10},
+                {'call': 'G', 'quality': 10},
+                {'call': 'T', 'quality': 22},
+                {'call': 'C', 'quality': 54},
+                {'call': 'A', 'quality': 1}
+                ]
+        results = [
+                {'A': 0.9, 'T': 0.1/3, 'G': 0.1/3, 'C': 0.1/3},
+                {'A': 0.1/3, 'T': 0.1/3, 'G': 0.9, 'C': 0.1/3},
+                {'A': 0.006309573/3, 'T': 0.993690427, 'G': 0.006309573/3, 'C': 0.006309573/3},
+                {'A': 0.000003981/3, 'T': 0.000003981/3, 'G': 0.000003981/3, 'C': 0.999996019},
+                {'A': 0.205671765, 'T': 0.794328235/3, 'G': 0.794328235/3, 'C': 0.794328235/3}
+                ]
+
+        # Try each test case.
+        for (case, result) in zip(cases, results):
+            cons.defineBasePrDist(case['call'], case['quality'], nppd)
+            #print nppd
+            for base in ('A', 'T', 'G', 'C'):
+                self.assertAlmostEqual(result[base], nppd[base])
+
+    def test_legacyConsensus(self):
+        """
+        Test consensus sequence construction with two (forward/reverse) sequence traces using
+        the legacy (SeqTrace 8.0) consensus algorithm.
+        """
         self.settings.setDoAutoTrim(False)
+        self.settings.setConsensusAlgorithm('legacy')
 
         # first, test the special case where none of the confidence scores exceed the quality threshold
         self.settings.setMinConfScore(10)
@@ -129,10 +164,13 @@ class TestConsensus(unittest.TestCase):
             cons.makeConsensusSequence()
             self.assertEqual(cons.getConsensus(), 'ANGCTACCTGACANGANTTACG')
 
-    # Test the trimming of the end gap portion of the sequence.
     def test_trimEndGaps(self):
+        """
+        Test the trimming of the end gap portion of the sequence.
+        """
         self.settings.setMinConfScore(10)
         self.settings.setDoAutoTrim(False)
+        self.settings.setConsensusAlgorithm('legacy')
         cons = ConsensSeqBuilder((self.seqt2, self.seqt2), self.settings)
         
         # verify that the consensus sequence and alignment are as expected
