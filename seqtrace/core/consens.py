@@ -222,13 +222,33 @@ class ConsensSeqBuilder:
             score1 = score2 = -1
             base1 = base2 = 'N'
 
-            # First, handle the cases where we have an internal gap.
-            #if (self.seq1aligned[cnt] == '-' and self.seq1indexed[cnt] != -1
-            #        and self.seq1indexed[cnt] != seq1rgapi:
-            #        pass
-            #if (self.seq2aligned[cnt] == '-' and self.seq2indexed[cnt] != -1
-            #        and self.seq2indexed[cnt] != seq2rgapi:
-            #        pass
+            # First, check the cases where we have an internal gap.
+            if (self.seq1aligned[cnt] == '-' and self.seq1indexed[cnt] != -1
+                    and self.seq1indexed[cnt] != seq1rgapi):
+                # Calculate the mean quality score of the two flanking bases.
+                p1 = 10.0 ** (self.seqt1.getBaseCallConf(self.seq1indexed[cnt-1]) / -10.0)
+                p2 = 10.0 ** (self.seqt1.getBaseCallConf(self.seq1indexed[cnt+1]) / -10.0)
+                mqual = -10 * math.log10((p1 + p2) / 2)
+
+                # If the mean quality score exceeds the minimum AND the quality of the
+                # gap-introducing base is less than the minimum, then keep the gap in the
+                # consensus sequence.
+                if mqual >= min_confscore and self.seqt2.getBaseCallConf(self.seq2indexed[cnt]) < min_confscore:
+                    base1 = '-'
+                    score1 = mqual
+            elif (self.seq2aligned[cnt] == '-' and self.seq2indexed[cnt] != -1
+                    and self.seq2indexed[cnt] != seq2rgapi):
+                # Calculate the mean quality score of the two flanking bases.
+                p1 = 10.0 ** (self.seqt2.getBaseCallConf(self.seq2indexed[cnt-1]) / -10.0)
+                p2 = 10.0 ** (self.seqt2.getBaseCallConf(self.seq2indexed[cnt+1]) / -10.0)
+                mqual = -10 * math.log10((p1 + p2) / 2)
+
+                # If the mean quality score exceeds the minimum AND the quality of the
+                # gap-introducing base is less than the minimum, then keep the gap in the
+                # consensus sequence.
+                if mqual >= min_confscore and self.seqt1.getBaseCallConf(self.seq1indexed[cnt]) < min_confscore:
+                    base2 = '-'
+                    score2 = mqual
 
             # See which traces have usable data at this position.
             if self.seq1aligned[cnt] not in ('-', 'N'):
@@ -238,51 +258,71 @@ class ConsensSeqBuilder:
                 base2 = self.seq2aligned[cnt]
                 score2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
 
-            # Calculate the final probability distributions.
-            if base1 != 'N' and base2 == 'N':
-                # Only the first trace has usable data.
-                self.defineBasePrDist(base1, score1, nppd)
-            elif base1 == 'N' and base2 != 'N':
-                # Only the second trace has usable data.
-                self.defineBasePrDist(base2, score2, nppd)
+            # Determine the consensus base at this position.
+            if base1 == '-' or base2 == '-':
+                # We need a gap at this position in the consensus sequence.
+                cbase = '-'
+                if base1 == '-':
+                    cscore = score1
+                else:
+                    cscore = score2
             elif base1 != 'N' and base2 != 'N':
-                # Both traces have usable data.
+                # Both traces have usable data, so calculate the posterior probability
+                # distribution of nucleotides using Bayes' Theorem, then determine the
+                # consensus base.
                 self.calcPosteriorBasePrDist(base1, score1, base2, score2, nppd)
+                cbase, cscore = self.getMostProbableBase(nppd)
+            elif base1 != 'N':
+                # Only the first trace has usable data.
+                cbase = base1
+                cscore = score1
+            elif base2 != 'N':
+                # Only the second trace has usable data.
+                cbase = base2
+                cscore = score2
             else:
-                # No usable data.
-                nppd['A'] = nppd['T'] = nppd['G'] = nppd['C'] = -1.0
-
-            # Find the base with the highest probability.
-            cbase = 'A'
-            for base in ('T', 'G', 'C'):
-                if nppd[base] > nppd[cbase]:
-                    cbase = base
-
-            # Calculate the Phred-type quality score of the most probable base.
-            if nppd[cbase] > 0:
-                cscore = -10.0 * math.log10(1.0 - nppd[cbase])
-            else:
+                # Neither trace has usable data.
+                cbase = 'N'
                 cscore = 0
-            print cbase, cscore
 
-            # Check if the quality score meets the minimum quality threshold.  Note that
-            # a very small quantity is added to the calculated confidence score to
-            # ensure that values very near the minimum confidence score are accepted.
-            # Without this, values that should be exactly equal to the minimum are sometimes
-            # incorrectly rejected due to rounding error.  An example of the problem is
-            # shown in the following line of code, which illustrates the calculations for
-            # an initial quality score of 30.  The expression should evaluate to 30, but
-            # instead equals 29.999999999.
-            #print -10.0 * math.log10(1.0 - (1 - 10.0 ** (30 / -10.0)))
-            if cscore + 0.000001 >= min_confscore:
+            # Update the consensus sequence and associated quality score.
+            if cscore >= min_confscore:
                 cons.append(cbase)
             else:
                 cons.append('N')
-
             consconf.append(cscore)
 
         self.consensus = ''.join(cons)
         self.consconf = consconf
+
+    def getMostProbableBase(self, nppd):
+        """
+        This function determines the most probable base and calculates its associated
+        Phred-type quality score from a nucleotide posterior probability distribution.
+        """
+        # Find the base with the highest probability.
+        cbase = 'A'
+        for base in ('T', 'G', 'C'):
+            if nppd[base] > nppd[cbase]:
+                cbase = base
+
+        # Calculate the Phred-type quality score of the most probable base.
+        if nppd[cbase] > 0:
+            cscore = -10.0 * math.log10(1.0 - nppd[cbase])
+        else:
+            cscore = 0
+
+        # Add a very small quantity is added to the calculated confidence score to
+        # ensure that values very near the minimum confidence score are accepted.
+        # Without this, values that should be exactly equal to the minimum are sometimes
+        # incorrectly rejected due to rounding error.  An example of the problem is
+        # shown in the following line of code, which illustrates the calculations for
+        # an initial quality score of 30.  The expression should evaluate to 30, but
+        # instead equals 29.999999999.
+        #print -10.0 * math.log10(1.0 - (1 - 10.0 ** (30 / -10.0)))
+        cscore += 0.000001
+
+        return (cbase, cscore)
 
     def defineBasePrDist(self, basecall, score, distdict):
         """
@@ -321,7 +361,7 @@ class ConsensSeqBuilder:
         for base in bases:
             denom += distdict[base] * prior[base]
 
-        # Now calculate the posterior distribution.
+        # Calculate the posterior probability distribution.
         for base in bases:
             distdict[base] = (distdict[base] * prior[base]) / denom
 
