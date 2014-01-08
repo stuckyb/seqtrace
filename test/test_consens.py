@@ -85,7 +85,7 @@ class TestConsensus(unittest.TestCase):
 
     def test_defineBasePrDist(self):
         """
-        Test the definition of a nucleotide probability distribution derived from a base call
+        Tests the definition of a nucleotide probability distribution derived from a base call
         and quality score.
         """
         cons = ConsensSeqBuilder((self.seqt1,), self.settings)
@@ -110,6 +110,39 @@ class TestConsensus(unittest.TestCase):
         # Try each test case.
         for (case, result) in zip(cases, results):
             cons.defineBasePrDist(case['call'], case['quality'], nppd)
+            #print nppd
+            for base in ('A', 'T', 'G', 'C'):
+                self.assertAlmostEqual(result[base], nppd[base])
+
+    def test_calcPosteriorBasePrDist(self):
+        """
+        Tests the calculation of a posterior nucleotide probability distribution using Bayes'
+        Theorem on two separate base calls and quality scores.
+        """
+        cons = ConsensSeqBuilder((self.seqt1,), self.settings)
+        nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
+
+        # Define some test cases and expected results.
+        cases = [
+                {'call1': 'A', 'qual1': 10, 'call2': 'A', 'qual2': 10},
+                {'call1': 'G', 'qual1': 7.447274949, 'call2': 'G', 'qual2': 5.228787453},
+                {'call1': 'G', 'qual1': 5.228787453, 'call2': 'G', 'qual2': 7.447274949},
+                {'call1': 'A', 'qual1': 5.228787453, 'call2': 'T', 'qual2': 15.228787453},
+                {'call1': 'T', 'qual1': 15.228787453, 'call2': 'A', 'qual2': 5.228787453},
+                {'call1': 'C', 'qual1': 15.228787453, 'call2': 'T', 'qual2': 5.228787453}
+                ]
+        results = [
+                {'A': 0.995901648, 'T': 0.001366117, 'G': 0.001366117, 'C': 0.001366117},
+                {'A': 0.010135135, 'T': 0.010135135, 'G': 0.969594595, 'C': 0.010135135},
+                {'A': 0.010135135, 'T': 0.010135135, 'G': 0.969594595, 'C': 0.010135135},
+                {'A': 0.066037736, 'T': 0.91509434, 'G': 0.009433962, 'C': 0.009433962},
+                {'A': 0.066037736, 'T': 0.91509434, 'G': 0.009433962, 'C': 0.009433962},
+                {'A': 0.009433962, 'T': 0.066037736, 'G': 0.009433962, 'C': 0.91509434}
+                ]
+
+        # Try each test case.
+        for (case, result) in zip(cases, results):
+            cons.calcPosteriorBasePrDist(case['call1'], case['qual1'], case['call2'], case['qual2'],nppd)
             #print nppd
             for base in ('A', 'T', 'G', 'C'):
                 self.assertAlmostEqual(result[base], nppd[base])
