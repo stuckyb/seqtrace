@@ -16,6 +16,7 @@
 
 from seqtrace.core.align import PairwiseAlignment
 from observable import Observable
+import math
 
 
 
@@ -203,7 +204,7 @@ class ConsensSeqBuilder:
 
     def makeBayesianConsensus(self, min_confscore):
         """
-        Constructs a consensus sequence by using Bayesian inference to assign base
+        Constructs a consensus sequence using Bayesian inference to assign base
         probabilities to each position in the alignment.
         """
         cons = list()
@@ -218,8 +219,8 @@ class ConsensSeqBuilder:
 
         for cnt in range(len(self.seq1aligned)):
             # Initialize variables to indicate no usable data at this position.
-            cscore1 = cscore2 = -1
-            cbase1 = cbase2 = 'N'
+            score1 = score2 = -1
+            base1 = base2 = 'N'
 
             # First, handle the cases where we have an internal gap.
             #if (self.seq1aligned[cnt] == '-' and self.seq1indexed[cnt] != -1
@@ -230,16 +231,58 @@ class ConsensSeqBuilder:
             #        pass
 
             # See which traces have usable data at this position.
-            if (self.seq1aligned[cnt] != '-') and (self.seq1aligned[cnt] != 'N'):
-                cbase1 = self.seq1aligned[cnt]
-                cscore1 = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
-            if (self.seq2aligned[cnt] != '-') and (self.seq2aligned[cnt] != 'N'):
-                cbase2 = self.seq2aligned[cnt]
-                cscore2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
+            if self.seq1aligned[cnt] not in ('-', 'N'):
+                base1 = self.seq1aligned[cnt]
+                score1 = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
+            if self.seq2aligned[cnt] not in ('-', 'N'):
+                base2 = self.seq2aligned[cnt]
+                score2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
 
-            if cbase1 != 'N' and cbase2 == 'N':
-                # Only the first sequence had usable data.
-                self.defineBasePrDist(cbase1, cscore1, nppd)
+            # Calculate the final probability distributions.
+            if base1 != 'N' and base2 == 'N':
+                # Only the first trace has usable data.
+                self.defineBasePrDist(base1, score1, nppd)
+            elif base1 == 'N' and base2 != 'N':
+                # Only the second trace has usable data.
+                self.defineBasePrDist(base2, score2, nppd)
+            elif base1 != 'N' and base2 != 'N':
+                # Both traces have usable data.
+                self.calcPosteriorBasePrDist(base1, score1, base2, score2, nppd)
+            else:
+                # No usable data.
+                nppd['A'] = nppd['T'] = nppd['G'] = nppd['C'] = -1.0
+
+            # Find the base with the highest probability.
+            cbase = 'A'
+            for base in ('T', 'G', 'C'):
+                if nppd[base] > nppd[cbase]:
+                    cbase = base
+
+            # Calculate the Phred-type quality score of the most probable base.
+            if nppd[cbase] > 0:
+                cscore = -10.0 * math.log10(1.0 - nppd[cbase])
+            else:
+                cscore = 0
+            print cbase, cscore
+
+            # Check if the quality score meets the minimum quality threshold.  Note that
+            # a very small quantity is added to the calculated confidence score to
+            # ensure that values very near the minimum confidence score are accepted.
+            # Without this, values that should be exactly equal to the minimum are sometimes
+            # incorrectly rejected due to rounding error.  An example of the problem is
+            # shown in the following line of code, which illustrates the calculations for
+            # an initial quality score of 30.  The expression should evaluate to 30, but
+            # instead equals 29.999999999.
+            #print -10.0 * math.log10(1.0 - (1 - 10.0 ** (30 / -10.0)))
+            if cscore + 0.000001 >= min_confscore:
+                cons.append(cbase)
+            else:
+                cons.append('N')
+
+            consconf.append(cscore)
+
+        self.consensus = ''.join(cons)
+        self.consconf = consconf
 
     def defineBasePrDist(self, basecall, score, distdict):
         """
@@ -255,6 +298,32 @@ class ConsensSeqBuilder:
         for base in ('A', 'T', 'G', 'C'):
             if base != basecall:
                 distdict[base] = eprob / 3.0
+
+    def calcPosteriorBasePrDist(self, base1, score1, base2, score2, distdict):
+        """
+        Uses Bayes' theorem to calculate a posterior distribution of nucleotide
+        probabilities with the provided base calls and confidence scores.  The
+        result is returned in the argument "distdict", which is expected to be a
+        dictionary with elements indexed by 'A', 'T', 'G', and 'C'.
+        """
+        bases = ('A', 'T', 'G', 'C')
+
+        # Get the prior distribution using the 1st base call and quality score.
+        prior = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
+        self.defineBasePrDist(base1, score1, prior)
+
+        # Use distdict to hold the conditional probabilities for the 2nd base call.
+        self.defineBasePrDist(base2, score2, distdict)
+
+        # Calculate the shared denominator for Bayes' theorem, which is the total
+        # probability of observing the 2nd base call.
+        denom = 0.0
+        for base in bases:
+            denom += distdict[base] * prior[base]
+
+        # Now calculate the posterior distribution.
+        for base in bases:
+            distdict[base] = (distdict[base] * prior[base]) / denom
 
     def makeLegacyConsensus(self, min_confscore):
         """
