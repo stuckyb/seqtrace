@@ -22,7 +22,7 @@ from seqtrace.core import seqwriter
 from seqtrace.core.stproject import SequenceTraceProject, ConsensSeqSettings
 from seqtrace.core.observable import Observable
 
-from seqtrace.gui.tracegui import TraceWindow
+from seqtrace.gui.tracewindow import TraceWindow
 import seqtrace.gui.dialgs as dialgs
 from seqtrace.gui.dialgs import CommonDialogs, EntryDialog, ProgressBarDialog
 from seqtrace.gui.statusbar import ProjectStatusBar
