@@ -438,18 +438,18 @@ class ConsensSeqBuilder:
         if self.numseqs == 1:
             return
 
-        # get the index of the start of the left end gap
+        # Get the index of the start of the left end gap.
         lgindex = self.getLeftEndGapStart()
 
-        # get the index of the start of the right end gap
+        # Get the index of the start of the right end gap.
         rgindex = self.getRightEndGapStart()
 
-        # see if we encountered an empty sequence (this should never happen with real data)
-        # and adjust the index values to result in a blank string of appropriate length
+        # See if we encountered an empty sequence (this should never happen with real data)
+        # and adjust the index values to result in a blank string of appropriate length.
         if rgindex == -1:
             lgindex = 0
 
-        # construct the consensus sequence without the end gap portions
+        # Construct the consensus sequence without the end gap portions.
         self.consensus = ((' ' * lgindex) + self.consensus[lgindex:rgindex + 1]
                 + (' ' * (len(self.consensus) - rgindex - 1)))
 

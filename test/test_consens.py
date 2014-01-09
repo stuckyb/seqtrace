@@ -250,6 +250,55 @@ class TestConsensus(unittest.TestCase):
             cons.makeConsensusSequence()
             self.assertEqual(cons.getConsensus(), 'ANGCTACCTGACANGANTTACG')
 
+    def test_getEndGapStarts(self):
+        """
+        Test the algorithms for locating the starting indices of end gaps.
+        """
+        cons = ConsensSeqBuilder((self.seqt2, self.seqt2), self.settings)
+        
+        # Define a bunch of test cases.
+        # Each test case is defined as: ['aligned_sequence_1', 'aligned_sequence_2', [left_gap_start, right_gap_start]]
+        gaptests = [
+                # Two end gaps with overlapping bases.
+                ['--C-GTAC',
+                 'GCCTG---',
+                 [2, 4]],
+                # No overlapping bases.
+                ['-----TAC',
+                 'GCCTG---',
+                 [5, 4]],
+                # No left end gap.
+                ['GC-TGTAC',
+                 'GCCTG---',
+                 [0, 4]],
+                # No right end gap.
+                ['---TGTAC',
+                 'GCCTGT-C',
+                 [3, 7]],
+                # No end gaps.
+                ['GC-TGTAC',
+                 'GCCTGT-C',
+                 [0, 7]],
+                # No sequence data.
+                ['--------',
+                 'GCCTGTAC',
+                 [-1, -1]]
+                ]
+
+        # Run each test case, then switch the sequence order and run them again.
+        for cnt in range(2):
+            for gtest in gaptests:
+                if cnt == 0:
+                    cons.seq1aligned = gtest[0]
+                    cons.seq2aligned = gtest[1]
+                else:
+                    # switch the order the second time around
+                    cons.seq1aligned = gtest[1]
+                    cons.seq2aligned = gtest[0]
+
+                self.assertEqual(cons.getLeftEndGapStart(), gtest[2][0])
+                self.assertEqual(cons.getRightEndGapStart(), gtest[2][1])
+
     def test_trimEndGaps(self):
         """
         Test the trimming of the end gap portion of the sequence.
