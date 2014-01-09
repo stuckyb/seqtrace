@@ -162,6 +162,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
             <menuitem action="Recalc_Consens" />
         </menu>
         <menu action="View">
+            <menuitem action="Scroll_Lock" />
         </menu>
         </menubar>
         <popup name="editpopup">
@@ -189,7 +190,6 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         self.main_ag.add_actions([
             ('File', None, '_File'),
             ('Save_Consens', gtk.STOCK_SAVE, '_Save working sequence to project', None, 'Save the working sequence to the project', self.saveConsensus),
-            ('Export_Alignment', None, 'Export _alignment...', None, 'Export the aligned forward and reverse sequences', self.exportAlignment),
             ('Export_Consensus', None, 'Export w_orking sequence...', None, 'Export the working sequence to a file', self.exportConsensus),
             ('Export_Raw', None, 'Export _raw sequence(s)...', None, 'Export the un-edited sequence(s) to a file', self.exportRawSequence),
             ('File_Info', gtk.STOCK_INFO, '_Information...', None, 'View detailed information about the file(s)', self.fileInfo),
@@ -198,8 +198,15 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
             ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
             ('View', None, '_View')])
 
+        # These actions are enabled only when there are two sequencing traces in the window.
+        self.twotrace_ag = gtk.ActionGroup('twotrace_actions')
+        self.twotrace_ag.add_actions([
+            ('Export_Alignment', None, 'Export _alignment...', None, 'Export the aligned forward and reverse sequences', self.exportAlignment)])
+        self.twotrace_ag.add_toggle_actions([
+            ('Scroll_Lock', None, '_Synchronize trace scrolling', None, 'Synchronizes the scrolling of the forward and reverse traces', self.lockScrolling, True)])
+
         # these actions are for common edit commands
-        self.edit_ag = gtk.ActionGroup('edit_actions')
+        self.edit_ag = gtk.ActionGroup('edite_actions')
         self.edit_ag.add_actions([
             ('Undo', gtk.STOCK_UNDO, '_Undo', '<ctl>z', 'Undo the last change to the working sequence', self.undoConsChange),
             ('Redo', gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the working sequence', self.redoConsChange)])
@@ -207,13 +214,14 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         # these actions are only enabled when there is an active selection
         self.sel_edit_ag = gtk.ActionGroup('selected_edit_actions')
         self.sel_edit_ag.add_actions([
-            ('Copy', gtk.STOCK_COPY, '_Copy selected base(s) to clipboard', None, 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
+            ('Copy', gtk.STOCK_COPY, '_Copy selected base(s) to clipboard', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
             ('Delete', gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the working sequence', self.deleteConsBases),
             ('Modify', gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)])
 
         self.uim = gtk.UIManager()
         self.add_accel_group(self.uim.get_accel_group())
         self.uim.insert_action_group(self.main_ag, 0)
+        self.uim.insert_action_group(self.twotrace_ag, 0)
         self.uim.insert_action_group(self.edit_ag, 0)
         self.uim.insert_action_group(self.sel_edit_ag, 0)
         self.uim.add_ui_from_string(menuxml)
@@ -233,9 +241,9 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
 
         self.loadSequenceTraces()
 
-        # if there is only one trace file, disable the "export alignment" action
+        # If there is only one trace file, disable the actions that require two traces.
         if self.numseqs < 2:
-            self.main_ag.get_action('Export_Alignment').set_sensitive(False)
+            self.twotrace_ag.set_sensitive(False)
 
         # get the trace file(s) toolbar
         trace_tb = self.stlayout.getTraceToolBar()
@@ -285,13 +293,14 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         self.main_ag.get_action('Save_Consens').set_sensitive(state)
         
     def registerObserver(self, event_name, handler):
-        """ Extends the registerObserver() method in Observable to allow GUI elements to respond
-        to observer registration. """
-
+        """
+        Extends the registerObserver() method in Observable to allow GUI elements to respond
+        to observer registration.
+        """
         Observable.registerObserver(self, event_name, handler)
 
         if event_name == 'consensus_saved':
-            # show the "Save_Consens" action UI elements since someone's actually listening for this signal
+            # Show the "Save_Consens" action UI elements since someone's actually listening for this signal.
             self.main_ag.get_action('Save_Consens').set_visible(True)
 
     def saveConsensus(self, widget):
@@ -335,6 +344,15 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         if self.numseqs == 2:
             title += ', ' + self.seqt2.getFileName()
         self.set_title(title)
+
+    def lockScrolling(self, widget):
+        """
+        Responds to clicks on the synchronize scrolling checkbox menu item.
+        """
+        if widget.get_active():
+            self.stlayout.lockScrolling()
+        else:
+            self.stlayout.unlockScrolling()
 
     def consensusSeqClicked(self, select_start, select_end, event):
         if event.button == 3:

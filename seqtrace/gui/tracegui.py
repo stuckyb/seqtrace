@@ -402,7 +402,7 @@ class SequenceTraceLayout(gtk.VBox):
     scrollable consensus sequence viewer.  Handles communication among these
     two or three components, such as navigating the trace views by clicking on
     the consensus view and synchronized scrolling of the two trace viewers.
-    Also provides a toolbar to manage aspects of the trace viewers.
+    Also provides a toolbar to manage the appearance of the trace viewers.
     """
     def __init__(self, scrolled_cons_viewer, seqt_viewers):
         gtk.VBox.__init__(self)
