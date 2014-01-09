@@ -210,45 +210,12 @@ class ConsensSeqBuilder:
         cons = list()
         consconf = list()
 
-        # Calculate the right-hand end gap indices for each trace sequence.
-        seq1rgapi = len(self.seqt1.getBaseCalls()) * -1 - 1
-        seq2rgapi = len(self.seqt2.getBaseCalls()) * -1 - 1
-
         # Create a dictionary to use for nucleotide posterior probability distributions.
         nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
 
         for cnt in range(len(self.seq1aligned)):
             # Initialize variables to indicate no usable data at this position.
-            score1 = score2 = -1
             base1 = base2 = 'N'
-
-            # First, check the cases where we have an internal gap.
-            if (self.seq1aligned[cnt] == '-' and self.seq1indexed[cnt] != -1
-                    and self.seq1indexed[cnt] != seq1rgapi):
-                # Calculate the mean quality score of the two flanking bases.
-                p1 = 10.0 ** (self.seqt1.getBaseCallConf(self.seq1indexed[cnt-1]) / -10.0)
-                p2 = 10.0 ** (self.seqt1.getBaseCallConf(self.seq1indexed[cnt+1]) / -10.0)
-                mqual = -10 * math.log10((p1 + p2) / 2)
-
-                # If the mean quality score exceeds the minimum AND the quality of the
-                # gap-introducing base is less than the minimum, then keep the gap in the
-                # consensus sequence.
-                if mqual >= min_confscore and self.seqt2.getBaseCallConf(self.seq2indexed[cnt]) < min_confscore:
-                    base1 = '-'
-                    score1 = mqual
-            elif (self.seq2aligned[cnt] == '-' and self.seq2indexed[cnt] != -1
-                    and self.seq2indexed[cnt] != seq2rgapi):
-                # Calculate the mean quality score of the two flanking bases.
-                p1 = 10.0 ** (self.seqt2.getBaseCallConf(self.seq2indexed[cnt-1]) / -10.0)
-                p2 = 10.0 ** (self.seqt2.getBaseCallConf(self.seq2indexed[cnt+1]) / -10.0)
-                mqual = -10 * math.log10((p1 + p2) / 2)
-
-                # If the mean quality score exceeds the minimum AND the quality of the
-                # gap-introducing base is less than the minimum, then keep the gap in the
-                # consensus sequence.
-                if mqual >= min_confscore and self.seqt1.getBaseCallConf(self.seq1indexed[cnt]) < min_confscore:
-                    base2 = '-'
-                    score2 = mqual
 
             # See which traces have usable data at this position.
             if self.seq1aligned[cnt] not in ('-', 'N'):
@@ -259,14 +226,7 @@ class ConsensSeqBuilder:
                 score2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
 
             # Determine the consensus base at this position.
-            if base1 == '-' or base2 == '-':
-                # We need a gap at this position in the consensus sequence.
-                cbase = '-'
-                if base1 == '-':
-                    cscore = score1
-                else:
-                    cscore = score2
-            elif base1 != 'N' and base2 != 'N':
+            if base1 != 'N' and base2 != 'N':
                 # Both traces have usable data, so calculate the posterior probability
                 # distribution of nucleotides using Bayes' Theorem, then determine the
                 # consensus base.
