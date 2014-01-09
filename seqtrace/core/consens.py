@@ -72,8 +72,8 @@ class ConsensSeqSettings(Observable):
         return self.min_confscore
 
     def setMinConfScore(self, newval):
-        if (newval > 61) or (newval < 0):
-            raise ConsensSeqSettingsError('Confidence score values must be between 0 and 61, inclusive.')
+        if (newval > 61) or (newval < 1):
+            raise ConsensSeqSettingsError('Confidence score values must be between 1 and 61, inclusive.')
 
         if self.min_confscore != newval:
             oldval = self.min_confscore
@@ -243,7 +243,7 @@ class ConsensSeqBuilder:
             else:
                 # Neither trace has usable data.
                 cbase = 'N'
-                cscore = 0
+                cscore = 1
 
             # Update the consensus sequence and associated quality score.
             if cscore >= min_confscore:
@@ -363,16 +363,6 @@ class ConsensSeqBuilder:
             else:
                 consconf.append(cscore2)
 
-        # remove 'N's from the beginning and end of the consensus sequence
-        cnt = 0
-        while (cnt < len(cons)) and (cons[cnt] == 'N'):
-            cons[cnt] = ' '
-            cnt += 1
-        cnt = len(cons) - 1
-        while cons[cnt] == 'N':
-            cons[cnt] = ' '
-            cnt -= 1
-
         self.consensus = ''.join(cons)
         self.consconf = consconf
 
@@ -395,16 +385,6 @@ class ConsensSeqBuilder:
 
             cons.append(cbase)
             consconf.append(cscore)
-
-        # remove 'N's from the beginning and end of the consensus sequence
-        cnt = 0
-        while (cnt < len(cons)) and (cons[cnt] == 'N'):
-            cons[cnt] = ' '
-            cnt += 1
-        cnt = len(cons) - 1
-        while cons[cnt] == 'N':
-            cons[cnt] = ' '
-            cnt -= 1
 
         self.consensus = ''.join(cons)
         self.consconf = consconf

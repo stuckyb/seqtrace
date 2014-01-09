@@ -26,7 +26,7 @@ class TestConsensus(unittest.TestCase):
     def setUp(self):
         self.settings = ConsensSeqSettings()
 
-        # set up some simple sequence trace data
+        # Set up some simple sequence trace data.
         self.seqt1 = SequenceTrace()
         self.seqt2 = SequenceTrace()
         self.seqt3 = SequenceTrace()
@@ -44,6 +44,16 @@ class TestConsensus(unittest.TestCase):
         self.seqt3.bcconf = [5, 4,  0,  4,  4,  2, 8,  0,  2,  6,  4,  0,  2,  1,  1,  1,  8,  1,  6,  2,  2,  4]
         #print len(self.seqt1.getBaseCalls())
         #print len(self.seqt1.bcconf)
+
+        # Set up trace data to use for testing the Bayesian consensus algorithm.
+        self.seqt4 = SequenceTrace()
+        self.seqt5 = SequenceTrace()
+        self.seqt4.basecalls = 'AAGNCACTCACA'
+        self.seqt5.basecalls = 'GNCCGTGNCAG'
+        #                    A   A   G   N   C   A   C       T   C   A   C   A
+        self.seqt4.bcconf = [40, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52    ]
+        #                            G   N   C       C   G   T   G   N   C   A   G
+        self.seqt5.bcconf = [        20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 24]
 
     # Test the basic ConsensSeqBuilder operations.
     def test_consensus(self):
@@ -64,11 +74,11 @@ class TestConsensus(unittest.TestCase):
 
         self.settings.setMinConfScore(30)
         cons = ConsensSeqBuilder((self.seqt1,), self.settings)
-        self.assertEqual(cons.getConsensus(), '    TNNCTNACATGANTTA  ')
+        self.assertEqual(cons.getConsensus(), 'NNNNTNNCTNACATGANTTANN')
 
         self.settings.setMinConfScore(20)
         cons.makeConsensusSequence()
-        self.assertEqual(cons.getConsensus(), '  GCTNNCTNACATGATTTANG')
+        self.assertEqual(cons.getConsensus(), 'NNGCTNNCTNACATGATTTANG')
 
         self.settings.setMinConfScore(5)
         cons.makeConsensusSequence()
@@ -76,12 +86,12 @@ class TestConsensus(unittest.TestCase):
 
         self.settings.setMinConfScore(61)
         cons.makeConsensusSequence()
-        self.assertEqual(cons.getConsensus(), '             TGANT    ')
+        self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNTGANTNNNN')
 
         # test the special case where none of the confidence scores exceed the quality threshold
         self.settings.setMinConfScore(10)
         cons = ConsensSeqBuilder((self.seqt3,), self.settings)
-        self.assertEqual(cons.getConsensus(), '                      ')
+        self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
 
     def test_defineBasePrDist(self):
         """
@@ -147,6 +157,49 @@ class TestConsensus(unittest.TestCase):
             for base in ('A', 'T', 'G', 'C'):
                 self.assertAlmostEqual(result[base], nppd[base])
 
+    def test_BayesianConsensus(self):
+        """
+        Test consensus sequence construction with two (forward/reverse) sequence traces using
+        the Bayesian consensus algorithm.
+        """
+        self.settings.setDoAutoTrim(False)
+        self.settings.setConsensusAlgorithm('Bayesian')
+
+        # First, test the special case where none of the confidence scores exceed the quality threshold.
+        self.settings.setMinConfScore(30)
+        cons = ConsensSeqBuilder((self.seqt3, self.seqt3), self.settings)
+        self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
+
+        cons = ConsensSeqBuilder((self.seqt4, self.seqt5), self.settings)
+
+        # Verify that the alignment is correct.
+        self.assertEqual(cons.getAlignedSequence(0), 'AAGNCAC-TCACA-')
+        self.assertEqual(cons.getAlignedSequence(1), '--GNC-CGTGNCAG')
+
+        #                      A   A   G   N   C   A   C       T   C   A   C   A
+        # self.seqt4.bcconf = [40, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52    ]
+        #                              G   N   C       C   G   T   G   N   C   A   G
+        # self.seqt5.bcconf = [        20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 24]
+        expconsconf = [40, 4, 44.6841, 1, 23.8739, 12, 36.4455, 30, 54.3132, 34.3809, 34, 84.7703, 108.7711, 24]
+
+        # Run the tests with seqt4 first, then with seqt5 first.
+        for cnt in range(2):
+            if cnt == 1:
+                # Swap the sequence trace order on the second pass through the loop.
+                cons = ConsensSeqBuilder((self.seqt5, self.seqt4), self.settings)
+
+            cons.makeConsensusSequence()
+
+            # Get the consensus quality scores, rounding each to 4 decimal places.
+            confvals = [round(cval, 4) for cval in cons.consconf]
+
+            # Check that the consensus sequence is correct.
+            self.assertEqual(cons.getConsensus(), 'ANGNNNCGTGACAN')
+
+            # Check that the consensus quality scores are correct.
+            for (expconf, conf) in zip(expconsconf, confvals):
+                self.assertAlmostEqual(expconf, conf)
+
     def test_legacyConsensus(self):
         """
         Test consensus sequence construction with two (forward/reverse) sequence traces using
@@ -158,7 +211,7 @@ class TestConsensus(unittest.TestCase):
         # first, test the special case where none of the confidence scores exceed the quality threshold
         self.settings.setMinConfScore(10)
         cons = ConsensSeqBuilder((self.seqt3, self.seqt3), self.settings)
-        self.assertEqual(cons.getConsensus(), '                      ')
+        self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
 
         cons = ConsensSeqBuilder((self.seqt1, self.seqt2), self.settings)
 
@@ -180,17 +233,17 @@ class TestConsensus(unittest.TestCase):
             # conflicting bases: one pair unresolvable, the other resolvable; no gaps filled
             self.settings.setMinConfScore(30)
             cons.makeConsensusSequence()
-            self.assertEqual(cons.getConsensus(), '    TNNCTNACANGAATTA  ')
+            self.assertEqual(cons.getConsensus(), 'NNNNTNNCTNACANGAATTANN')
     
             # conflicting bases: neither pair resolvable; one gap filled
             self.settings.setMinConfScore(20)
             cons.makeConsensusSequence()
-            self.assertEqual(cons.getConsensus(), '  GCTNNCTNACANGANTTANG')
+            self.assertEqual(cons.getConsensus(), 'NNGCTNNCTNACANGANTTANG')
     
             # two gaps filled
             self.settings.setMinConfScore(12)
             cons.makeConsensusSequence()
-            self.assertEqual(cons.getConsensus(), '  GCTACCTGACANGANTTACG')
+            self.assertEqual(cons.getConsensus(), 'NNGCTACCTGACANGANTTACG')
     
             # three gaps filled
             self.settings.setMinConfScore(5)
@@ -283,11 +336,11 @@ class TestConsensus(unittest.TestCase):
 
         self.settings.setAutoTrimParams(6, 4)
         cons.makeConsensusSequence()
-        self.assertEqual(cons.getConsensus(), '      NCTNACATGANTTA  ')
+        self.assertEqual(cons.getConsensus(), '      NCTNACATGANTTAN ')
 
         self.settings.setAutoTrimParams(6, 3)
         cons.makeConsensusSequence()
-        self.assertEqual(cons.getConsensus(), '    TNNCTNACATGANTTA  ')
+        self.assertEqual(cons.getConsensus(), '   NTNNCTNACATGANTTANN')
 
         self.settings.setAutoTrimParams(7, 6)
         cons.makeConsensusSequence()
@@ -309,7 +362,7 @@ class TestConsensus(unittest.TestCase):
         self.settings.setMinConfScore(20)
         self.settings.setAutoTrimParams(3, 2)
         cons.makeConsensusSequence()
-        self.assertEqual(cons.getConsensus(), '  GCTNNCTNACATGATTTANG')
+        self.assertEqual(cons.getConsensus(), ' NGCTNNCTNACATGATTTANG')
 
         self.settings.setAutoTrimParams(3, 3)
         cons.makeConsensusSequence()
@@ -329,7 +382,7 @@ class TestConsensus(unittest.TestCase):
         # window size equal to the sequence length, base count exactly equal to the number of good bases
         self.settings.setAutoTrimParams(22, 12)
         cons.makeConsensusSequence()
-        self.assertEqual(cons.getConsensus(), '    TNNCTNACATGANTTA  ')
+        self.assertEqual(cons.getConsensus(), 'NNNNTNNCTNACATGANTTANN')
 
 
 class TestModifiableConsensus(unittest.TestCase):

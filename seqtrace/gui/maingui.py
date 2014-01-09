@@ -125,7 +125,7 @@ class ProjectSettings(gtk.Dialog, CommonDialogs):
         hb1 = gtk.HBox()
         hb1.pack_start(gtk.Label('Min. confidence score:  '), False)
 
-        self.ph_adj = gtk.Adjustment(cssettings.getMinConfScore(), 0, 61, 1)
+        self.ph_adj = gtk.Adjustment(cssettings.getMinConfScore(), 1, 61, 1)
         spin = gtk.SpinButton(self.ph_adj)
         hb1.pack_start(spin, False, False)
 
