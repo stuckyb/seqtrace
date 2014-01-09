@@ -389,11 +389,16 @@ class ConsensSeqBuilder:
         self.consensus = ''.join(cons)
         self.consconf = consconf
 
-    def trimEndGaps(self):
+    def getLeftEndGapStart(self):
+        """
+        Returns the index of the start of the left end gap.  If there are overlapping
+        bases in the alignment, this will also be the index of the first pair of
+        overlapping bases.  If only one sequence is present or the sequence is empty,
+        -1 is returned.
+        """
         if self.numseqs == 1:
-            return
+            return -1
 
-        # get the index of the start of the left end gap
         lgindex = 0
         if self.seq1aligned[0] == '-':
             while (lgindex < len(self.seq1aligned)) and (self.seq1aligned[lgindex] == '-'):
@@ -403,7 +408,21 @@ class ConsensSeqBuilder:
                 lgindex += 1
         #print lgindex
 
-        # get the index of the start of the right end gap
+        if lgindex == len(self.seq1aligned):
+            return -1
+        else:
+            return lgindex
+
+    def getRightEndGapStart(self):
+        """
+        Returns the index of the start of the right end gap.  If there are overlapping
+        bases in the alignment, this will also be the index of the last pair of
+        overlapping bases.  If only one sequence is present or the sequence is empty,
+        -1 is returned.
+        """
+        if self.numseqs == 1:
+            return -1
+
         rgindex = len(self.seq1aligned) - 1
         if self.seq1aligned[rgindex] == '-':
             while (rgindex >= 0) and (self.seq1aligned[rgindex] == '-'):
@@ -412,6 +431,18 @@ class ConsensSeqBuilder:
             while (rgindex >= 0) and (self.seq2aligned[rgindex] == '-'):
                 rgindex -= 1
         #print rgindex
+
+        return rgindex
+
+    def trimEndGaps(self):
+        if self.numseqs == 1:
+            return
+
+        # get the index of the start of the left end gap
+        lgindex = self.getLeftEndGapStart()
+
+        # get the index of the start of the right end gap
+        rgindex = self.getRightEndGapStart()
 
         # see if we encountered an empty sequence (this should never happen with real data)
         # and adjust the index values to result in a blank string of appropriate length

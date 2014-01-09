@@ -426,26 +426,13 @@ class SequenceTraceLayout(gtk.VBox):
             self.pack_start(viewer.getWidget(), expand=True, fill=True)
         self.pack_start(self.consv, expand=False, fill=True)
 
-        self.scroll_locked = False
-
         # If there are two trace viewers, initialize synchronized scrolling.
         if len(self.seqt_viewers) == 2:
-            # Create lists for the scroll adjustments and signal handler IDs.
-            self.adjs = []
-            self.adj_hids = []
-
-            # A list to track the offsets between the two scroll adjustments when
-            # they are locked together.
-            self.adj_offsets = [0.0, 0.0]
-
-            # Retrieve the scroll adjustments and set up the event handlers.
-            self.adjs.append(self.seqt_viewers[0].scrolledwin.get_hadjustment())
-            self.adj_hids.append(self.adjs[0].connect('value_changed', self.traceScrolled, 0))
-
-            self.adjs.append(self.seqt_viewers[1].scrolledwin.get_hadjustment())
-            self.adj_hids.append(self.adjs[1].connect('value_changed', self.traceScrolled, 1))
-
-            self.scroll_locked = True
+            # Initialize the synchronized scrolling when the VBox requests to be
+            # mapped to the display so that we get the correct adjustment values.
+            self.connect('map', self.initializeLockedScrolling)
+        else:
+            self.scroll_locked = False
 
         # Register callbacks for the consensus sequence viewer.
         self.consv.getConsensusSequenceViewer().registerObserver('alignment_clicked', self.alignmentClicked)
@@ -469,6 +456,64 @@ class SequenceTraceLayout(gtk.VBox):
         # If scroll synchronization was initially enabled, relock the scrollbars.
         if relock:
             self.lockScrolling()
+
+    def initializeLockedScrolling(self, widget):
+        """
+        Initializes synchronized scrolling for two trace viewers.  Initially locks
+        the traces at the location of the first shared position in the alignment.
+        This does not result in perfect matching throughout the traces, but is still
+        more useful than initially locking them both at their beginnings.
+        """
+        # Create lists for the scroll adjustments and signal handler IDs.
+        self.adjs = []
+        self.adj_hids = []
+
+        # Retrieve the scroll adjustments and set up the event handlers.
+        self.adjs.append(self.seqt_viewers[0].scrolledwin.get_hadjustment())
+        self.adj_hids.append(self.adjs[0].connect('value_changed', self.traceScrolled, 0))
+
+        self.adjs.append(self.seqt_viewers[1].scrolledwin.get_hadjustment())
+        self.adj_hids.append(self.adjs[1].connect('value_changed', self.traceScrolled, 1))
+
+        # A list to track the offsets between the two scroll adjustments when
+        # they are locked together.
+        self.adj_offsets = [0.0, 0.0]
+
+        csb = self.consv.getConsensusSequenceViewer().getConsensSeqBuilder()
+        seq0 = csb.getAlignedSequence(0)
+        seq1 = csb.getAlignedSequence(1)
+
+        # Get the positions of the first overlapping bases in the alignment (i.e., the start
+        # of the left end gap).
+        lgindex = csb.getLeftEndGapStart()
+
+        # Verify that there is actually a left end gap and overlapping bases.
+        if lgindex > 0 and seq0[lgindex] != '-' and seq1[lgindex] != '-':
+            # Figure out which trace has the left end gap.
+            if seq0[lgindex - 1] == '-':
+                seq0index = 0
+                seq1index = lgindex
+            else:
+                seq0index = lgindex
+                seq1index = 0
+                
+            seqt0 = self.seqt_viewers[0].getSequenceTrace()
+            seqt1 = self.seqt_viewers[1].getSequenceTrace()
+
+            # Get the locations of the bases in each trace.
+            bpos0 = float(seqt0.getBaseCallPos(seq0index)) / seqt0.getTraceLength() * self.adjs[0].upper
+            bpos1 = float(seqt1.getBaseCallPos(seq1index)) / seqt1.getTraceLength() * self.adjs[1].upper
+        else:
+            # Either there is no left end gap or no overlapping bases, so just
+            # set the offsets to 0.
+            bpos0 = bpos1 = 0
+
+        # Set the starting offsets.
+        self.adj_offsets[0] = bpos0 - bpos1
+        self.adj_offsets[1] = bpos1 - bpos0
+        #self.adj_offsets = [0.0, 0.0]
+
+        self.scroll_locked = True
 
     def lockScrolling(self):
         if self.scroll_locked:
