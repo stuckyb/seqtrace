@@ -397,6 +397,13 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
 
 
 class SequenceTraceLayout(gtk.VBox):
+    """
+    Manages the layout of one or two scrollable sequence trace viewers and a
+    scrollable consensus sequence viewer.  Handles communication among these
+    two or three components, such as navigating the trace views by clicking on
+    the consensus view and synchronized scrolling of the two trace viewers.
+    Also provides a toolbar to manage aspects of the trace viewers.
+    """
     def __init__(self, scrolled_cons_viewer, seqt_viewers):
         gtk.VBox.__init__(self)
         self.consv = scrolled_cons_viewer
@@ -418,6 +425,94 @@ class SequenceTraceLayout(gtk.VBox):
         for viewer in self.seqt_viewers:
             self.pack_start(viewer.getWidget(), expand=True, fill=True)
         self.pack_start(self.consv, expand=False, fill=True)
+
+        self.scroll_locked = False
+
+        # If there are two trace viewers, initialize synchronized scrolling.
+        if len(self.seqt_viewers) == 2:
+            # Create lists for the scroll adjustments and signal handler IDs.
+            self.adjs = []
+            self.adj_hids = []
+
+            # A list to track the offsets between the two scroll adjustments when
+            # they are locked together.
+            self.adj_offsets = [0.0, 0.0]
+
+            # Retrieve the scroll adjustments and set up the event handlers.
+            self.adjs.append(self.seqt_viewers[0].scrolledwin.get_hadjustment())
+            self.adj_hids.append(self.adjs[0].connect('value_changed', self.traceScrolled, 0))
+
+            self.adjs.append(self.seqt_viewers[1].scrolledwin.get_hadjustment())
+            self.adj_hids.append(self.adjs[1].connect('value_changed', self.traceScrolled, 1))
+
+            self.scroll_locked = True
+
+        # Register callbacks for the consensus sequence viewer.
+        self.consv.getConsensusSequenceViewer().registerObserver('alignment_clicked', self.alignmentClicked)
+
+        self.connect('destroy', self.destroyed)
+
+    def alignmentClicked(self, seqnum, seq1index, seq2index):
+        # If there are two trace viewers and their scrolling is synchronized,
+        # unlock them before jumping to the clicked position in the alignment.
+        relock = self.scroll_locked
+        if self.scroll_locked:
+            self.unlockScrolling()
+
+        #print seqnum, seq1index, seq2index
+        self.seqt_viewers[0].scrollTo(seq1index)
+        self.seqt_viewers[0].getViewer().highlightBase(seq1index)
+        if len(self.seqt_viewers) == 2:
+            self.seqt_viewers[1].scrollTo(seq2index)
+            self.seqt_viewers[1].getViewer().highlightBase(seq2index)
+
+        # If scroll synchronization was initially enabled, relock the scrollbars.
+        if relock:
+            self.lockScrolling()
+
+    def lockScrolling(self):
+        if self.scroll_locked:
+            return
+
+        self.adjs[0].handler_unblock(self.adj_hids[0])
+        self.adjs[1].handler_unblock(self.adj_hids[1])
+
+        # Save the offsets between the positions of the two adjustments.
+        self.adj_offsets[0] = self.adjs[0].get_value() - self.adjs[1].get_value()
+        self.adj_offsets[1] = self.adjs[1].get_value() - self.adjs[0].get_value()
+
+        self.scroll_locked = True
+
+    def unlockScrolling(self):
+        if not(self.scroll_locked):
+            return
+
+        self.adjs[0].handler_block(self.adj_hids[0])
+        self.adjs[1].handler_block(self.adj_hids[1])
+
+        self.scroll_locked = False
+
+    def traceScrolled(self, adj, index):
+        #print 'min', index, adj.get_lower()
+        #print 'max:', adj.get_upper()
+        #print 'page size:', adj.get_page_size()
+        #print adj.get_value()
+
+        # Get the index of the other (non event-triggering) adjustment.
+        index2 = (index + 1) % 2
+
+        # Avoid triggering a cascade of events.
+        self.adjs[index2].handler_block(self.adj_hids[index2])
+
+        # Calculate the position of the other scrollbar adjustment.
+        value2 = adj.get_value() - self.adj_offsets[index]
+
+        # Update the other scroll adjustment if we're not outside of its bounds.
+        if value2 >= 0.0 and value2 <= (self.adjs[index2].get_upper() - self.adjs[index2].get_page_size()):
+            self.adjs[index2].set_value(value2)
+
+        # Re-enable the signal handler for the adjustment.
+        self.adjs[index2].handler_unblock(self.adj_hids[index2])
 
     def getTraceToolBar(self):
         return self.toolbar
@@ -556,11 +651,21 @@ class SequenceTraceLayout(gtk.VBox):
             self.seqt_viewers[self.selected_seqtv].setShowConfidence(toggle.get_active())
 
     def zoomButtons(self, button, increment):
+        """
+        Handles clicks on the "+"/"-" zoom buttons by translating them to changes
+        of the zoom level combo box, which manages the actual zooming.
+        """
         self.zoom_combo.set_active(self.curr_zoom + increment)
 
     def zoomComboBox(self, combobox):
+        """
+        Responds to changes of the zoom level combo box by enabling or disabling
+        the "+"/"-" zoom buttons as appropriate and triggering the change in zoom
+        level on the selected trace viewer(s).
+        """
         self.curr_zoom = self.zoom_combo.get_active()
 
+        # Check if we need to enable or disable any of the zoom buttons.
         if self.curr_zoom == (len(self.zoom_levels) - 1):
             self.zoomin_button.set_sensitive(False)
         elif not(self.zoomin_button.get_sensitive()):
@@ -571,8 +676,23 @@ class SequenceTraceLayout(gtk.VBox):
         elif not(self.zoomout_button.get_sensitive()):
             self.zoomout_button.set_sensitive(True)
 
+        # If there are two trace viewers and their scrolling is synchronized,
+        # unlock them before triggering the zoom.
+        relock = self.scroll_locked
+        if self.scroll_locked:
+            self.unlockScrolling()
+
+        # Zoom the trace viewer(s).
         if self.selected_seqtv == len(self.seqt_viewers):
             for viewer in self.seqt_viewers:
                 viewer.zoom(self.zoom_levels[self.curr_zoom])
         else:
             self.seqt_viewers[self.selected_seqtv].zoom(self.zoom_levels[self.curr_zoom])
+
+        # If scroll synchronization was initially enabled, relock the scrollbars.
+        if relock:
+            self.lockScrolling()
+
+    def destroyed(self, widget):
+        # Unregister this widget as an observer of the consensus sequence viewer.
+        self.consv.getConsensusSequenceViewer().unregisterObserver('alignment_clicked', self.alignmentClicked)

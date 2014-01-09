@@ -323,8 +323,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         self.stlayout = SequenceTraceLayout(self.consview, self.viewers)
         self.vbox.pack_start(self.stlayout, expand=True, fill=True)
 
-        # register callbacks for the consensus sequence viewer
-        self.consview.getConsensusSequenceViewer().registerObserver('alignment_clicked', self.alignmentClicked)
+        # Register callbacks for the consensus sequence viewer.
         self.consview.getConsensusSequenceViewer().registerObserver('consensus_clicked', self.consensusSeqClicked)
         self.consview.getConsensusSequenceViewer().registerObserver('selection_state', self.selectStateChange)
 
@@ -336,14 +335,6 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         if self.numseqs == 2:
             title += ', ' + self.seqt2.getFileName()
         self.set_title(title)
-
-    def alignmentClicked(self, seqnum, seq1index, seq2index):
-        #print seqnum, seq1index, seq2index
-        self.viewers[0].scrollTo(seq1index)
-        self.viewers[0].getViewer().highlightBase(seq1index)
-        if self.numseqs == 2:
-            self.viewers[1].scrollTo(seq2index)
-            self.viewers[1].getViewer().highlightBase(seq2index)
 
     def consensusSeqClicked(self, select_start, select_end, event):
         if event.button == 3:
@@ -530,12 +521,11 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         if self.infowin != None:
             self.infowin.destroy()
 
-        # unregister this window as an observer of the consensus sequence viewer
-        self.consview.getConsensusSequenceViewer().unregisterObserver('alignment_clicked', self.alignmentClicked)
+        # Unregister this window as an observer of the consensus sequence viewer.
         self.consview.getConsensusSequenceViewer().unregisterObserver('consensus_clicked', self.consensusSeqClicked)
         self.consview.getConsensusSequenceViewer().unregisterObserver('selection_state', self.selectStateChange)
 
-        # unregister this window as an observer of the consensus sequence
+        # Unregister this window as an observer of the consensus sequence.
         self.cons.unregisterObserver('undo_state_changed', self.undoStateChanged)
         self.cons.unregisterObserver('redo_state_changed', self.redoStateChanged)
 
