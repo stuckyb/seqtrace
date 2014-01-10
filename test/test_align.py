@@ -202,19 +202,19 @@ class TestPairwiseAlignment(unittest.TestCase):
 
 
 class TestPyPairwiseAlignment(TestPairwiseAlignment):
-    """ Tests the pairwise alignment code with the native Python implementation. """
-
+    """
+    Tests the pairwise alignment code with the native Python implementation.
+    """
     def setUp(self):
         self.align = pyalign.PairwiseAlignment()
 
 
-#class TestCPairwiseAlignment(TestPairwiseAlignment):
-#    """ Tests the pairwise alignment code with the C (Cython) implementation. """
-
-#    def setUp(self):
-#        self.align = calign.PairwiseAlignment()
-
-
+class TestCPairwiseAlignment(TestPairwiseAlignment):
+    """
+    Tests the pairwise alignment code with the C (Cython) implementation.
+    """
+    def setUp(self):
+        self.align = calign.PairwiseAlignment()
 
 
 

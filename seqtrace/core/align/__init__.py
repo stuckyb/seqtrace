@@ -23,7 +23,6 @@
 try:
     # try to load the compiled C module
     from calign import PairwiseAlignment
-    raise ImportError
 except ImportError:
     # if that fails, load the Python module
     from pyalign import PairwiseAlignment

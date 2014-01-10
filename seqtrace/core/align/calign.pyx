@@ -24,7 +24,7 @@ The code has also been thoroughly tested to ensure that it does not leak memory.
 
 
 
-# declarations for the C stdlib dynamic memory functions
+# Declarations for the C stdlib dynamic memory functions.
 cdef extern from 'stdlib.h':
     void* malloc(size_t size)
     void* calloc(size_t size1, size_t size2)
@@ -34,17 +34,27 @@ cdef extern from 'stdlib.h':
 
 class PairwiseAlignment:
     def __init__(self):
-        # substitution score matrix
+        # Define the substitution score matrix.
         self.svals = {
-        'A': {'A': 1, 'T': -1, 'G': -1, 'C': -1, 'N': 0},
-        'T': {'A': -1, 'T': 1, 'G': -1, 'C': -1, 'N': 0},
-        'G': {'A': -1, 'T': -1, 'G': 1, 'C': -1, 'N': 0},
-        'C': {'A': -1, 'T': -1, 'G': -1, 'C': 1, 'N': 0},
-        'N': {'A': 0, 'T': 0, 'G': 0, 'C': 0, 'N': 0}
+'A': {'A':  6, 'T': -6, 'G': -6, 'C': -6, 'W':  0, 'S': -6, 'M':  0, 'K': -6, 'R':  0, 'Y': -6, 'B': -6, 'D': -2, 'H': -2, 'V': -2, 'N': -3},
+'T': {'A': -6, 'T':  6, 'G': -6, 'C': -6, 'W':  0, 'S': -6, 'M': -6, 'K':  0, 'R': -6, 'Y':  0, 'B': -2, 'D': -2, 'H': -2, 'V': -6, 'N': -3},
+'G': {'A': -6, 'T': -6, 'G':  6, 'C': -6, 'W': -6, 'S':  0, 'M': -6, 'K':  0, 'R':  0, 'Y': -6, 'B': -2, 'D': -2, 'H': -6, 'V': -2, 'N': -3},
+'C': {'A': -6, 'T': -6, 'G': -6, 'C':  6, 'W': -6, 'S':  0, 'M':  0, 'K': -6, 'R': -6, 'Y':  0, 'B': -2, 'D': -6, 'H': -2, 'V': -2, 'N': -3},
+'W': {'A':  0, 'T':  0, 'G': -6, 'C': -6, 'W':  0, 'S': -6, 'M': -3, 'K': -3, 'R': -3, 'Y': -3, 'B': -4, 'D': -2, 'H': -2, 'V': -4, 'N': -3},
+'S': {'A': -6, 'T': -6, 'G':  0, 'C':  0, 'W': -6, 'S':  0, 'M': -3, 'K': -3, 'R': -3, 'Y': -3, 'B': -2, 'D': -4, 'H': -4, 'V': -2, 'N': -3},
+'M': {'A':  0, 'T': -6, 'G': -6, 'C':  0, 'W': -3, 'S': -3, 'M':  0, 'K': -6, 'R': -3, 'Y': -3, 'B': -4, 'D': -4, 'H': -2, 'V': -2, 'N': -3},
+'K': {'A': -6, 'T':  0, 'G':  0, 'C': -6, 'W': -3, 'S': -3, 'M': -6, 'K':  0, 'R': -3, 'Y': -3, 'B': -2, 'D': -2, 'H': -4, 'V': -4, 'N': -3},
+'R': {'A':  0, 'T': -6, 'G':  0, 'C': -6, 'W': -3, 'S': -3, 'M': -3, 'K': -3, 'R':  0, 'Y': -6, 'B': -4, 'D': -2, 'H': -4, 'V': -2, 'N': -3},
+'Y': {'A': -6, 'T':  0, 'G': -6, 'C':  0, 'W': -3, 'S': -3, 'M': -3, 'K': -3, 'R': -6, 'Y':  0, 'B': -2, 'D': -4, 'H': -2, 'V': -4, 'N': -3},
+'B': {'A': -6, 'T': -2, 'G': -2, 'C': -2, 'W': -4, 'S': -2, 'M': -4, 'K': -2, 'R': -4, 'Y': -2, 'B': -2, 'D': -3, 'H': -3, 'V': -3, 'N': -3},
+'D': {'A': -2, 'T': -2, 'G': -2, 'C': -6, 'W': -2, 'S': -4, 'M': -4, 'K': -2, 'R': -2, 'Y': -4, 'B': -3, 'D': -2, 'H': -3, 'V': -3, 'N': -3},
+'H': {'A': -2, 'T': -2, 'G': -6, 'C': -2, 'W': -2, 'S': -4, 'M': -2, 'K': -4, 'R': -4, 'Y': -2, 'B': -3, 'D': -3, 'H': -2, 'V': -3, 'N': -3},
+'V': {'A': -2, 'T': -6, 'G': -2, 'C': -2, 'W': -4, 'S': -2, 'M': -2, 'K': -4, 'R': -2, 'Y': -4, 'B': -3, 'D': -3, 'H': -3, 'V': -2, 'N': -3},
+'N': {'A': -3, 'T': -3, 'G': -3, 'C': -3, 'W': -3, 'S': -3, 'M': -3, 'K': -3, 'R': -3, 'Y': -3, 'B': -3, 'D': -3, 'H': -3, 'V': -3, 'N': -3}
         }
 
-        # gap penalty
-        self.gapp = -1
+        # Define the gap penalty.
+        self.gapp = -6
 
         self.seq1 = ''
         self.seq2 = ''
@@ -79,14 +89,13 @@ class PairwiseAlignment:
         return self.score
 
     def doAlignment(self):
-        """ Implements the Needleman-Wunsch pairwise sequence alignment algorithm.
-        
+        """
+        Implements the Needleman-Wunsch pairwise sequence alignment algorithm.
         Most of the implementation is in C (using Cython).  2D C arrays (arrays
         of arrays) are dynamically allocated for the score and traceback matrices.
         All of the core algorithm should run as "pure" C, except for lookups to the
         substitution cost matrix.
         """
-
         cdef int seq1len = len(self.seq1)
         cdef int seq2len = len(self.seq2)
 
