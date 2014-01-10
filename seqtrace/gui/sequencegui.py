@@ -45,6 +45,10 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
                 'K': gtk.gdk.color_parse('#800000'),    # mix of G and T
                 'R': gtk.gdk.color_parse('#004800'),    # mix of A and G
                 'Y': gtk.gdk.color_parse('#800080'),    # mix of C and T
+                'B': gtk.gdk.color_parse('#550055'),    # mix of C, G, and T
+                'D': gtk.gdk.color_parse('#553000'),    # mix of A, G, and T
+                'H': gtk.gdk.color_parse('#553055'),    # mix of A, C, and T
+                'V': gtk.gdk.color_parse('#003055'),    # mix of A, C, and G
                 'N': gtk.gdk.color_parse('#999'),       # gray
                 '-': gtk.gdk.color_parse('#000'),       # black
                 ' ': gtk.gdk.color_parse('#999')}
@@ -60,6 +64,10 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
                 'K': gtk.gdk.color_parse('#DFBFBF'),    # mix of G and T
                 'R': gtk.gdk.color_parse('#BFD1BF'),    # mix of A and G
                 'Y': gtk.gdk.color_parse('#DFBFDF'),    # mix of C and T
+                'B': gtk.gdk.color_parse('#D5BFD5'),    # mix of C, G, and T
+                'D': gtk.gdk.color_parse('#D5CBBF'),    # mix of A, G, and T
+                'H': gtk.gdk.color_parse('#D5CBD5'),    # mix of A, C, and T
+                'V': gtk.gdk.color_parse('#BFCBD5'),    # mix of A, C, and G
                 'N': gtk.gdk.color_parse('#fff'),
                 '-': gtk.gdk.color_parse('#ff9')}
         self.margins = 6
