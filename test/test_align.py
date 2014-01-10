@@ -30,8 +30,9 @@ import unittest
 
 
 class TestPairwiseAlignment(unittest.TestCase):
-    """ Tests the pairwise alignment code with the generic package reference. """
-
+    """
+    Tests the pairwise alignment code with the generic package reference.
+    """
     def setUp(self):
         self.align = align.PairwiseAlignment()
 
@@ -45,22 +46,26 @@ class TestPairwiseAlignment(unittest.TestCase):
         self.assertEquals(self.align.getAlignedSeqIndexes(), ([], []))
 
     def test_doAlignment(self):
-        self.align.setGapPenalty(-1)
+        self.align.setGapPenalty(-4)
 
-        # sequences of different lengths that align perfectly
+        # Sequences of different lengths that align perfectly.
         self.align.setSequences('CATGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGG')
         self.align.doAlignment()
         self.assertEquals(self.align.getAlignedSequences(), ('CATGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 18)
+        self.assertEquals(self.align.getAlignmentScore(), 72)
 
         self.align.setSequences('TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT')
         self.align.doAlignment()
         self.assertEquals(self.align.getAlignedSequences(), ('--TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT'))
-        self.assertEquals(self.align.getAlignmentScore(), 18)
+        self.assertEquals(self.align.getAlignmentScore(), 72)
 
-        # sequences of different lengths with 2 mismatched bases and 6 ambiguous bases
+        # Sequences of different lengths with 2 mismatched bases and 6 fully ambiguous bases.
+        # CNTGCANCCATTATNAGGTT
+        # CNTGCANTTATTATANGG--   44
+
         self.align.setSequences('CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG')
         self.align.doAlignment()
+        print self.align.getAlignedSequences()
         self.assertEquals(self.align.getAlignedSequences(), ('CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG--'))
         self.assertEquals(self.align.getAlignmentScore(), 10)
 
@@ -119,11 +124,11 @@ class TestPyPairwiseAlignment(TestPairwiseAlignment):
         self.align = pyalign.PairwiseAlignment()
 
 
-class TestCPairwiseAlignment(TestPairwiseAlignment):
-    """ Tests the pairwise alignment code with the C (Cython) implementation. """
+#class TestCPairwiseAlignment(TestPairwiseAlignment):
+#    """ Tests the pairwise alignment code with the C (Cython) implementation. """
 
-    def setUp(self):
-        self.align = calign.PairwiseAlignment()
+#    def setUp(self):
+#        self.align = calign.PairwiseAlignment()
 
 
 
