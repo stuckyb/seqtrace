@@ -55,11 +55,10 @@ class TestSequenceTraceMethods(unittest.TestCase):
         """
         st = SequenceTrace()
 
-        # A test case with all 4 single nucleotide codes and all 6 2-base
-        # IUPAC ambiguity codes.
-        st.basecalls = 'AWSCTAMCTKRCAYGATT'
+        # A test case with all 4 single nucleotide codes and all 11 IUPAC ambiguity codes.
+        st.basecalls = 'AWSCTCHGAMCTKRCTTBAYGCDATVT'
         st.reverseCompBases()
-        self.assertEqual(st.basecalls, 'AATCRTGYMAGKTAGSWT')
+        self.assertEqual(st.basecalls, 'ABATHGCRTVAAGYMAGKTCDGAGSWT')
 
 class TestSequenceTrace:
     """

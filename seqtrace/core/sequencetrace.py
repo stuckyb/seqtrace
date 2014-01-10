@@ -85,9 +85,14 @@ class SequenceTrace:
     the methods that are common to all sequence traces.
     """
     def __init__(self):
-        # set up reverse complement lookup table
-        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 'w': 'w', 's': 's', 'm': 'k', 'k': 'm', 'r': 'y', 'y': 'r', 'n': 'n',
-                'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'W': 'W', 'S': 'S', 'M': 'K', 'K': 'M', 'R': 'Y', 'Y': 'R', 'N': 'N'}
+        # Define the reverse complement lookup table.
+        self.rclookup = {
+                'a': 't', 't': 'a', 'g': 'c', 'c': 'g',
+                'w': 'w', 's': 's', 'm': 'k', 'k': 'm', 'r': 'y', 'y': 'r',
+                'b': 'v', 'd': 'h', 'h': 'd', 'v': 'b', 'n': 'n',
+                'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G',
+                'W': 'W', 'S': 'S', 'M': 'K', 'K': 'M', 'R': 'Y', 'Y': 'R',
+                'B': 'V', 'D': 'H', 'H': 'D', 'V': 'B', 'N': 'N'}
         self.isreverse_comped = False
         self.fname = ''
         self.tracesamps = {}
@@ -133,6 +138,10 @@ class SequenceTrace:
         self.isreverse_comped = not(self.isreverse_comped)
 
     def reverseCompBases(self):
+        """
+        Reverse complements the sequence of base calls.  This method supports all
+        of the IUPAC ambiguity codes.
+        """
         tmp = list()
         for cnt in reversed(range(len(self.basecalls))):
             tmp.append(self.rclookup[self.basecalls[cnt]])
