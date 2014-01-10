@@ -44,12 +44,30 @@ class TestSequenceTraceFactory(unittest.TestCase):
         self.assertRaises(UnknownFileTypeError, SequenceTraceFactory.loadTraceFile, test_data + 'error-invalid_file.ztr')
 
 
+class TestSequenceTraceMethods(unittest.TestCase):
+    """
+    Defines tests for individual sequence trace methods that do not require
+    actually loading a trace file.
+    """
+    def test_reverseCompBases(self):
+        """
+        Tests the reverse complement function for bases.
+        """
+        st = SequenceTrace()
+
+        # A test case with all 4 single nucleotide codes and all 6 2-base
+        # IUPAC ambiguity codes.
+        st.basecalls = 'AWSCTAMCTKRCAYGATT'
+        st.reverseCompBases()
+        self.assertEqual(st.basecalls, 'AATCRTGYMAGKTAGSWT')
+
 class TestSequenceTrace:
-    """ Defines tests that apply to all concrete subclasses of SequenceTrace.  This class should not be instantiated
+    """
+    Defines tests that apply to all concrete subclasses of SequenceTrace.  This class should not be instantiated
     directly; only its subclasses that target concrete subclasses of SequenceTrace should be run.  To help reinforce
     this, TestSequenceTrace does not inherit from unittest.TestCase.  All subclasses of TestSequenceTrace should
-    inherit from unittest.TestCase and treat TestSequenceTrace as a sort of "mixin" class that provides testing routines. """
-
+    inherit from unittest.TestCase and treat TestSequenceTrace as a sort of "mixin" class that provides testing routines.
+    """
     max_trace_val = 1856
     num_base_calls = 730
     trace_length = 10757

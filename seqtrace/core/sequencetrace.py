@@ -86,8 +86,8 @@ class SequenceTrace:
     """
     def __init__(self):
         # set up reverse complement lookup table
-        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 's': 's', 'w': 'w', 'y': 'r', 'r': 'y', 'n': 'n',
-                        'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'S': 'S', 'W': 'W', 'Y': 'R', 'R': 'Y', 'N': 'N'}
+        self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 'w': 'w', 's': 's', 'm': 'k', 'k': 'm', 'r': 'y', 'y': 'r', 'n': 'n',
+                'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G', 'W': 'W', 'S': 'S', 'M': 'K', 'K': 'M', 'R': 'Y', 'Y': 'R', 'N': 'N'}
         self.isreverse_comped = False
         self.fname = ''
         self.tracesamps = {}
@@ -104,6 +104,10 @@ class SequenceTrace:
         return self.max_traceval
 
     def reverseComplement(self):
+        """
+        Reverse complements the trace data, including the actual sequencing traces,
+        the base calls, and the quality scores.
+        """
         # reverse the DNA sequence
         self.reverseCompBases()
 
