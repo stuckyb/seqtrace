@@ -45,6 +45,45 @@ class TestPairwiseAlignment(unittest.TestCase):
         self.assertEquals(self.align.getAlignedSequences(), ('', ''))
         self.assertEquals(self.align.getAlignedSeqIndexes(), ([], []))
 
+    def test_scoringMatrix(self):
+        """
+        Runs some consistency tests on the alignment scoring matrix.
+        """
+        allbases = ('A', 'T', 'G', 'C', 'W', 'S', 'M', 'K', 'R', 'Y', 'B', 'D', 'H', 'V', 'N')
+
+        # Get the scoring matrix.
+        sm = self.align.svals
+
+        # The average probability of an exact match across all columns and rows of the
+        # matrix is the same (0.25), so all rows and columns should have the same sum,
+        # (0.25 * 12 - 6) * 15 = -45.  Checking the row/column sums will detect
+        # virtually all accidental mistakes, such as swapping two numbers or using
+        # the wrong value somewhere.  It is of course possible to construct wrong
+        # matrices that this test will not catch, but it is extremely unlikely that
+        # these cases would arise by accident!
+        for base in ('A', 'T', 'G', 'C', 'W', 'S', 'M', 'K', 'R', 'Y', 'N'):
+            # Check the row sum.
+            self.assertEqual(sum(sm[base].values()), -45)
+
+            # Check the column sum.
+            total = 0
+            for row in allbases:
+                total += sm[row][base]
+
+            self.assertEqual(total, -45)
+
+        # Because of rounding errors, these will be off by 1 (i.e., -44 instead of -45).
+        for base in ('B', 'D', 'H', 'V'):
+            # Check the row sum.
+            self.assertEqual(sum(sm[base].values()), -44)
+
+            # Check the column sum.
+            total = 0
+            for row in allbases:
+                total += sm[row][base]
+
+            self.assertEqual(total, -44)
+
     def test_doAlignment(self):
         self.align.setGapPenalty(-4)
 
