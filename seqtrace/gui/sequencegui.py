@@ -33,20 +33,35 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         self.cons.registerObserver('consensus_changed', self.consensusChanged)
         self.connect('destroy', self.onDestroy)
 
-        # initialize drawing settings
-        self.basecolors = {'A': gtk.gdk.color_parse('#009000'),
-                'C': gtk.gdk.color_parse('blue'),
-                'G': gtk.gdk.color_parse('black'),
-                'T': gtk.gdk.color_parse('red'),
-                '-': gtk.gdk.color_parse('black'),
-                'N': gtk.gdk.color_parse('#999'),
+        # Initialize drawing settings.
+        self.basecolors = {
+                'A': gtk.gdk.color_parse('#009000'),    # green
+                'C': gtk.gdk.color_parse('#0000ff'),    # blue
+                'G': gtk.gdk.color_parse('#000000'),    # black
+                'T': gtk.gdk.color_parse('#ff0000'),    # red
+                'W': gtk.gdk.color_parse('#804800'),    # mix of A and T
+                'S': gtk.gdk.color_parse('#000080'),    # mix of C and G
+                'M': gtk.gdk.color_parse('#004880'),    # mix of A and C
+                'K': gtk.gdk.color_parse('#800000'),    # mix of G and T
+                'R': gtk.gdk.color_parse('#004800'),    # mix of A and G
+                'Y': gtk.gdk.color_parse('#800080'),    # mix of C and T
+                'N': gtk.gdk.color_parse('#999'),       # gray
+                '-': gtk.gdk.color_parse('#000'),       # black
                 ' ': gtk.gdk.color_parse('#999')}
-        self.bgcolors = {'A': gtk.gdk.color_parse('#cfc'),
+        self.bgcolors = {
+                # These are almost all lighter versions of the foreground colors above.
+                'A': gtk.gdk.color_parse('#cfc'),
                 'C': gtk.gdk.color_parse('#ccf'),
                 'G': gtk.gdk.color_parse('#ccc'),
                 'T': gtk.gdk.color_parse('#fcc'),
-                '-': gtk.gdk.color_parse('#ff9'),
-                'N': gtk.gdk.color_parse('#fff')}
+                'W': gtk.gdk.color_parse('#DFD1BF'),    # mix of A and T
+                'S': gtk.gdk.color_parse('#BFBFDF'),    # mix of C and G
+                'M': gtk.gdk.color_parse('#BFD1DF'),    # mix of A and C
+                'K': gtk.gdk.color_parse('#DFBFBF'),    # mix of G and T
+                'R': gtk.gdk.color_parse('#BFD1BF'),    # mix of A and G
+                'Y': gtk.gdk.color_parse('#DFBFDF'),    # mix of C and T
+                'N': gtk.gdk.color_parse('#fff'),
+                '-': gtk.gdk.color_parse('#ff9')}
         self.margins = 6
         self.padding = 6
 

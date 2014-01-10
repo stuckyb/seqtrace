@@ -38,11 +38,19 @@ class SequenceTraceViewer:
         self.seqt = sequencetrace
 
         # initialize drawing settings
-        self.tracecolors = {'A': gtk.gdk.color_parse('#009000'),
-                'C': gtk.gdk.color_parse('blue'),
-                'G': gtk.gdk.color_parse('black'),
-                'T': gtk.gdk.color_parse('red'),
-                'N': gtk.gdk.color_parse('#999')}
+        self.tracecolors = {
+                'A': gtk.gdk.color_parse('#009000'),    # green
+                'C': gtk.gdk.color_parse('#0000ff'),    # blue
+                'G': gtk.gdk.color_parse('#000000'),    # black
+                'T': gtk.gdk.color_parse('#ff0000'),    # red
+                'W': gtk.gdk.color_parse('#804800'),    # mix of A and T
+                'S': gtk.gdk.color_parse('#000080'),    # mix of C and G
+                'M': gtk.gdk.color_parse('#004880'),    # mix of A and C
+                'K': gtk.gdk.color_parse('#800000'),    # mix of G and T
+                'R': gtk.gdk.color_parse('#004800'),    # mix of A and G
+                'Y': gtk.gdk.color_parse('#800080'),    # mix of C and T
+                'N': gtk.gdk.color_parse('#999')        # gray
+                }
         self.bottom_margin = 2
         self.bcpadding = 4
 
@@ -146,7 +154,7 @@ class SequenceTraceViewer:
         yscale = float(drawheight) / self.sigmax
         xscale = float(width) / samps
 
-        for base in ['A','C','G','T']:
+        for base in ('A','C','G','T'):
             gc.set_rgb_fg_color(self.tracecolors[base])
             data = self.seqt.getTraceSamples(base)
 
@@ -217,8 +225,9 @@ class SequenceTraceViewer:
             txtwidth = self.bclayout.get_pixel_size()[0]
             dwin.draw_layout(gc, x - (txtwidth/2), y, self.bclayout)
 
-            # calculate the y coordinate of the trace location for this base
-            if base != 'N':
+            # Calculate the y coordinate of the trace location for this base and draw a line to
+            # it from the base call.  It only makes sense to do this for non-ambiguous bases.
+            if base in ('A', 'T', 'G', 'C'):
                 traceval = self.seqt.getTraceSample(base, pos)
                 ysamp = int((self.sigmax - traceval) * yscale + 0.5)
 

@@ -80,6 +80,10 @@ class SequenceTraceFactory:
 
 
 class SequenceTrace:
+    """
+    Parent for all format-specific sequence trace classes.  This class defines
+    the methods that are common to all sequence traces.
+    """
     def __init__(self):
         # set up reverse complement lookup table
         self.rclookup = {'a': 't', 't': 'a', 'g': 'c', 'c': 'g', 's': 's', 'w': 'w', 'y': 'r', 'r': 'y', 'n': 'n',
@@ -135,9 +139,16 @@ class SequenceTrace:
         return self.isreverse_comped
 
     def getTraceSamples(self, base):
+        """
+        Returns the actual trace data for a particular base.
+        """
         return self.tracesamps[base.upper()]
 
     def getTraceSample(self, base, index):
+        """
+        Return the magnitude of the trace data at the location in the trace
+        specified by index.
+        """
         return self.tracesamps[base.upper()][index]
 
     def getTraceLength(self):
