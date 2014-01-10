@@ -58,7 +58,7 @@ class PairwiseAlignment:
         }
 
         # The penalty for any gap (except the end gaps) is the same as a base mismatch.
-        self.gapp = -4
+        self.gapp = -6
 
         self.seq1 = ''
         self.seq2 = ''

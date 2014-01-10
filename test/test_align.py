@@ -72,7 +72,8 @@ class TestPairwiseAlignment(unittest.TestCase):
 
             self.assertEqual(total, -45)
 
-        # Because of rounding errors, these will be off by 1 (i.e., -44 instead of -45).
+        # Because of rounding errors when calculating the scores, these will be off
+        # by 1 (i.e., -44 instead of -45).
         for base in ('B', 'D', 'H', 'V'):
             # Check the row sum.
             self.assertEqual(sum(sm[base].values()), -44)
@@ -85,63 +86,107 @@ class TestPairwiseAlignment(unittest.TestCase):
             self.assertEqual(total, -44)
 
     def test_doAlignment(self):
-        self.align.setGapPenalty(-4)
+        """
+        Tests the Needleman-Wunsch pairwise alignment algorithm with a variety
+        of test cases.
+        """
+        self.align.setGapPenalty(-6)
 
-        # Sequences of different lengths that align perfectly.
-        self.align.setSequences('CATGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGG')
-        self.align.doAlignment()
-        self.assertEquals(self.align.getAlignedSequences(), ('CATGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 72)
+        # Define the test cases.  Each case is defined by a list with the elements
+        # [sequence1, sequence2, alignedseq1, alignedseq2, alignscore].
+        testcases = [
+            # Sequences of different lengths that align perfectly.
+            # CATGCATTTATTATAAGGTT
+            # CATGCATTTATTATAAGG--
+            ['CATGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGG', 'CATGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGG--', 108],
 
-        self.align.setSequences('TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT')
-        self.align.doAlignment()
-        self.assertEquals(self.align.getAlignedSequences(), ('--TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT'))
-        self.assertEquals(self.align.getAlignmentScore(), 72)
+            # --TGCATTTATTATAAGGTT
+            # CATGCATTTATTATAAGGTT
+            ['TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT', '--TGCATTTATTATAAGGTT', 'CATGCATTTATTATAAGGTT', 108],
 
-        # Sequences of different lengths with 2 mismatched bases and 6 fully ambiguous bases.
-        # CNTGCANCCATTATNAGGTT
-        # CNTGCANTTATTATANGG--   44
+            # Sequences of different lengths with 2 mismatched bases and 6 fully ambiguous bases.
+            # CNTGCANCCATTATNAGGTT
+            # CNTGCANTTATTATANGG--
+            ['CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG', 'CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG--', 48],
 
-        self.align.setSequences('CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG')
-        self.align.doAlignment()
-        print self.align.getAlignedSequences()
-        self.assertEquals(self.align.getAlignedSequences(), ('CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATANGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 10)
+            # CNTGCANCCATTATNAGGTT
+            # CNTGCANTTATTAT-AGNT-
+            ['CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTATAGNT', 'CNTGCANCCATTATNAGGTT', 'CNTGCANTTATTAT-AGNT-', 51],
 
-        # sequences of different lengths with 2 mismatched bases
-        self.align.setSequences('CATGCATCCATTATAAGGTT', 'CATGCATTTATTATAAGG')
-        self.align.doAlignment()
-        self.assertEquals(self.align.getAlignedSequences(), ('CATGCATCCATTATAAGGTT', 'CATGCATTTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 14)
+            # Sequences of different lengths with 2 mismatched bases.
+            # CATGCATCCATTATAAGGTT
+            # CATGCATTTATTATAAGG--
+            ['CATGCATCCATTATAAGGTT', 'CATGCATTTATTATAAGG', 'CATGCATCCATTATAAGGTT', 'CATGCATTTATTATAAGG--', 84],
 
+            # Sequences of the same length with 2 mismatched bases and 2 missing bases in the middle.
+            # CAT--ATCCATTATAAGGTT
+            # CATGCATTTATTATAAGG--
+            ['CATATCCATTATAAGGTT', 'CATGCATTTATTATAAGG', 'CAT--ATCCATTATAAGGTT', 'CATGCATTTATTATAAGG--', 60],
+
+            # Sequences that align with two end gaps, one internal gap, and one mismatch.
+            # CATATCCAT-ATAAG---
+            # --TGTCCATCATAAGGCA
+            ['CATATCCATATAAG', 'TGTCCATCATAAGGCA', 'CATATCCAT-ATAAG---', '--TGTCCATCATAAGGCA', 54],
+
+            # Sequences with partially ambiguous bases.  Tests several combinations of 1-
+            # 2- and 3-base codes to verify that the bases are placed correctly.
+            # CAWGCA-WTT-BTATAAGGTT
+            # CATGSAMWTTATTATAM-GT-
+            ['CAWGCAWTTBTATAAGGTT', 'CATGSAMWTTATTATAMGT', 'CAWGCA-WTT-BTATAAGGTT', 'CATGSAMWTTATTATAM-GT-', 52]
+            ]
+
+        # Define the indices for the test sequences and results.
+        seq1 = 0
+        seq2 = 1
+        alignedseq1 = 2
+        alignedseq2 = 3
+        score = 4
+
+        # Run all of the test cases twice, switching the sequence order the
+        # second time around.
+        for i in (0,1):
+            # The second time through, reverse the order of the sequences.
+            if i == 1:
+                seq1 = 1
+                seq2 = 0
+                alignedseq1 = 3
+                alignedseq2 = 2
+
+            # Run each test case.
+            for case in testcases:
+                self.align.setSequences(case[seq1], case[seq2])
+                self.align.doAlignment()
+                #print self.align.getAlignedSequences()[0]
+                #print self.align.getAlignedSequences()[1]
+                self.assertEquals(self.align.getAlignedSequences(), (case[alignedseq1], case[alignedseq2]))
+                self.assertEquals(self.align.getAlignmentScore(), case[score])
+
+        # Now run a few tests with different gap penalties.
+        # CATGCATCC--ATTATAAGGTT
+        # CATGCAT--TTATTATAAGG--
         self.align.setGapPenalty(0)
         self.align.setSequences('CATGCATCCATTATAAGGTT', 'CATGCATTTATTATAAGG')
         self.align.doAlignment()
         self.assertEquals(self.align.getAlignedSequences(), ('CATGCATCC--ATTATAAGGTT', 'CATGCAT--TTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 16)
+        self.assertEquals(self.align.getAlignmentScore(), 96)
 
-        # sequences of the same length with 2 mismatched bases and 2 missing bases in the middle
-        self.align.setGapPenalty(-1)
-        self.align.setSequences('CATATCCATTATAAGGTT', 'CATGCATTTATTATAAGG')
-        self.align.doAlignment()
-        self.assertEquals(self.align.getAlignedSequences(), ('CAT--ATCCATTATAAGGTT', 'CATGCATTTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 10)
-
+        # Different sequences with the same gap penalty.
+        # CAT--ATCC--ATTATAAGGTT
+        # CATGCAT--TTATTATAAGG--
         self.align.setGapPenalty(0)
         self.align.setSequences('CATATCCATTATAAGGTT', 'CATGCATTTATTATAAGG')
         self.align.doAlignment()
         self.assertEquals(self.align.getAlignedSequences(), ('CAT--ATCC--ATTATAAGGTT', 'CATGCAT--TTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 14)
+        self.assertEquals(self.align.getAlignmentScore(), 84)
 
-        # using the sequences in the previous tests, test an extreme gap penalty
-        self.align.setGapPenalty(-6)
+        # Using the sequences in the previous tests, test an extreme gap penalty.
+        # --CATATCCATTATAAGGTT
+        # CATGCATTTATTATAAGG--
+        self.align.setGapPenalty(-36)
         self.align.setSequences('CATATCCATTATAAGGTT', 'CATGCATTTATTATAAGG')
         self.align.doAlignment()
-        #print self.align.getAlignmentScore()
-        #print self.align.getAlignedSequences()[0]
-        #print self.align.getAlignedSequences()[1]
         self.assertEquals(self.align.getAlignedSequences(), ('--CATATCCATTATAAGGTT', 'CATGCATTTATTATAAGG--'))
-        self.assertEquals(self.align.getAlignmentScore(), 6)
+        self.assertEquals(self.align.getAlignmentScore(), 36)
 
     def test_getAlignedSeqIndexes(self):
         # sequences of the same length with 2 mismatched bases and 2 missing bases in the middle,
