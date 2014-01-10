@@ -55,6 +55,13 @@ class TestConsensus(unittest.TestCase):
         #                            G   N   C       C   G   T   G   N   C   A   G
         self.seqt5.bcconf = [        20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 24]
 
+        # Trace data with IUPAC ambiguity codes for testing the single-sequence and
+        # legacy consensus algorithms.
+        self.seqt6 = SequenceTrace()
+        self.seqt6.basecalls = 'AWSCTAMCTKRCAYGATT'
+        #                    A   W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T
+        self.seqt6.bcconf = [5,  4, 20, 24, 34, 12,  8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61]
+
     # Test the basic ConsensSeqBuilder operations.
     def test_consensus(self):
         cons = ConsensSeqBuilder((self.seqt1,))
@@ -68,8 +75,10 @@ class TestConsensus(unittest.TestCase):
 
         self.assertEqual(cons.getNumSeqs(), 1)
 
-    # Test consensus sequence construction on a single sequence trace.
     def test_singleConsensus(self):
+        """
+        Test consensus sequence construction on a single sequence trace.
+        """
         self.settings.setDoAutoTrim(False)
 
         self.settings.setMinConfScore(30)
@@ -88,10 +97,18 @@ class TestConsensus(unittest.TestCase):
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNTGANTNNNN')
 
-        # test the special case where none of the confidence scores exceed the quality threshold
+        # Test the special case where none of the confidence scores exceed the quality threshold.
         self.settings.setMinConfScore(10)
         cons = ConsensSeqBuilder((self.seqt3,), self.settings)
         self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
+
+        #                      A   W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T
+        # self.seqt6.bcconf = [5,  4, 20, 24, 34, 12,  8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61]
+
+        # Test a case with IUPAC ambiguity codes.
+        self.settings.setMinConfScore(10)
+        cons = ConsensSeqBuilder((self.seqt6,), self.settings)
+        self.assertEqual(cons.getConsensus(), 'NNSCTANCTKRCAYGATT')
 
     def test_defineBasePrDist(self):
         """

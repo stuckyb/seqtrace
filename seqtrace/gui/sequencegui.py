@@ -287,6 +287,14 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
                 dwin.draw_rectangle(gc, True, cnt*self.fwidth, alend+self.padding, self.fwidth, self.fheight)
 
     def setFontSize(self, size):
+        """
+        Sets the font size to use for drawing sequences, calculates the character
+        size in pixels, and resizes the DrawingArea to fit the sequence(s).  Note
+        that for most fonts, the character "W" will actually be slightly wider than
+        the character width calculated by this method.  However, "W"s are uncommon
+        in trace data, and sizing the character to fit "W"s makes the other characters
+        too far apart (in my opinion!).
+        """
         # set up sequence font properties
         self.fontdesc.set_size(size*pango.SCALE)
         self.txtlayout.set_font_description(self.fontdesc)
