@@ -48,12 +48,12 @@ class TestConsensus(unittest.TestCase):
         # Set up trace data to use for testing the Bayesian consensus algorithm.
         self.seqt4 = SequenceTrace()
         self.seqt5 = SequenceTrace()
-        self.seqt4.basecalls = 'AAGNCACTCACA'
-        self.seqt5.basecalls = 'GNCCGTGNCAG'
-        #                    A   A   G   N   C   A   C       T   C   A   C   A
-        self.seqt4.bcconf = [40, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52    ]
-        #                            G   N   C       C   G   T   G   N   C   A   G
-        self.seqt5.bcconf = [        20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 24]
+        self.seqt4.basecalls = 'AWAGNCACTCACAB'
+        self.seqt5.basecalls = 'GNCCGTGNCADG'
+        #                    A   W   A   G   N   C   A   C       T   C   A   C   A   B
+        self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52, 10    ]
+        #                                G   N   C       C   G   T   G   N   C   A   D   G
+        self.seqt5.bcconf = [            20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 10, 50]
 
         # Trace data with all 11 IUPAC ambiguity codes for testing the single-sequence
         # and legacy consensus algorithms.
@@ -190,7 +190,11 @@ class TestConsensus(unittest.TestCase):
                 {'call1': 'G', 'qual1': 5.228787453, 'call2': 'G', 'qual2': 7.447274949},
                 {'call1': 'A', 'qual1': 5.228787453, 'call2': 'T', 'qual2': 15.228787453},
                 {'call1': 'T', 'qual1': 15.228787453, 'call2': 'A', 'qual2': 5.228787453},
-                {'call1': 'C', 'qual1': 15.228787453, 'call2': 'T', 'qual2': 5.228787453}
+                {'call1': 'C', 'qual1': 15.228787453, 'call2': 'T', 'qual2': 5.228787453},
+                {'call1': 'W', 'qual1': 6.989700043, 'call2': 'T', 'qual2': 5.228787453},
+                {'call1': 'W', 'qual1': 6.989700043, 'call2': 'G', 'qual2': 5.228787453},
+                {'call1': 'W', 'qual1': 3.979400087, 'call2': 'B', 'qual2': 10},
+                {'call1': 'B', 'qual1': 10, 'call2': 'D', 'qual2': 10}
                 ]
         results = [
                 {'A': 0.995901648, 'T': 0.001366117, 'G': 0.001366117, 'C': 0.001366117},
@@ -198,7 +202,11 @@ class TestConsensus(unittest.TestCase):
                 {'A': 0.010135135, 'T': 0.010135135, 'G': 0.969594595, 'C': 0.010135135},
                 {'A': 0.066037736, 'T': 0.91509434, 'G': 0.009433962, 'C': 0.009433962},
                 {'A': 0.066037736, 'T': 0.91509434, 'G': 0.009433962, 'C': 0.009433962},
-                {'A': 0.009433962, 'T': 0.066037736, 'G': 0.009433962, 'C': 0.91509434}
+                {'A': 0.009433962, 'T': 0.066037736, 'G': 0.009433962, 'C': 0.91509434},
+                {'A': 0.117647059, 'T': 0.823529412, 'G': 0.029411765, 'C': 0.029411765},
+                {'A': 0.25, 'T': 0.25, 'G': 0.4375, 'C': 0.0625},
+                {'A': 0.125, 'T': 0.375, 'G': 0.25, 'C': 0.25},
+                {'A': 0.125, 'T': 0.375, 'G': 0.375, 'C': 0.125}
                 ]
 
         # Try each test case.
@@ -224,14 +232,14 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt4, self.seqt5), self.settings)
 
         # Verify that the alignment is correct.
-        self.assertEqual(cons.getAlignedSequence(0), 'AAGNCAC-TCACA-')
-        self.assertEqual(cons.getAlignedSequence(1), '--GNC-CGTGNCAG')
+        self.assertEqual(cons.getAlignedSequence(0), 'AWAGNCAC-TCACAB-')
+        self.assertEqual(cons.getAlignedSequence(1), '---GNC-CGTGNCADG')
 
-        #                      A   A   G   N   C   A   C       T   C   A   C   A
-        # self.seqt4.bcconf = [40, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52    ]
-        #                              G   N   C       C   G   T   G   N   C   A   G
-        # self.seqt5.bcconf = [        20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 24]
-        expconsconf = [40, 4, 44.6841, 1, 23.8739, 12, 36.4455, 30, 54.3132, 34.3809, 34, 84.7703, 108.7711, 24]
+        #                      A   W   A   G   N   C   A   C       T   C   A   C   A   B
+        # self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52, 10    ]
+        #                                  G   N   C       C   G   T   G   N   C   A   D   G
+        # self.seqt5.bcconf = [            20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 10, 50]
+        expconsconf = [40, 32, 4, 44.6841, 1, 23.8739, 12, 36.4455, 30, 54.3132, 34.3809, 34, 84.7703, 108.7711, 2.0412, 50]
 
         # Run the tests with seqt4 first, then with seqt5 first.
         for cnt in range(2):
@@ -245,7 +253,7 @@ class TestConsensus(unittest.TestCase):
             confvals = [round(cval, 4) for cval in cons.consconf]
 
             # Check that the consensus sequence is correct.
-            self.assertEqual(cons.getConsensus(), 'ANGNNNCGTGACAN')
+            self.assertEqual(cons.getConsensus(), 'AWNGNNNCGTGACANG')
 
             # Check that the consensus quality scores are correct.
             for (expconf, conf) in zip(expconsconf, confvals):
