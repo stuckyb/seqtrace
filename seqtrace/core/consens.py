@@ -151,6 +151,25 @@ class ConsensSeqBuilder:
     finishing operations on the final sequence, such as automatic end
     quality trimming.
     """
+    # Define a few class attributes that will act as constants.
+
+    # All unambiguous nucleotide codes.
+    bases = ('A', 'T', 'G', 'C')
+    # All 2-nucleotide codes, along with the single bases they represent.
+    bases2 = {
+            'W': ('A', 'T'),
+            'S': ('C', 'G'),
+            'M': ('A', 'C'),
+            'K': ('G', 'T'),
+            'R': ('A', 'G'),
+            'Y': ('C', 'T')}
+    # All 3-nucleotide codes, along with the single bases they represent.
+    bases3 = {
+            'B': ('C', 'G', 'T'),
+            'D': ('A', 'G', 'T'),
+            'H': ('A', 'C', 'T'),
+            'V': ('A', 'C', 'G')}
+
     def __init__(self, sequencetraces, settings=None):
         self.numseqs = len(sequencetraces)
         self.settings = settings
@@ -287,17 +306,39 @@ class ConsensSeqBuilder:
     def defineBasePrDist(self, basecall, score, distdict):
         """
         Defines a nucleotide probability distribution based on a given base call
-        and Phred-type quality score.  The argument "distdict" is expected to be a
-        dictionary with elements indexed by 'A', 'T', 'G', and 'C'.
+        and Phred-type quality score.  Fully supports all IUPAC ambiguity codes.
+        The argument "distdict" is expected to be a dictionary with elements
+        indexed by 'A', 'T', 'G', and 'C'.
         """
         # Calculate the error probability.
         eprob = 10.0 ** (score / -10.0)
 
-        # Fill in the probabilities for each base.
-        distdict[basecall] = 1 - eprob
-        for base in ('A', 'T', 'G', 'C'):
-            if base != basecall:
-                distdict[base] = eprob / 3.0
+        # Determine if we have a single base or an ambiguity code and handle
+        # each situation appropriately.
+        if basecall in self.bases:
+            # Fill in the probabilities for each base.
+            distdict[basecall] = 1 - eprob
+            for base in self.bases:
+                if base != basecall:
+                    distdict[base] = eprob / 3.0
+        elif basecall in self.bases2:
+            # We have a 2-base ambiguity code, so split the probability of
+            # a correct call between the two bases represented.
+            # First assign the error probability to all bases.
+            for base in self.bases:
+                distdict[base] = eprob / 2.0
+            # Then assign the correct call probability.
+            for base in self.bases2[basecall]:
+                distdict[base] = (1 - eprob) / 2.0
+        elif basecall in self.bases3:
+            # We have a 3-base ambiguity code, so split the probability of
+            # a correct call between the three bases represented.
+            # First assign the error probability to all bases.
+            for base in self.bases:
+                distdict[base] = eprob
+            # Then assign the correct call probability.
+            for base in self.bases3[basecall]:
+                distdict[base] = (1 - eprob) / 3.0
 
     def calcPosteriorBasePrDist(self, base1, score1, base2, score2, distdict):
         """
@@ -306,8 +347,6 @@ class ConsensSeqBuilder:
         result is returned in the argument "distdict", which is expected to be a
         dictionary with elements indexed by 'A', 'T', 'G', and 'C'.
         """
-        bases = ('A', 'T', 'G', 'C')
-
         # Get the prior distribution using the 1st base call and quality score.
         prior = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
         self.defineBasePrDist(base1, score1, prior)
@@ -318,11 +357,11 @@ class ConsensSeqBuilder:
         # Calculate the shared denominator for Bayes' theorem, which is the total
         # probability of observing the 2nd base call.
         denom = 0.0
-        for base in bases:
+        for base in self.bases:
             denom += distdict[base] * prior[base]
 
         # Calculate the posterior probability distribution.
-        for base in bases:
+        for base in self.bases:
             distdict[base] = (distdict[base] * prior[base]) / denom
 
     def makeLegacyConsensus(self, min_confscore):

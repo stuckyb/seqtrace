@@ -125,26 +125,53 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt1,), self.settings)
         nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
 
-        # Define some test cases and expected results.
+        # Define some test cases and expected results.  Includes test cases for all
+        # IUPAC ambiguity codes.
         cases = [
                 {'call': 'A', 'quality': 10},
                 {'call': 'G', 'quality': 10},
                 {'call': 'T', 'quality': 22},
                 {'call': 'C', 'quality': 54},
-                {'call': 'A', 'quality': 1}
+                {'call': 'A', 'quality': 1},
+                {'call': 'W', 'quality': 4},
+                {'call': 'W', 'quality': 1},
+                {'call': 'S', 'quality': 4},
+                {'call': 'M', 'quality': 6},
+                {'call': 'K', 'quality': 4},
+                {'call': 'R', 'quality': 4},
+                {'call': 'Y', 'quality': 20},
+                {'call': 'B', 'quality': 20},
+                {'call': 'D', 'quality': 4},
+                {'call': 'H', 'quality': 4},
+                {'call': 'V', 'quality': 1}
                 ]
         results = [
                 {'A': 0.9, 'T': 0.1/3, 'G': 0.1/3, 'C': 0.1/3},
                 {'A': 0.1/3, 'T': 0.1/3, 'G': 0.9, 'C': 0.1/3},
                 {'A': 0.006309573/3, 'T': 0.993690427, 'G': 0.006309573/3, 'C': 0.006309573/3},
                 {'A': 0.000003981/3, 'T': 0.000003981/3, 'G': 0.000003981/3, 'C': 0.999996019},
-                {'A': 0.205671765, 'T': 0.794328235/3, 'G': 0.794328235/3, 'C': 0.794328235/3}
+                {'A': 0.205671765, 'T': 0.794328235/3, 'G': 0.794328235/3, 'C': 0.794328235/3},
+                {'A': 0.300946415, 'T': 0.300946415, 'G': 0.199053585, 'C': 0.199053585},
+                {'A': 0.102835883, 'T': 0.102835883, 'G': 0.397164117, 'C': 0.397164117},
+                {'A': 0.199053585, 'T': 0.199053585, 'G': 0.300946415, 'C': 0.300946415},
+                {'A': 0.374405678, 'T': 0.125594322, 'G': 0.125594322, 'C': 0.374405678},
+                {'A': 0.199053585, 'T': 0.300946415, 'G': 0.300946415, 'C': 0.199053585},
+                {'A': 0.300946415, 'T': 0.199053585, 'G': 0.300946415, 'C': 0.199053585},
+                {'A': 0.005, 'T': 0.495, 'G': 0.005, 'C': 0.495},
+                {'A': 0.01, 'T': 0.33, 'G': 0.33, 'C': 0.33},
+                {'A': 0.200630943, 'T': 0.200630943, 'G': 0.200630943, 'C': 0.398107171},
+                {'A': 0.200630943, 'T': 0.200630943, 'G': 0.398107171, 'C': 0.200630943},
+                {'A': 0.068557255, 'T': 0.794328235, 'G': 0.068557255, 'C': 0.068557255},
                 ]
 
         # Try each test case.
         for (case, result) in zip(cases, results):
             cons.defineBasePrDist(case['call'], case['quality'], nppd)
-            #print nppd
+
+            # Verify that the probabilities sum to 1.
+            self.assertAlmostEqual(sum(nppd.values()), 1.0)
+
+            # Verify that the individual probabilities are correct.
             for base in ('A', 'T', 'G', 'C'):
                 self.assertAlmostEqual(result[base], nppd[base])
 
