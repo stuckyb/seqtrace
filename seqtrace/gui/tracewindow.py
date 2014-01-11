@@ -16,6 +16,7 @@
 
 
 from seqtrace.core import sequencetrace
+from seqtrace.core.consens import ConsensSeqBuilder
 from seqtrace.core.observable import Observable
 
 from seqtrace.gui.dialgs import CommonDialogs, EntryDialog
@@ -26,6 +27,7 @@ from seqtrace.gui.statusbar import ConsensSeqStatusBar
 import seqtrace.gui.pyperclip as pyperclip
 
 import xml.sax.saxutils
+import re
 
 import pygtk
 pygtk.require('2.0')
@@ -402,20 +404,33 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         sel = csv.getSelection()
         seq = self.cons.getConsensus(sel[0], sel[1])
 
-        # display a text-entry dialog to allow the user to modify the selected base(s)
+        # Create a text-entry dialog to allow the user to modify the selected base(s).
         diag = EntryDialog(self, 'Edit Sequence',
                 'You may make changes to the selected base(s) below.\n\nOriginal sequence: {0} ({1} bases)\n'.format(seq, len(seq)),
                 seq, 50)
 
-        # display the dialog until the user presses cancel, closes the dialog, or submits an acceptable string
-        newseq = ''
-        while len(newseq) != len(seq):
+        # Build a regular expression object for checking if the characters in the new
+        # string are all valid bases.
+        reo = re.compile('[' + ''.join(ConsensSeqBuilder.allbases) + ' ]+')
+
+        # Display the dialog until the user presses cancel, closes the dialog, or submits
+        # an acceptable string.
+        stringok = False
+        while not(stringok):
             response = diag.run()
             if (response == gtk.RESPONSE_CANCEL) or (response == gtk.RESPONSE_DELETE_EVENT):
                 break
+
             newseq = diag.get_text().upper()
+            match = reo.match(newseq)
+
+            # Verify that newseq is of the correct length and only contains valid bases.
             if len(newseq) != len(seq):
                 self.showMessage('The number of bases in the edited sequence must match the the selection.')
+            elif match.end() - match.start() != len(newseq):
+                self.showMessage('The edited sequence contains invalid characters.  You may only use IUPAC nucleotide codes or spaces.')
+            else:
+                stringok = True
 
         diag.destroy()
         if response == gtk.RESPONSE_OK:

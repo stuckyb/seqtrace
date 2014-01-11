@@ -16,7 +16,9 @@
 
 from seqtrace.core.align import PairwiseAlignment
 from observable import Observable
+
 import math
+import re
 
 
 
@@ -169,6 +171,8 @@ class ConsensSeqBuilder:
             'D': ('A', 'G', 'T'),
             'H': ('A', 'C', 'T'),
             'V': ('A', 'C', 'G')}
+    # All valid nucleotide codes.
+    allbases = ('A', 'T', 'G', 'C', 'W', 'S', 'M', 'K', 'R', 'Y', 'B', 'D', 'H', 'V', 'N')
 
     def __init__(self, sequencetraces, settings=None):
         self.numseqs = len(sequencetraces)
@@ -327,7 +331,7 @@ class ConsensSeqBuilder:
             # First assign the error probability to all bases.
             for base in self.bases:
                 distdict[base] = eprob / 2.0
-            # Then assign the correct call probability.
+            # Then assign the correct call probabilities.
             for base in self.bases2[basecall]:
                 distdict[base] = (1 - eprob) / 2.0
         elif basecall in self.bases3:
@@ -336,7 +340,7 @@ class ConsensSeqBuilder:
             # First assign the error probability to all bases.
             for base in self.bases:
                 distdict[base] = eprob
-            # Then assign the correct call probability.
+            # Then assign the correct call probabilities.
             for base in self.bases3[basecall]:
                 distdict[base] = (1 - eprob) / 3.0
 
@@ -621,6 +625,11 @@ class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
             self.notifyObservers('undo_state_changed', (True,))
 
     def modifyBases(self, start_index, end_index, newseq):
+        """
+        Modifies bases in the consensus sequence.  The changes can be reversed with
+        the undo() method.  The replacement string must be a combination of valid
+        IUPAC nucleotide codes and spaces.
+        """
         # swap the start and end points, if necessary
         if start_index > end_index:
             tmp = start_index
@@ -628,7 +637,13 @@ class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
             end_index = tmp
 
         if len(newseq) != (end_index - start_index + 1):
-            raise ConsensSeqBuilderError('Start and end indexes do not match length of replacement string.')
+            raise ConsensSeqBuilderError('Start and end indexes do not match the length of the replacement string.')
+
+        # Use a regular expression to check if the characters in the new string are all valid.
+        reo = re.compile('[' + ''.join(self.allbases) + ' ]+')
+        match = reo.match(newseq)
+        if match.end() - match.start() != len(newseq):
+            raise ConsensSeqBuilderError('The replacement sequence contains invalid characters.')
 
         # add the undo information
         self.undo_stack.append({'start': start_index, 'end': end_index, 'data': self.consensus[start_index:end_index+1]})

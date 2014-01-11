@@ -28,10 +28,11 @@ class UnrecognizedEventError(ObservableError):
 
 
 class Observable:
-    """ A mixin class to provide basic observable functionality to child classes.
+    """
+    A mixin class to provide basic observable functionality to child classes.
     Implements the ability to define event types and register/unregister clients
-    to receive event notifications. """
-
+    to receive event notifications.
+    """
     def defineObservableEvents(self, event_names):
         self.__observers = {}
 
@@ -55,7 +56,7 @@ class Observable:
         try:
             for observer in self.__observers[event_name]:
                 observer(*args)
-        except KeyError:
+        except KeyError as e:
             raise UnrecognizedEventError(event_name)
 
 

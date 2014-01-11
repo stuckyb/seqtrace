@@ -211,10 +211,13 @@ class TestConsensus(unittest.TestCase):
 
         # Try each test case.
         for (case, result) in zip(cases, results):
-            cons.calcPosteriorBasePrDist(case['call1'], case['qual1'], case['call2'], case['qual2'],nppd)
+            cons.calcPosteriorBasePrDist(case['call1'], case['qual1'], case['call2'], case['qual2'], nppd)
             #print nppd
             for base in ('A', 'T', 'G', 'C'):
                 self.assertAlmostEqual(result[base], nppd[base])
+
+        cons.calcPosteriorBasePrDist('A', 20, 'T', 20, nppd)
+        print nppd
 
     def test_BayesianConsensus(self):
         """
@@ -562,7 +565,7 @@ class TestModifiableConsensus(unittest.TestCase):
             self.cons.modifyBases(testcase[0], testcase[1], testcase[2])
             self.assertEqual(self.cons.getConsensus(), testcase[3])
 
-        # test again, with the start and end indexes swapped
+        # Test again, with the start and end indexes swapped.
         self.cons.makeConsensusSequence()
         for testcase in self.modify_tests:
             self.cons.modifyBases(testcase[0], testcase[1], testcase[2])
