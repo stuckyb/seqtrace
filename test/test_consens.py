@@ -58,9 +58,16 @@ class TestConsensus(unittest.TestCase):
         # Trace data with all 11 IUPAC ambiguity codes for testing the single-sequence
         # and legacy consensus algorithms.
         self.seqt6 = SequenceTrace()
-        self.seqt6.basecalls = 'AWSCTAMCTKRCAYGATTHCBDAV'
-        #                    A   W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
-        self.seqt6.bcconf = [5,  4, 20, 24, 34, 12,  8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 12, 40, 20, 10, 34, 6]
+        self.seqt7 = SequenceTrace()
+        self.seqt6.basecalls = 'WSCTAMCTKRCAYGATTHCBDAV'
+        self.seqt7.basecalls = 'AWSCTAACAGRCAYGATTWCB'
+        # alignment of sequences 6 and 7:   '-WSCTAMCTKRCAYGATTHCBDAV'
+        #                                   'AWSCTAACAGRCAYGATTWCB---'
+
+        #                        W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
+        self.seqt6.bcconf = [    4,  20, 24, 34, 12, 8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 6,  40, 20, 10, 34, 6]
+        #                    A   W   S   C   T   A   A   C   A   G   R   C   A   Y   G   A   T   T   W   C   B            
+        self.seqt7.bcconf = [5,  4,  18, 40, 30, 8,  20, 32, 28, 6,  36, 40, 7,  60, 58, 61, 34, 61, 14, 40, 12           ]
 
     # Test the basic ConsensSeqBuilder operations.
     def test_consensus(self):
@@ -102,13 +109,13 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt3,), self.settings)
         self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
 
-        #                      A   W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
-        # self.seqt6.bcconf = [5,  4, 20, 24, 34, 12,  8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 12, 40, 20, 10, 34, 6]
+        #                          W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
+        # self.seqt6.bcconf = [    4,  20, 24, 34, 12, 8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 6,  40, 20, 10, 34, 6]
 
         # Test a case with IUPAC ambiguity codes.
         self.settings.setMinConfScore(10)
         cons = ConsensSeqBuilder((self.seqt6,), self.settings)
-        self.assertEqual(cons.getConsensus(), 'NNSCTANCTKRCAYGATTHCBDAN')
+        self.assertEqual(cons.getConsensus(), 'NSCTANCTKRCAYGATTNCBDAN')
 
     def test_defineBasePrDist(self):
         """
@@ -225,14 +232,14 @@ class TestConsensus(unittest.TestCase):
         self.settings.setDoAutoTrim(False)
         self.settings.setConsensusAlgorithm('legacy')
 
-        # first, test the special case where none of the confidence scores exceed the quality threshold
+        # First, test the special case where none of the confidence scores exceed the quality threshold.
         self.settings.setMinConfScore(10)
         cons = ConsensSeqBuilder((self.seqt3, self.seqt3), self.settings)
         self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
 
         cons = ConsensSeqBuilder((self.seqt1, self.seqt2), self.settings)
 
-        # verify the alignment is correct
+        # Verify that the alignment is correct
         self.assertEqual(cons.getAlignedSequence(0), 'AAGCTACCTGACATGATTTACG')
         self.assertEqual(cons.getAlignedSequence(1), '--GCT-CCTGNCACGAATTAC-')
 
@@ -241,10 +248,10 @@ class TestConsensus(unittest.TestCase):
         #                           G   C   T       C  C   T   G   N   C   A   C   G   A   A   T   T   A   C
         #                   [      20, 24, 34,     12, 8, 30, 16, 34, 40, 52, 42, 61, 61, 30, 61, 46, 32, 12    ]
 
-        # run each set of tests with seqt1 first, then with seqt2 first
+        # Run each set of tests with seqt1 first, then with seqt2 first.
         for cnt in range(2):
             if cnt == 1:
-                # swap the sequence trace order on the second pass through the loop
+                # Swap the sequence trace order on the second pass through the loop.
                 cons = ConsensSeqBuilder((self.seqt2, self.seqt1), self.settings)
 
             # conflicting bases: one pair unresolvable, the other resolvable; no gaps filled
@@ -266,6 +273,29 @@ class TestConsensus(unittest.TestCase):
             self.settings.setMinConfScore(5)
             cons.makeConsensusSequence()
             self.assertEqual(cons.getConsensus(), 'ANGCTACCTGACANGANTTACG')
+
+        # Run the test case with ambiguous nucleotide codes.
+
+        #      W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
+        # [    4,  20, 24, 34, 12, 8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 6,  40, 20, 10, 34, 6]
+        #  A   W   S   C   T   A   A   C   A   G   R   C   A   Y   G   A   T   T   W   C   B            
+        # [5,  4,  18, 40, 30, 8,  20, 32, 28, 6,  36, 40, 7,  60, 58, 61, 34, 61, 14, 40, 12           ]
+
+        cons = ConsensSeqBuilder((self.seqt6, self.seqt7), self.settings)
+
+        # Verify that the alignment is correct
+        self.assertEqual(cons.getAlignedSequence(0), '-WSCTAMCTKRCAYGATTHCBDAV')
+        self.assertEqual(cons.getAlignedSequence(1), 'AWSCTAACAGRCAYGATTWCB---')
+
+        # Run the test case with seqt6 first, then with seqt7 first.
+        for cnt in range(2):
+            if cnt == 1:
+                # Swap the sequence trace order on the second pass through the loop.
+                cons = ConsensSeqBuilder((self.seqt7, self.seqt6), self.settings)
+
+            self.settings.setMinConfScore(10)
+            cons.makeConsensusSequence()
+            self.assertEqual(cons.getConsensus(), 'NNSCTAACNKRCAYGATTWCBDAN')
 
     def test_getEndGapStarts(self):
         """

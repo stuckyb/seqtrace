@@ -328,9 +328,10 @@ class ConsensSeqBuilder:
     def makeLegacyConsensus(self, min_confscore):
         """
         Uses the algorithm from versions of SeqTrace prior to 0.9.0 to construct a
-        consensus sequence.  This algorithm does not use the quality score information
-        as effectively as the Bayesian approach, so the latter should generally be
-        used instead.
+        consensus sequence.  If ambiguous bases meet the quality criterion, they
+        are retained in the final sequence.  This algorithm does not use the quality
+        score information as effectively as the Bayesian approach, so the latter
+        should generally be used instead.
         """
         cons = list()
         consconf = list()
@@ -370,7 +371,8 @@ class ConsensSeqBuilder:
         """
         Constructs a "consensus sequence" from a single trace file.  With only one
         trace file, this requires simply checking the quality score for each base
-        call to see if it exceeds the minimum quality threshold.
+        call to see if it exceeds the minimum quality threshold.  If ambiguous bases
+        meet the quality criterion, they are retained in the final sequence.
         """
         cons = list()
         consconf = list()
