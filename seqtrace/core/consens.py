@@ -15,6 +15,7 @@
 
 
 from seqtrace.core.align import PairwiseAlignment
+import seqtrace.core.sequencetrace as sequencetrace
 from observable import Observable
 
 import math
@@ -37,6 +38,7 @@ class ConsensSeqSettings(Observable):
         self.autotrim_winsize = 10 
         self.autotrim_basecnt = 8
         self.trim_endgaps = True
+        self.trim_primers = True
 
         # a flag to indicate if a setAll() operation is in progress
         self.notify_all = True
@@ -141,6 +143,15 @@ class ConsensSeqSettings(Observable):
             else:
                 self.change_made = True
 
+    def getTrimPrimers(self):
+        return self.trim_primers
+
+    def getForwardPrimer(self):
+        return 'TATGTATTACCATGAGGGCAAATATC'
+
+    def getReversePrimer(self):
+        return 'AATTTCTATCTTATGTTTTCAAAAC'
+
 
 class ConsensSeqBuilderError(Exception):
     pass
@@ -219,6 +230,9 @@ class ConsensSeqBuilder:
                 self.makeLegacyConsensus(min_confscore)
 
         if self.settings.getDoAutoTrim():
+            if self.settings.getTrimPrimers():
+                self.trimPrimers()
+
             if self.settings.getTrimEndGaps():
                 self.trimEndGaps()
 
@@ -478,6 +492,71 @@ class ConsensSeqBuilder:
         #print rgindex
 
         return rgindex
+
+    def trimPrimers(self):
+        if self.numseqs != 2:
+            return
+
+        # Get the portions of the trace sequences that are in the end gaps, as
+        # these regions are where the primers will be located.
+        if self.seqt1.isReverseComplemented():
+            leftend = self.seq1aligned[0:self.getLeftEndGapStart()]
+            rightend = self.seq2aligned[self.getRightEndGapStart() + 1:]
+        else:
+            leftend = self.seq2aligned[0:self.getLeftEndGapStart()]
+            rightend = self.seq1aligned[self.getRightEndGapStart() + 1:]
+        #print leftend
+        #print rightend
+
+        # Try to align the forward primer sequence to the left end gap sequence.
+        forward = self.settings.getForwardPrimer()
+        align = PairwiseAlignment()
+        align.setSequences(forward, leftend)
+        align.doAlignment()
+        #print align.getAlignedSequences()[0]
+        #print align.getAlignedSequences()[1]
+        fwdaligned = align.getAlignedSequences()[0]
+
+        # Try to align the reverse complemented reverse primer sequence to the
+        # right end gap sequence.
+        reverse = sequencetrace.reverseCompSequence(self.settings.getReversePrimer())
+        align.setSequences(reverse, rightend)
+        align.doAlignment()
+        #print align.getAlignedSequences()[0]
+        #print align.getAlignedSequences()[1]
+        revaligned = align.getAlignedSequences()[0]
+
+        # Replace starting and ending gap characters in the aligned primer
+        # sequences with spaces.
+        fwdaligned = self.trimAlignedPrimerEndGaps(fwdaligned)
+        revaligned = self.trimAlignedPrimerEndGaps(revaligned)
+
+        # Construct a full-length sequence to contain the primer alignments.
+        self.alignedprimers = (
+                fwdaligned + ' ' * (len(self.seq1aligned) - len(fwdaligned) - len(revaligned))
+                + revaligned)
+        #print self.alignedprimers
+        #print len(self.alignedprimers)
+        #print len(self.seq1aligned)
+        #align.getAlignedSeqIndexes()
+
+    def trimAlignedPrimerEndGaps(self, alignedp):
+        """
+        Replaces starting and ending gap characters in an aligned primer sequence
+        with spaces.
+        """
+        index1 = 0
+        while alignedp[index1] == '-':
+            index1 += 1
+        index2 = len(alignedp) - 1
+        while alignedp[index2] == '-':
+            index2 -= 1
+        trimmed = ' ' * index1 + alignedp[index1:index2+1] + ' ' * (len(alignedp) - index2 - 1)
+
+        return trimmed
+
+    def getAlignedPrimers(self):
+        return self.alignedprimers
 
     def trimEndGaps(self):
         if self.numseqs == 1:

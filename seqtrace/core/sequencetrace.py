@@ -79,20 +79,35 @@ class SequenceTraceFactory:
         return seqt
 
 
+# Define the reverse complement lookup table.
+rclookup = {
+    'a': 't', 't': 'a', 'g': 'c', 'c': 'g',
+    'w': 'w', 's': 's', 'm': 'k', 'k': 'm', 'r': 'y', 'y': 'r',
+    'b': 'v', 'd': 'h', 'h': 'd', 'v': 'b', 'n': 'n',
+    'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G',
+    'W': 'W', 'S': 'S', 'M': 'K', 'K': 'M', 'R': 'Y', 'Y': 'R',
+    'B': 'V', 'D': 'H', 'H': 'D', 'V': 'B', 'N': 'N'}
+
+def reverseCompSequence(sequence):
+    """
+    Defines a generic method for reverse complementing a sequence of
+    nucleotide codes.  This method fully supports all of the IUPAC
+    ambiguity codes.
+    """
+    tmp = list()
+    for cnt in reversed(range(len(sequence))):
+        tmp.append(rclookup[sequence[cnt]])
+
+    return ''.join(tmp)
+
+
+
 class SequenceTrace:
     """
     Parent for all format-specific sequence trace classes.  This class defines
     the methods that are common to all sequence traces.
     """
     def __init__(self):
-        # Define the reverse complement lookup table.
-        self.rclookup = {
-                'a': 't', 't': 'a', 'g': 'c', 'c': 'g',
-                'w': 'w', 's': 's', 'm': 'k', 'k': 'm', 'r': 'y', 'y': 'r',
-                'b': 'v', 'd': 'h', 'h': 'd', 'v': 'b', 'n': 'n',
-                'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G',
-                'W': 'W', 'S': 'S', 'M': 'K', 'K': 'M', 'R': 'Y', 'Y': 'R',
-                'B': 'V', 'D': 'H', 'H': 'D', 'V': 'B', 'N': 'N'}
         self.isreverse_comped = False
         self.fname = ''
         self.tracesamps = {}
@@ -114,7 +129,7 @@ class SequenceTrace:
         the base calls, and the quality scores.
         """
         # reverse the DNA sequence
-        self.reverseCompBases()
+        self.basecalls = reverseCompSequence(self.basecalls)
 
         # reverse and transpose the trace samples
         for base in self.tracesamps:
@@ -136,17 +151,6 @@ class SequenceTrace:
             self.basepos[cnt] = endsamp - self.basepos[cnt]
 
         self.isreverse_comped = not(self.isreverse_comped)
-
-    def reverseCompBases(self):
-        """
-        Reverse complements the sequence of base calls.  This method supports all
-        of the IUPAC ambiguity codes.
-        """
-        tmp = list()
-        for cnt in reversed(range(len(self.basecalls))):
-            tmp.append(self.rclookup[self.basecalls[cnt]])
-
-        self.basecalls = ''.join(tmp)
 
     def isReverseComplemented(self):
         return self.isreverse_comped

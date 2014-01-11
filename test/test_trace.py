@@ -46,19 +46,17 @@ class TestSequenceTraceFactory(unittest.TestCase):
 
 class TestSequenceTraceMethods(unittest.TestCase):
     """
-    Defines tests for individual sequence trace methods that do not require
-    actually loading a trace file.
+    Defines tests for module-level methods that are independent of a trace file.
     """
-    def test_reverseCompBases(self):
+    def test_reverseCompSequence(self):
         """
         Tests the reverse complement function for bases.
         """
-        st = SequenceTrace()
-
         # A test case with all 4 single nucleotide codes and all 11 IUPAC ambiguity codes.
-        st.basecalls = 'AWSCTCHGAMCTKRCTTBAYGCDATVT'
-        st.reverseCompBases()
-        self.assertEqual(st.basecalls, 'ABATHGCRTVAAGYMAGKTCDGAGSWT')
+        basecalls = 'AWSCTCHGAMCTKRCTTBAYGCDATVT'
+        result = reverseCompSequence(basecalls)
+        self.assertEqual(result, 'ABATHGCRTVAAGYMAGKTCDGAGSWT')
+
 
 class TestSequenceTrace:
     """
