@@ -32,13 +32,22 @@ class ConsensSeqSettings(Observable):
     from matching forward and reverse traces.
     """
     def __init__(self):
+        # Initialize all settings to default values.
+        # Min. confidence score for consensus sequences.
         self.min_confscore = 30
+        # Which consensus algorithm to use.
         self.consensus_algorithm = 'Bayesian'
+        # Whether to trim the ends of the sequences.
         self.do_autotrim = True
+        # Settings for automatic quality trimming.
         self.autotrim_winsize = 10 
         self.autotrim_basecnt = 8
+        # Whether to trim the end gap regions from forward/reverse alignments.
         self.trim_endgaps = True
+        # Whether to search for and trim primer sequences from the consensus sequence.
         self.trim_primers = True
+        # The proportion of bases that must match to consider a primer alignment valid.
+        self.primermatch = 0.8
 
         # a flag to indicate if a setAll() operation is in progress
         self.notify_all = True
@@ -146,6 +155,9 @@ class ConsensSeqSettings(Observable):
     def getTrimPrimers(self):
         return self.trim_primers
 
+    def getPrimerMatch(self):
+        return self.primermatch
+
     def getForwardPrimer(self):
         return 'TATGTATTACCATGAGGGCAAATATC'
 
@@ -240,13 +252,16 @@ class ConsensSeqBuilder:
 
         if self.settings.getDoAutoTrim():
             if self.settings.getTrimPrimers():
-                self.trimPrimers()
+                if self.numseqs == 1:
+                    self.trimPrimerFromSequence(min_confscore)
+                else:
+                    self.trimPrimersFromAlignment()
 
             if self.settings.getTrimEndGaps():
                 self.trimEndGaps()
 
             winsize, basecnt = self.settings.getAutoTrimParams()
-            self.trimConsensus(winsize, basecnt)
+            #self.trimConsensus(winsize, basecnt)
 
     def makeBayesianConsensus(self, min_confscore):
         """
@@ -446,10 +461,15 @@ class ConsensSeqBuilder:
         for cnt in range(len(self.alignedseqs[0])):
             cscore = 0
             cbase = self.alignedseqs[0][cnt]
-            cscore = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
+            if cbase != '-':
+                cscore = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
 
-            if cscore < min_confscore:
-                cbase = 'N'
+                if cscore < min_confscore:
+                    cbase = 'N'
+            else:
+                # We encountered a gap due to the primer alignment.
+                cscore = 0
+                cbase = ' '
 
             cons.append(cbase)
             consconf.append(cscore)
@@ -502,7 +522,17 @@ class ConsensSeqBuilder:
 
         return rgindex
 
-    def trimPrimers(self):
+    def trimPrimersFromAlignment(self):
+        """
+        Searches for primer sequences in an alignment of forward and reverse
+        trace files and, if they are found, trims the final sequence to exclude
+        the primers.  Searching is limited to the non-overlapping end regions
+        of the alignment because the primers can only be in these regions.
+        Also adjusts the alignment and consensus sequence to accomodate the
+        alignment with the primers, if extra gaps are needed.  An alignment-
+        length string containing the aligned primers in the appropriate
+        locations is saved as self.alignedprimers.
+        """
         if self.numseqs != 2:
             return
 
@@ -541,8 +571,6 @@ class ConsensSeqBuilder:
         align = PairwiseAlignment()
         align.setSequences(forward, leftend)
         align.doAlignment()
-        #print align.getAlignedSequences()[0]
-        #print align.getAlignedSequences()[1]
         fwdaligned, lendaligned = align.getAlignedSequences()
 
         # Align the reverse complemented reverse primer sequence to the
@@ -550,14 +578,14 @@ class ConsensSeqBuilder:
         reverse = sequencetrace.reverseCompSequence(self.settings.getReversePrimer())
         align.setSequences(reverse, rightend)
         align.doAlignment()
-        print align.getAlignedSequences()[0]
-        print align.getAlignedSequences()[1]
+        #print align.getAlignedSequences()[0]
+        #print align.getAlignedSequences()[1]
         revaligned, rendaligned = align.getAlignedSequences()
 
         # Replace starting and ending gap characters in the aligned primer
         # sequences with spaces.
-        fwdaligned = self.trimAlignedPrimerEndGaps(fwdaligned)
-        revaligned = self.trimAlignedPrimerEndGaps(revaligned)
+        fwdaligned = self.trimAlignedPrimerEnds(fwdaligned)
+        revaligned = self.trimAlignedPrimerEnds(revaligned)
 
         # Construct a full-length sequence to contain the primer alignments.
         self.alignedprimers = (
@@ -610,9 +638,96 @@ class ConsensSeqBuilder:
                 self.consensus = self.consensus[0:gappos] + ' ' + self.consensus[gappos:]
                 self.consconf.insert(gappos, 0)
 
-        #print self.seqindexes[0]
+        # Determine the percent of forward primer bases that matched the trace
+        # data.  Count all gaps as mismatches.
+        fwdtotallen = fwdmatches = 0
+        for index in range(len(fwdaligned)):
+            if fwdaligned[index] != ' ':
+                fwdtotallen += 1
+                if fwdaligned[index] == lendaligned[index]:
+                    fwdmatches += 1
 
-    def trimAlignedPrimerEndGaps(self, alignedp):
+        print fwdmatches, fwdtotallen, (float(fwdmatches) / fwdtotallen)
+
+        # Determine the percent of forward primer bases that matched the trace
+        # data.  Count all gaps as mismatches.
+        revtotallen = revmatches = 0
+        for index in range(len(revaligned)):
+            if revaligned[index] != ' ':
+                revtotallen += 1
+                if revaligned[index] == rendaligned[index]:
+                    revmatches += 1
+
+        print revmatches, revtotallen, (float(revmatches) / revtotallen)
+
+    def trimPrimerFromSequence(self, min_confscore):
+        """
+        Searches for a primer sequence in the base calls of a single trace
+        files and, if it is found, trims the final sequence to exclude the
+        primer.  Also adjusts the alignment and consensus sequence to
+        accomodate the alignment with the primers, if extra gaps are needed.
+        An alignment-length string containing the aligned primer in the
+        appropriate location is saved as self.alignedprimers.  Requires the
+        minimum confscore because it re-computes the finished sequence
+        after doing the primer alignment.
+        """
+        if self.numseqs == 2:
+            return
+
+        # Figure out if we're working on a reverse trace and get the
+        # appropriate primer sequence to search for.
+        isreverse = self.seqt1.isReverseComplemented()
+        if isreverse:
+            primer = self.settings.getForwardPrimer()
+        else:
+            primer = sequencetrace.reverseCompSequence(self.settings.getReversePrimer())
+
+        # Align the primer sequence to the trace sequence.  Using a harsher gap
+        # penalty (-12 instead of -6) seems to improve the chances of getting the
+        # primer to align in the correct location.
+        align = PairwiseAlignment()
+        align.setGapPenalty(-12)
+        align.setSequences(primer, self.alignedseqs[0])
+        align.doAlignment()
+        praligned, seqaligned = align.getAlignedSequences()
+
+        # Use the new alignment for the trace sequence and index list.
+        self.alignedseqs[0] = seqaligned
+        self.seqindexes[0] = align.getAlignedSeqIndexes()[1]
+
+        # Update the "consensus" sequence and quality score list.
+        self.makeSingleConsensus(min_confscore)
+
+        # Replace starting and ending gap characters in the aligned primer
+        # sequences with spaces.
+        praligned = self.trimAlignedPrimerEnds(praligned)
+        self.alignedprimers = praligned
+
+        #print self.alignedprimers
+        #print len(self.alignedprimers)
+        #print len(self.alignedseqs[0])
+
+        # Determine the percent of primer bases that matched the trace data.
+        # Count all gaps as mismatches.
+        prtotallen = prmatches = 0
+        for index in range(len(praligned)):
+            if praligned[index] != ' ':
+                prtotallen += 1
+                if praligned[index] == seqaligned[index]:
+                    prmatches += 1
+        print float(prmatches) / prtotallen
+
+        # See if enough primer bases match to consider the alignment valid.
+        # If so, trim the sequence.
+        if float(prmatches) / prtotallen >= self.settings.getPrimerMatch():
+            # Find the starting location of the primer in the alignment.
+            index = 0
+            while praligned[index] == ' ':
+                index += 1
+
+            self.consensus = self.consensus[0:index] + ' ' * (len(seqaligned) - index)
+
+    def trimAlignedPrimerEnds(self, alignedp):
         """
         Replaces starting and ending gap characters in an aligned primer sequence
         with spaces.
