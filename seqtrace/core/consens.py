@@ -648,8 +648,17 @@ class ConsensSeqBuilder:
                     fwdmatches += 1
 
         print fwdmatches, fwdtotallen, (float(fwdmatches) / fwdtotallen)
+        # If there are enough matches to consider the alignment valid, trim
+        # the finished sequence.
+        if float(fwdmatches) / fwdtotallen >= self.settings.getPrimerMatch():
+            # Find the ending location of the forward primer in the alignment.
+            index = len(fwdaligned) - 1
+            while fwdaligned[index] == ' ':
+                index -= 1
 
-        # Determine the percent of forward primer bases that matched the trace
+            self.consensus = ' ' * (index + 1) + self.consensus[index + 1:]
+
+        # Determine the percent of reverse primer bases that matched the trace
         # data.  Count all gaps as mismatches.
         revtotallen = revmatches = 0
         for index in range(len(revaligned)):
@@ -659,6 +668,16 @@ class ConsensSeqBuilder:
                     revmatches += 1
 
         print revmatches, revtotallen, (float(revmatches) / revtotallen)
+        # If there are enough matches to consider the alignment valid, trim
+        # the finished sequence.
+        #if float(revmatches) / revtotallen >= self.settings.getPrimerMatch():
+            # Find the starting location of the primer in the alignment.
+        #    index = 0
+        #    while praligned[index] == ' ':
+        #        index += 1
+
+        #    self.consensus = self.consensus[0:index] + ' ' * (len(seqaligned) - index)
+
 
     def trimPrimerFromSequence(self, min_confscore):
         """
@@ -715,7 +734,7 @@ class ConsensSeqBuilder:
                 prtotallen += 1
                 if praligned[index] == seqaligned[index]:
                     prmatches += 1
-        print float(prmatches) / prtotallen
+        #print float(prmatches) / prtotallen
 
         # See if enough primer bases match to consider the alignment valid.
         # If so, trim the sequence.
