@@ -646,8 +646,8 @@ class ConsensSeqBuilder:
                 fwdtotallen += 1
                 if fwdaligned[index] == lendaligned[index]:
                     fwdmatches += 1
+        #print fwdmatches, fwdtotallen, (float(fwdmatches) / fwdtotallen)
 
-        print fwdmatches, fwdtotallen, (float(fwdmatches) / fwdtotallen)
         # If there are enough matches to consider the alignment valid, trim
         # the finished sequence.
         if float(fwdmatches) / fwdtotallen >= self.settings.getPrimerMatch():
@@ -666,17 +666,17 @@ class ConsensSeqBuilder:
                 revtotallen += 1
                 if revaligned[index] == rendaligned[index]:
                     revmatches += 1
+        #print revmatches, revtotallen, (float(revmatches) / revtotallen)
 
-        print revmatches, revtotallen, (float(revmatches) / revtotallen)
         # If there are enough matches to consider the alignment valid, trim
         # the finished sequence.
-        #if float(revmatches) / revtotallen >= self.settings.getPrimerMatch():
-            # Find the starting location of the primer in the alignment.
-        #    index = 0
-        #    while praligned[index] == ' ':
-        #        index += 1
+        if float(revmatches) / revtotallen >= self.settings.getPrimerMatch():
+            # Find the starting location of the reverse primer in the alignment.
+            index = 0
+            while revaligned[index] == ' ':
+                index += 1
 
-        #    self.consensus = self.consensus[0:index] + ' ' * (len(seqaligned) - index)
+            self.consensus = self.consensus[0:index + rgapstart + 1] + ' ' * (len(revaligned) - index)
 
 
     def trimPrimerFromSequence(self, min_confscore):
