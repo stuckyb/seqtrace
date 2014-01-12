@@ -261,7 +261,7 @@ class ConsensSeqBuilder:
                 self.trimEndGaps()
 
             winsize, basecnt = self.settings.getAutoTrimParams()
-            #self.trimConsensus(winsize, basecnt)
+            self.trimConsensus(winsize, basecnt)
 
     def makeBayesianConsensus(self, min_confscore):
         """
@@ -488,13 +488,22 @@ class ConsensSeqBuilder:
             return -1
 
         lgindex = 0
-        if self.alignedseqs[0][0] == '-':
+
+        # Move past any end positions where both trace sequences are gaps.
+        # This can happen when primers are aligned to the ends.
+        while lgindex < len(self.alignedseqs[0]) and self.alignedseqs[0][lgindex] == '-' and self.alignedseqs[1][lgindex] == '-':
+            lgindex += 1
+
+        # Check if both sequences were empty.
+        if lgindex == len(self.alignedseqs[0]):
+            return -1
+
+        if self.alignedseqs[0][lgindex] == '-':
             while (lgindex < len(self.alignedseqs[0])) and (self.alignedseqs[0][lgindex] == '-'):
                 lgindex += 1
-        elif self.alignedseqs[1][0] == '-':
+        elif self.alignedseqs[1][lgindex] == '-':
             while (lgindex < len(self.alignedseqs[0])) and (self.alignedseqs[1][lgindex] == '-'):
                 lgindex += 1
-        #print lgindex
 
         if lgindex == len(self.alignedseqs[0]):
             return -1
@@ -512,13 +521,22 @@ class ConsensSeqBuilder:
             return -1
 
         rgindex = len(self.alignedseqs[0]) - 1
+
+        # Move past any end positions where both trace sequences are gaps.
+        # This can happen when primers are aligned to the ends.
+        while rgindex >= 0 and self.alignedseqs[0][rgindex] == '-' and self.alignedseqs[1][rgindex] == '-':
+            rgindex -= 1
+
+        # Check if both sequences were empty.
+        if rgindex < 0:
+            return rgindex
+
         if self.alignedseqs[0][rgindex] == '-':
             while (rgindex >= 0) and (self.alignedseqs[0][rgindex] == '-'):
                 rgindex -= 1
         elif self.alignedseqs[1][rgindex] == '-':
             while (rgindex >= 0) and (self.alignedseqs[1][rgindex] == '-'):
                 rgindex -= 1
-        #print rgindex
 
         return rgindex
 
@@ -677,6 +695,9 @@ class ConsensSeqBuilder:
                 index += 1
 
             self.consensus = self.consensus[0:index + rgapstart + 1] + ' ' * (len(revaligned) - index)
+
+        print self.getLeftEndGapStart()
+        print len(self.alignedseqs[0]) - self.getRightEndGapStart()
 
 
     def trimPrimerFromSequence(self, min_confscore):

@@ -25,6 +25,7 @@ import unittest
 class TestConsensus(unittest.TestCase):
     def setUp(self):
         self.settings = ConsensSeqSettings()
+        self.settings.trim_primers = False
 
         # Set up some simple sequence trace data.
         self.seqt1 = SequenceTrace()
@@ -71,7 +72,7 @@ class TestConsensus(unittest.TestCase):
 
     # Test the basic ConsensSeqBuilder operations.
     def test_consensus(self):
-        cons = ConsensSeqBuilder((self.seqt1,))
+        cons = ConsensSeqBuilder((self.seqt1,), self.settings)
 
         self.assertRaises(ConsensSeqBuilderError, cons.setConsensSequence, 'AATT')
 
@@ -215,9 +216,6 @@ class TestConsensus(unittest.TestCase):
             #print nppd
             for base in ('A', 'T', 'G', 'C'):
                 self.assertAlmostEqual(result[base], nppd[base])
-
-        cons.calcPosteriorBasePrDist('A', 20, 'T', 20, nppd)
-        print nppd
 
     def test_BayesianConsensus(self):
         """
@@ -364,9 +362,17 @@ class TestConsensus(unittest.TestCase):
                 ['GC-TGTAC',
                  'GCCTGT-C',
                  [0, 7]],
+                # Extra gaps on the ends of the alignment.
+                ['--------C-GTA-C--',
+                 '-----G-CCTG------',
+                 [8, 10]],
                 # No sequence data.
                 ['--------',
                  'GCCTGTAC',
+                 [-1, -1]],
+                # No sequence data.
+                ['--------',
+                 '--------',
                  [-1, -1]]
                 ]
 
@@ -374,12 +380,12 @@ class TestConsensus(unittest.TestCase):
         for cnt in range(2):
             for gtest in gaptests:
                 if cnt == 0:
-                    cons.seq1aligned = gtest[0]
-                    cons.seq2aligned = gtest[1]
+                    cons.alignedseqs[0] = gtest[0]
+                    cons.alignedseqs[1] = gtest[1]
                 else:
                     # switch the order the second time around
-                    cons.seq1aligned = gtest[1]
-                    cons.seq2aligned = gtest[0]
+                    cons.alignedseqs[0] = gtest[1]
+                    cons.alignedseqs[1] = gtest[0]
 
                 self.assertEqual(cons.getLeftEndGapStart(), gtest[2][0])
                 self.assertEqual(cons.getRightEndGapStart(), gtest[2][1])
@@ -442,12 +448,12 @@ class TestConsensus(unittest.TestCase):
         for cnt in range(2):
             for gttest in gaptrimtests:
                 if cnt == 0:
-                    cons.seq1aligned = gttest[0]
-                    cons.seq2aligned = gttest[1]
+                    cons.alignedseqs[0] = gttest[0]
+                    cons.alignedseqs[1] = gttest[1]
                 else:
                     # switch the order the second time around
-                    cons.seq1aligned = gttest[1]
-                    cons.seq2aligned = gttest[0]
+                    cons.alignedseqs[0] = gttest[1]
+                    cons.alignedseqs[1] = gttest[0]
 
                 cons.setConsensSequence('GCTCNTGACACGAATTAC')
                 cons.trimEndGaps()
