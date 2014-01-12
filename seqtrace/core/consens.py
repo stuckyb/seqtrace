@@ -187,6 +187,14 @@ class ConsensSeqBuilder:
 
     def __init__(self, sequencetraces, settings=None):
         self.numseqs = len(sequencetraces)
+
+        # Define a list for the aligned trace sequences.
+        self.alignedseqs = list()
+
+        # Define a list for the indexes from the aligned sequence into
+        # the original trace sequence.
+        self.seqindexes = list()
+
         self.settings = settings
         if self.settings == None:
             self.settings = ConsensSeqSettings()
@@ -199,12 +207,13 @@ class ConsensSeqBuilder:
             align = PairwiseAlignment()
             align.setSequences(self.seqt1.getBaseCalls(), self.seqt2.getBaseCalls())
             align.doAlignment()
-            self.seq1aligned, self.seq2aligned = align.getAlignedSequences()
-            self.seq1indexed, self.seq2indexed = align.getAlignedSeqIndexes()
+            self.alignedseqs.append(align.getAlignedSequences()[0])
+            self.alignedseqs.append(align.getAlignedSequences()[1])
+            self.seqindexes.append(align.getAlignedSeqIndexes()[0])
+            self.seqindexes.append(align.getAlignedSeqIndexes()[1])
         else:
-            self.seq1aligned = self.seqt1.getBaseCalls()
-            self.seq1indexed = range(0, len(self.seq1aligned))
-            self.seq2aligned = None
+            self.alignedseqs.append(self.seqt1.getBaseCalls())
+            self.seqindexes.append(range(0, len(self.alignedseqs[0])))
 
         self.makeConsensusSequence()
 
@@ -250,17 +259,17 @@ class ConsensSeqBuilder:
         # Create a dictionary to use for nucleotide posterior probability distributions.
         nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
 
-        for cnt in range(len(self.seq1aligned)):
+        for cnt in range(len(self.alignedseqs[0])):
             # Initialize variables to indicate no usable data at this position.
             base1 = base2 = 'N'
 
             # See which traces have usable data at this position.
-            if self.seq1aligned[cnt] not in ('-', 'N'):
-                base1 = self.seq1aligned[cnt]
-                score1 = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
-            if self.seq2aligned[cnt] not in ('-', 'N'):
-                base2 = self.seq2aligned[cnt]
-                score2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
+            if self.alignedseqs[0][cnt] not in ('-', 'N'):
+                base1 = self.alignedseqs[0][cnt]
+                score1 = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
+            if self.alignedseqs[1][cnt] not in ('-', 'N'):
+                base2 = self.alignedseqs[1][cnt]
+                score2 = self.seqt2.getBaseCallConf(self.seqindexes[1][cnt])
 
             # Determine the consensus base at this position.
             if base1 != 'N' and base2 != 'N':
@@ -392,18 +401,18 @@ class ConsensSeqBuilder:
         """
         cons = list()
         consconf = list()
-        #print self.seq2aligned
-        #print self.seq2indexed
+        #print self.alignedseqs[1]
+        #print self.seqindexes[1]
         #print len(self.seqt2.getBaseCalls())
 
-        for cnt in range(len(self.seq1aligned)):
+        for cnt in range(len(self.alignedseqs[0])):
             cscore = cscore2 = -1
-            if (self.seq1aligned[cnt] != '-') and (self.seq1aligned[cnt] != 'N'):
-                cbase = self.seq1aligned[cnt]
-                cscore = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
-            if (self.seq2aligned[cnt] != '-') and (self.seq2aligned[cnt] != 'N'):
-                cbase2 = self.seq2aligned[cnt]
-                cscore2 = self.seqt2.getBaseCallConf(self.seq2indexed[cnt])
+            if (self.alignedseqs[0][cnt] != '-') and (self.alignedseqs[0][cnt] != 'N'):
+                cbase = self.alignedseqs[0][cnt]
+                cscore = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
+            if (self.alignedseqs[1][cnt] != '-') and (self.alignedseqs[1][cnt] != 'N'):
+                cbase2 = self.alignedseqs[1][cnt]
+                cscore2 = self.seqt2.getBaseCallConf(self.seqindexes[1][cnt])
 
             if cscore >= min_confscore:
                 if cscore2 >= min_confscore:
@@ -434,10 +443,10 @@ class ConsensSeqBuilder:
         cons = list()
         consconf = list()
 
-        for cnt in range(len(self.seq1aligned)):
+        for cnt in range(len(self.alignedseqs[0])):
             cscore = 0
-            cbase = self.seq1aligned[cnt]
-            cscore = self.seqt1.getBaseCallConf(self.seq1indexed[cnt])
+            cbase = self.alignedseqs[0][cnt]
+            cscore = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
 
             if cscore < min_confscore:
                 cbase = 'N'
@@ -459,15 +468,15 @@ class ConsensSeqBuilder:
             return -1
 
         lgindex = 0
-        if self.seq1aligned[0] == '-':
-            while (lgindex < len(self.seq1aligned)) and (self.seq1aligned[lgindex] == '-'):
+        if self.alignedseqs[0][0] == '-':
+            while (lgindex < len(self.alignedseqs[0])) and (self.alignedseqs[0][lgindex] == '-'):
                 lgindex += 1
-        elif self.seq2aligned[0] == '-':
-            while (lgindex < len(self.seq1aligned)) and (self.seq2aligned[lgindex] == '-'):
+        elif self.alignedseqs[1][0] == '-':
+            while (lgindex < len(self.alignedseqs[0])) and (self.alignedseqs[1][lgindex] == '-'):
                 lgindex += 1
         #print lgindex
 
-        if lgindex == len(self.seq1aligned):
+        if lgindex == len(self.alignedseqs[0]):
             return -1
         else:
             return lgindex
@@ -482,12 +491,12 @@ class ConsensSeqBuilder:
         if self.numseqs == 1:
             return -1
 
-        rgindex = len(self.seq1aligned) - 1
-        if self.seq1aligned[rgindex] == '-':
-            while (rgindex >= 0) and (self.seq1aligned[rgindex] == '-'):
+        rgindex = len(self.alignedseqs[0]) - 1
+        if self.alignedseqs[0][rgindex] == '-':
+            while (rgindex >= 0) and (self.alignedseqs[0][rgindex] == '-'):
                 rgindex -= 1
-        elif self.seq2aligned[rgindex] == '-':
-            while (rgindex >= 0) and (self.seq2aligned[rgindex] == '-'):
+        elif self.alignedseqs[1][rgindex] == '-':
+            while (rgindex >= 0) and (self.alignedseqs[1][rgindex] == '-'):
                 rgindex -= 1
         #print rgindex
 
@@ -497,34 +506,53 @@ class ConsensSeqBuilder:
         if self.numseqs != 2:
             return
 
-        # Get the portions of the trace sequences that are in the end gaps, as
-        # these regions are where the primers will be located.
+        # Figure out which trace is the reverse trace.
         if self.seqt1.isReverseComplemented():
-            leftend = self.seq1aligned[0:self.getLeftEndGapStart()]
-            rightend = self.seq2aligned[self.getRightEndGapStart() + 1:]
+            rev = 0
+            fwd = 1
         else:
-            leftend = self.seq2aligned[0:self.getLeftEndGapStart()]
-            rightend = self.seq1aligned[self.getRightEndGapStart() + 1:]
+            rev = 1
+            fwd = 0
+
+        # Get the portions of the trace sequences that are in the end gaps, as
+        # these regions are where the primers will be located.  We don't use
+        # the getEndGapStart() methods because we want to be sure that we're
+        # operating on the correct sequence.
+        lgapstart = 0
+        while self.alignedseqs[fwd][lgapstart] == '-' and lgapstart < len(self.alignedseqs[fwd]):
+            lgapstart += 1
+
+        rgapstart = len(self.alignedseqs[rev]) - 1
+        while self.alignedseqs[rev][rgapstart] == '-' and rgapstart >= 0:
+            rgapstart -= 1
+
+        # Check if either sequence is empty.  If so, we can't proceed.
+        if lgapstart == len(self.alignedseqs[fwd]) or rgapstart < 0:
+            return
+
+        # Get the left and right ends that should contain the primers.
+        leftend = self.alignedseqs[rev][0:lgapstart]
+        rightend = self.alignedseqs[fwd][rgapstart + 1:]
         #print leftend
         #print rightend
 
-        # Try to align the forward primer sequence to the left end gap sequence.
+        # Align the forward primer sequence to the left end gap sequence.
         forward = self.settings.getForwardPrimer()
         align = PairwiseAlignment()
         align.setSequences(forward, leftend)
         align.doAlignment()
         #print align.getAlignedSequences()[0]
         #print align.getAlignedSequences()[1]
-        fwdaligned = align.getAlignedSequences()[0]
+        fwdaligned, lendaligned = align.getAlignedSequences()
 
-        # Try to align the reverse complemented reverse primer sequence to the
+        # Align the reverse complemented reverse primer sequence to the
         # right end gap sequence.
         reverse = sequencetrace.reverseCompSequence(self.settings.getReversePrimer())
         align.setSequences(reverse, rightend)
         align.doAlignment()
-        #print align.getAlignedSequences()[0]
-        #print align.getAlignedSequences()[1]
-        revaligned = align.getAlignedSequences()[0]
+        print align.getAlignedSequences()[0]
+        print align.getAlignedSequences()[1]
+        revaligned, rendaligned = align.getAlignedSequences()
 
         # Replace starting and ending gap characters in the aligned primer
         # sequences with spaces.
@@ -533,12 +561,56 @@ class ConsensSeqBuilder:
 
         # Construct a full-length sequence to contain the primer alignments.
         self.alignedprimers = (
-                fwdaligned + ' ' * (len(self.seq1aligned) - len(fwdaligned) - len(revaligned))
+                fwdaligned + ' ' * (rgapstart - lgapstart + 1)
                 + revaligned)
         #print self.alignedprimers
         #print len(self.alignedprimers)
-        #print len(self.seq1aligned)
-        #align.getAlignedSeqIndexes()
+        #print len(self.alignedseqs[0])
+
+        # If the primer alignment introduced gaps into the end gap region of the
+        # trace alignment, update the alignment, alignment indices, consensus
+        # sequence, and consensus quality score list to include the extra gaps.
+        for index in range(len(lendaligned)):
+            if lendaligned[index] == '-':
+                # Update the start of the right end gap to reflect the new gaps
+                # that are added to the left side of the alignment.
+                rgapstart += 1
+
+                # Update both aligned sequences and sequence indexes.
+                for seqnum in range(2):
+                    self.alignedseqs[seqnum] = self.alignedseqs[seqnum][0:index] + '-' + self.alignedseqs[seqnum][index:]
+                    sindex = self.seqindexes[seqnum][index]
+                    if sindex > 0:
+                        sindex = (sindex * -1) - 1
+                    self.seqindexes[seqnum].insert(index, sindex)
+
+                # Update the consensus sequence and quality scores.
+                self.consensus = self.consensus[0:index] + ' ' + self.consensus[index:]
+                self.consconf.insert(index, 0)
+
+        # Do the same for the right end region.
+        for index in range(len(rendaligned)):
+            if rendaligned[index] == '-':
+                # Update both aligned sequences and sequence indexes.
+                for seqnum in range(2):
+                    gappos = rgapstart + index + 1
+                    self.alignedseqs[seqnum] = self.alignedseqs[seqnum][0:gappos] + '-' + self.alignedseqs[seqnum][gappos:]
+                    # Check if we're at the end of the alignment.
+                    if gappos != len(self.seqindexes[seqnum]):
+                        sindex = self.seqindexes[seqnum][gappos]
+                        if sindex > 0:
+                            sindex = (sindex * -1) - 1
+                    else:
+                        sindex = self.seqindexes[seqnum][gappos - 1]
+                        if sindex > 0:
+                            sindex = ((sindex + 1) * -1) - 1
+                    self.seqindexes[seqnum].insert(gappos, sindex)
+
+                # Update the consensus sequence and quality scores.
+                self.consensus = self.consensus[0:gappos] + ' ' + self.consensus[gappos:]
+                self.consconf.insert(gappos, 0)
+
+        #print self.seqindexes[0]
 
     def trimAlignedPrimerEndGaps(self, alignedp):
         """
@@ -649,9 +721,9 @@ class ConsensSeqBuilder:
             raise ConsensSeqBuilderError('Invalid sequence number.')
 
         if sequence_num == 0:
-            return self.seq1aligned
+            return self.alignedseqs[0]
         else:
-            return self.seq2aligned
+            return self.alignedseqs[1]
 
     def getSequenceTrace(self, sequence_num):
         if (sequence_num < 0) or (sequence_num >= self.numseqs):
@@ -667,9 +739,9 @@ class ConsensSeqBuilder:
             raise ConsensSeqBuilderError('Invalid sequence number.')
 
         if sequence_num == 0:
-            return self.seq1indexed[alignment_index]
+            return self.seqindexes[0][alignment_index]
         else:
-            return self.seq2indexed[alignment_index]
+            return self.seqindexes[1][alignment_index]
 
 
 class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
