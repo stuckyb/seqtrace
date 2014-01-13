@@ -34,11 +34,20 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
 
         self.project = project
 
-        mainvb = gtk.VBox(False, 30)
-        mainvb.set_border_width(20)
+        # Set up some spacing values for the UI layout.
+        insideframe_padding = 14
+        tabpadding_tops = 24
+        tabpadding_sides = 18
 
+        # Set up the tabs ("notebook") for the project settings.
+        nb = gtk.Notebook()
+        nb.set_border_width(8)
+        nb.set_tab_pos(gtk.POS_TOP)
+
+        # Create the UI elements for the trace file settings tab.
+        mainvb = gtk.VBox(False, 16)
         tracevb = gtk.VBox(False, 20)
-        tracevb.set_border_width(10)
+        tracevb.set_border_width(insideframe_padding)
 
         # Get the consensus sequence settings from the project.
         cssettings = self.project.getConsensSeqSettings()
@@ -101,38 +110,49 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
 
         tracevb.pack_start(vb)
 
+        frame = gtk.Frame('Trace files')
+        frame.add(tracevb)
+        mainvb.pack_start(frame)
+
         # Set up UI components for the forward/reverse primer strings.
         vb = gtk.VBox()
-        pr_hb1 = gtk.HBox()
-        pr_hb1.pack_start(gtk.Label("Primer sequences (5' to 3'):"), False)
+        vb = gtk.VBox(False, 20)
+        vb.set_border_width(insideframe_padding)
 
         # Create a layout table for the labels and text entries.
         table = gtk.Table(2, 2)
 
         self.fwdprimer_entry = gtk.Entry()
-        self.fwdprimer_entry.set_width_chars(36)
+        self.fwdprimer_entry.set_width_chars(38)
         self.fwdprimer_entry.set_text(cssettings.getForwardPrimer())
         table.attach(gtk.Label('Forward primer: '), 0, 1, 0, 1, xoptions=0)
         table.attach(self.fwdprimer_entry, 1, 2, 0, 1, xoptions=0)
         
         self.revprimer_entry = gtk.Entry()
-        self.revprimer_entry.set_width_chars(36)
+        self.revprimer_entry.set_width_chars(38)
         self.revprimer_entry.set_text(cssettings.getReversePrimer())
         table.attach(gtk.Label('Reverse primer: '), 0, 1, 1, 2, xoptions=0)
         table.attach(self.revprimer_entry, 1, 2, 1, 2, xoptions=0)
 
-        vb.pack_start(pr_hb1)
         vb.pack_start(table)
 
-        tracevb.pack_start(vb)
-
-        frame = gtk.Frame('Trace files settings')
-        frame.add(tracevb)
+        frame = gtk.Frame("Primer sequences (5' to 3')")
+        frame.add(vb)
         mainvb.pack_start(frame)
 
+        # Use another VBox to get extra padding on the sides.
+        vbpad = gtk.VBox(False, 0)
+        vbpad.set_border_width(tabpadding_sides)
+        vbpad.pack_start(mainvb, expand=False, padding=(tabpadding_tops - tabpadding_sides))
+
+        nb.append_page(vbpad, gtk.Label('Trace settings'))
+
+        # Create the UI components for the sequence processing tab.
+        mainvb = gtk.VBox(False, 16)
+
         # Set up UI components for choosing the confidence score cutoff value.
-        vb = gtk.VBox(False, 20)
-        vb.set_border_width(10)
+        vb = gtk.VBox(False, 12)
+        vb.set_border_width(insideframe_padding)
         hb1 = gtk.HBox()
         hb1.pack_start(gtk.Label('Min. confidence score:  '), False)
 
@@ -163,8 +183,8 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         mainvb.pack_start(frame)
 
         # Set up UI components for sequence trimming settings.
-        vb = gtk.VBox(False, 20)
-        vb.set_border_width(10)
+        vb = gtk.VBox(False, 24)
+        vb.set_border_width(insideframe_padding)
         self.autotrim_checkbox = gtk.CheckButton('Automatically trim sequence ends')
         self.autotrim_checkbox.connect('toggled', self.autoTrimToggled)
         vb.pack_start(self.autotrim_checkbox)
@@ -172,13 +192,13 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         # Create UI components for primer trimming.
         vb2 = gtk.VBox(False, 6)
         hb2 = gtk.HBox()
-        self.trimprimers_checkbox = gtk.CheckButton('Trim primers; ')
+        self.trimprimers_checkbox = gtk.CheckButton('Trim primers if ')
         self.trimprimers_checkbox.set_active(cssettings.getTrimPrimers())
         hb2.pack_start(self.trimprimers_checkbox, False)
         self.primermatch_th_adj = gtk.Adjustment(int(cssettings.getPrimerMatchThreshold() * 100), 1, 100, 1)
         self.primermatch_th_spin = gtk.SpinButton(self.primermatch_th_adj)
         hb2.pack_start(self.primermatch_th_spin, False, False)
-        self.trimprimers_label = gtk.Label(' % of primer sequence must match the trace.')
+        self.trimprimers_label = gtk.Label(' % of the primer alignment matches.')
         hb2.pack_start(self.trimprimers_label, False)
 
         vb2.pack_start(hb2)
@@ -214,12 +234,19 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         self.autotrim_checkbox.toggled()
 
         vb.pack_start(vb2)
-        frame = gtk.Frame('Sequence settings')
+        frame = gtk.Frame('Sequence trimming')
         frame.add(vb)
 
         mainvb.pack_start(frame)
 
-        self.vbox.pack_start(mainvb)
+        # Use another VBox to get extra padding on the sides.
+        vbpad = gtk.VBox(False, 0)
+        vbpad.set_border_width(tabpadding_sides)
+        vbpad.pack_start(mainvb, expand=False, padding=(tabpadding_tops - tabpadding_sides))
+
+        nb.append_page(vbpad, gtk.Label('Sequence processing'))
+
+        self.vbox.pack_start(nb)
 
         self.vbox.show_all()
 
