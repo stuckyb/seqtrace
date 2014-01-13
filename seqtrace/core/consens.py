@@ -62,14 +62,22 @@ class ConsensSeqSettings(Observable):
             'autotrim_change', 'consensus_algorithm_change'])
 
     def copyFrom(self, settings):
+        """
+        Copies settings from another ConsensSeqSettings object to this object.
+        """
         self.min_confscore = settings.getMinConfScore()
         self.consensus_algorithm = settings.getConsensusAlgorithm()
         self.do_autotrim = settings.getDoAutoTrim()
         self.autotrim_winsize = settings.getAutoTrimParams()[0]
         self.autotrim_basecnt = settings.getAutoTrimParams()[1]
         self.trim_endgaps = settings.getTrimEndGaps()
+        self.trim_primers = settings.getTrimPrimers()
+        self.primermatch = settings.getPrimerMatchThreshold()
+        self.fwdprimer = settings.getForwardPrimer()
+        self.revprimer = settings.getReversePrimer()
 
-    def setAll(self, min_confscore, consensus_algorithm, do_autotrim, autotrim_params, trim_endgaps):
+    def setAll(self, min_confscore, consensus_algorithm, do_autotrim, autotrim_params, trim_endgaps,
+            trim_primers, primermatch_threshold, fwd_primer, rev_primer):
         self.notify_all = False
         self.change_made = False
 
@@ -79,6 +87,10 @@ class ConsensSeqSettings(Observable):
             self.setDoAutoTrim(do_autotrim)
             self.setAutoTrimParams(*autotrim_params)
             self.setTrimEndGaps(trim_endgaps)
+            self.setTrimPrimers(trim_primers)
+            self.setPrimerMatchThreshold(primermatch_threshold)
+            self.setForwardPrimer(fwd_primer)
+            self.setReversePrimer(rev_primer)
         finally:
             self.notify_all = True
             if self.change_made:

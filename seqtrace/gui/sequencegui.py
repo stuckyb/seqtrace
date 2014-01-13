@@ -30,7 +30,8 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
 
         self.cons = mod_consensseq_builder
         self.numseqs = self.cons.getNumSeqs()
-        self.drawprimers = self.cons.getSettings().getTrimPrimers()
+        settings = self.cons.getSettings()
+        self.drawprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
 
         self.cons.registerObserver('consensus_changed', self.consensusChanged)
         self.connect('destroy', self.onDestroy)

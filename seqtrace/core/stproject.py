@@ -53,6 +53,10 @@ class SeqTraceProjWriter:
         self.proj_data['consseqsettings']['autotrim_winsize'] = settings.getAutoTrimParams()[0]
         self.proj_data['consseqsettings']['autotrim_basecnt'] = settings.getAutoTrimParams()[1]
         self.proj_data['consseqsettings']['trim_endgaps'] = settings.getTrimEndGaps()
+        self.proj_data['consseqsettings']['trim_primers'] = settings.getTrimPrimers()
+        self.proj_data['consseqsettings']['primermatch_threshold'] = settings.getPrimerMatchThreshold()
+        self.proj_data['consseqsettings']['forward_primer'] = settings.getForwardPrimer()
+        self.proj_data['consseqsettings']['reverse_primer'] = settings.getReversePrimer()
 
     def addProjectItem(self, item):
         itemdata = ProjectItemData()
@@ -95,10 +99,10 @@ class SeqTraceProjReader:
             raise FileDataError
 
         # Check the project data file format version.
-        if not(self.proj_data['formatversion'] == '0.8' or self.proj_data['formatversion'] == '0.9'):
+        if self.proj_data['formatversion'] not in ('0.8', '0.9'):
             raise FileFormatVersionError
 
-        # a simple check to make sure the required data are present
+        # A simple check to make sure the required data are present.
         if (('properties' not in self.proj_data)
                 or ('items' not in self.proj_data)
                 or ('consseqsettings' not in self.proj_data)):
@@ -120,8 +124,16 @@ class SeqTraceProjReader:
         # Handle settings not included in the 0.8 version of the file format.
         if self.proj_data['formatversion'] == '0.8':
             settings.setConsensusAlgorithm('legacy')
+            settings.setTrimPrimers(False)
+            settings.setPrimerMatchThreshold(0.8)
+            settings.setForwardPrimer('')
+            settings.setReversePrimer('')
         else:
             settings.setConsensusAlgorithm(self.proj_data['consseqsettings']['consensus_algorithm'])
+            #settings.setTrimPrimers(self.proj_data['consseqsettings']['trim_primers'])
+            #settings.setPrimerMatchThreshold(self.proj_data['consseqsettings']['primermatch_threshold'])
+            #settings.setForwardPrimer(self.proj_data['consseqsettings']['forward_primer'])
+            #settings.setReversePrimer(self.proj_data['consseqsettings']['reverse_primer'])
 
         return settings
 
