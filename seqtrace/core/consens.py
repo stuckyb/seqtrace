@@ -48,8 +48,11 @@ class ConsensSeqSettings(Observable):
         self.trim_primers = True
         # The proportion of bases that must match to consider a primer alignment valid.
         self.primermatch = 0.8
+        # The primer sequences.
+        self.fwdprimer = ''
+        self.revprimer = ''
 
-        # a flag to indicate if a setAll() operation is in progress
+        # A flag to indicate if a setAll() operation is in progress.
         self.notify_all = True
 
         # Initialize observable events.  The event "settings_change" is triggered whenever 
@@ -81,6 +84,17 @@ class ConsensSeqSettings(Observable):
             if self.change_made:
                 self.notifyObservers('settings_change', ())
 
+    def notifySettingsChanged(self):
+        """
+        Notifies listeners that one or more settings have changed.  If this method
+        is called in the middle of setAll() operation, the notification is deferred
+        until all settings have been changed.
+        """
+        if self.notify_all:
+            self.notifyObservers('settings_change', ())
+        else:
+            self.change_made = True
+
     def getMinConfScore(self):
         return self.min_confscore
 
@@ -92,10 +106,7 @@ class ConsensSeqSettings(Observable):
             oldval = self.min_confscore
             self.min_confscore = newval
             self.notifyObservers('min_confscore_change', (self.min_confscore, oldval))
-            if self.notify_all:
-                self.notifyObservers('settings_change', ())
-            else:
-                self.change_made = True
+            self.notifySettingsChanged()
 
     def getConsensusAlgorithm(self):
         return self.consensus_algorithm
@@ -107,10 +118,7 @@ class ConsensSeqSettings(Observable):
         if self.consensus_algorithm != newval:
             self.consensus_algorithm = newval
             self.notifyObservers('consensus_algorithm_change', ())
-            if self.notify_all:
-                self.notifyObservers('settings_change', ())
-            else:
-                self.change_made = True
+            self.notifySettingsChanged()
 
     def getDoAutoTrim(self):
         return self.do_autotrim
@@ -119,10 +127,7 @@ class ConsensSeqSettings(Observable):
         if self.do_autotrim != newval:
             self.do_autotrim = newval
             self.notifyObservers('autotrim_change', ())
-            if self.notify_all:
-                self.notifyObservers('settings_change', ())
-            else:
-                self.change_made = True
+            self.notifySettingsChanged()
 
     def getAutoTrimParams(self):
         return (self.autotrim_winsize, self.autotrim_basecnt)
@@ -135,10 +140,7 @@ class ConsensSeqSettings(Observable):
             self.autotrim_winsize = windowsize
             self.autotrim_basecnt = basecount
             self.notifyObservers('autotrim_change', ())
-            if self.notify_all:
-                self.notifyObservers('settings_change', ())
-            else:
-                self.change_made = True
+            self.notifySettingsChanged()
 
     def getTrimEndGaps(self):
         return self.trim_endgaps
@@ -147,22 +149,43 @@ class ConsensSeqSettings(Observable):
         if self.trim_endgaps != newval:
             self.trim_endgaps = newval
             self.notifyObservers('autotrim_change', ())
-            if self.notify_all:
-                self.notifyObservers('settings_change', ())
-            else:
-                self.change_made = True
+            self.notifySettingsChanged()
 
     def getTrimPrimers(self):
         return self.trim_primers
 
-    def getPrimerMatch(self):
+    def setTrimPrimers(self, newval):
+        if self.trim_primers != newval:
+            self.trim_primers = newval
+            self.notifySettingsChanged()
+
+    def getPrimerMatchThreshold(self):
         return self.primermatch
 
+    def setPrimerMatchThreshold(self, newval):
+        if newval < 0 or newval > 1:
+            raise ConsensSeqSettingsError('The primer match threshold must be between 0 and 1.')
+
+        if self.primermatch != newval:
+            self.primermatch = newval
+            self.notifySettingsChanged()
+
     def getForwardPrimer(self):
-        return 'TATGTATTACCATGAGGGCAAATATC'
+        return self.fwdprimer
+
+    def setForwardPrimer(self, primerseq):
+        if self.fwdprimer != primerseq:
+            self.fwdprimer = primerseq
+            self.notifySettingsChanged()
 
     def getReversePrimer(self):
-        return 'AATTTCTATCTTATGTTTTCAAAAC'
+        return self.revprimer
+
+    def setReversePrimer(self, primerseq):
+        if self.revprimer != primerseq:
+            self.revprimer = primerseq
+            self.notifySettingsChanged()
+
 
 
 class ConsensSeqBuilderError(Exception):
