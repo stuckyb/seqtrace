@@ -70,6 +70,20 @@ class TestConsensus(unittest.TestCase):
         #                    A   W   S   C   T   A   A   C   A   G   R   C   A   Y   G   A   T   T   W   C   B            
         self.seqt7.bcconf = [5,  4,  18, 40, 30, 8,  20, 32, 28, 6,  36, 40, 7,  60, 58, 61, 34, 61, 14, 40, 12           ]
 
+        # Trace data to use for the primer trimming tests.
+        self.seqt8 = SequenceTrace()
+        self.seqt9 = SequenceTrace()
+        self.seqt8.basecalls = 'TAAGCTACCTGAATG'
+        self.seqt9.basecalls = 'TCCTGNCACGAATTAC'
+        # alignment of sequences 8 and reversecomp(9):   'TAAGCTACCTGA-ATG------'
+        #                                                '-----T-CCTGNCACGAATTAC'
+
+        #                    T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
+        self.seqt8.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
+        #                                        T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
+        self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
+        self.seqt9.isreverse_comped = True
+
     def test_consensus(self):
         """
         Test the basic ConsensSeqBuilder operations.
@@ -112,8 +126,8 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt3,), self.settings)
         self.assertEqual(cons.getConsensus(), 'NNNNNNNNNNNNNNNNNNNNNN')
 
-        #                          W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
-        # self.seqt6.bcconf = [    4,  20, 24, 34, 12, 8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 6,  40, 20, 10, 34, 6]
+        #                      W   S   C   T   A   M   C   T   K   R   C   A   Y   G   A   T   T   H   C   B   D   A   V
+        # self.seqt6.bcconf = [4,  20, 24, 34, 12, 8,  30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 6,  40, 20, 10, 34, 6]
 
         # Test a case with IUPAC ambiguity codes.
         self.settings.setMinConfScore(10)
@@ -225,6 +239,8 @@ class TestConsensus(unittest.TestCase):
         the Bayesian consensus algorithm.
         """
         self.settings.setDoAutoTrim(False)
+        self.settings.setForwardPrimer('')
+        self.settings.setReversePrimer('')
         self.settings.setConsensusAlgorithm('Bayesian')
 
         # First, test the special case where none of the confidence scores exceed the quality threshold.
@@ -268,6 +284,8 @@ class TestConsensus(unittest.TestCase):
         the legacy (SeqTrace 8.0) consensus algorithm.
         """
         self.settings.setDoAutoTrim(False)
+        self.settings.setForwardPrimer('')
+        self.settings.setReversePrimer('')
         self.settings.setConsensusAlgorithm('legacy')
 
         # First, test the special case where none of the confidence scores exceed the quality threshold.
@@ -443,7 +461,11 @@ class TestConsensus(unittest.TestCase):
                  '                  '],
                 # extra gaps at alignment ends
                 ['----CTGACACGAAT---',
-                 '-C-CCTGACACGAA----',
+                 '-CTCCTGACACGAA----',
+                 '    NTGACACGAA    '],
+                # extra gaps at alignment ends
+                ['----CTGACACGAAT-A-',
+                 '-CT-CTGACACGAA----',
                  '    NTGACACGAA    '],
                 # no sequence
                 ['------------------',
@@ -565,30 +587,118 @@ class TestConsensus(unittest.TestCase):
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), 'NNNNTNNCTNACATGANTTANN')
 
-    def test_primerTrimming(self):
+    def test_trimPrimerFromSequence(self):
         """
-        Tests the primer trimming algorithms for both 1 and 2 trace sequences.
+        Tests the primer trimming algorithm for a single trace sequence.
         """
-        # Define trace data to use for the tests.
-        seqt1 = SequenceTrace()
-        seqt2 = SequenceTrace()
-        seqt1.basecalls = 'TAAGCTACCTGAATG'
-        seqt2.basecalls = 'TCCTGNCACGAATTAC'
-        # alignment of sequences 1 and reversecomp(2):   'TAAGCTACCTGA-ATG------'
+        self.settings.setMinConfScore(10)
+        self.settings.setDoAutoTrim(True)
+        self.settings.setTrimPrimers(True)
+        self.settings.setPrimerMatchThreshold(0.5)
+        self.settings.setTrimEndGaps(False)
+        self.settings.setAutoTrimParams(1, 1)
+        self.settings.setConsensusAlgorithm('Bayesian')
+
+        #                      T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
+        # self.seqt8.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
+        #                                          T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
+        # self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
+
+        # Verify that the consensus sequence is as expected.
+        cons = ConsensSeqBuilder((self.seqt8,), self.settings)
+        self.assertEqual(cons.getConsensus(), 'TAAGCTACCTGANTG')
+
+        # First check forward trace alignment and trimming.
+        self.settings.setReversePrimer('ATTC')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '          GAAT ')
+        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG')
+        self.assertEqual(cons.getConsensus(),        'TAAGCTACCT     ')
+
+        self.settings.setReversePrimer('ATCA')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '         TG-AT ')
+        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG')
+        self.assertEqual(cons.getConsensus(),        'TAAGCTACC      ')
+
+        self.settings.setReversePrimer('AACAT')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '            ATGTT')
+        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG--')
+        self.assertEqual(cons.getConsensus(),        'TAAGCTACCTGA     ')
+
+        self.settings.setPrimerMatchThreshold(0.8)
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '            ATGTT')
+        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG--')
+        self.assertEqual(cons.getConsensus(),        'TAAGCTACCTGANTG  ')
+
+        self.settings.setPrimerMatchThreshold(0.5)
+        self.settings.setReversePrimer('TTACC')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   'GGTAA            ')
+        self.assertEqual(cons.getAlignedSequence(0), '--TAAGCTACCTGAATG')
+        self.assertEqual(cons.getConsensus(),        '                 ')
+
+        self.settings.setPrimerMatchThreshold(0.8)
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   'GGTAA            ')
+        self.assertEqual(cons.getAlignedSequence(0), '--TAAGCTACCTGAATG')
+        self.assertEqual(cons.getConsensus(),        '  TAAGCTACCTGANTG')
+
+        self.settings.setPrimerMatchThreshold(0.5)
+        self.settings.setReversePrimer('TTGCA')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '         TGCAA  ')
+        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTG-AATG')
+        self.assertEqual(cons.getConsensus(),        'TAAGCTACC       ')
+
+        self.settings.setPrimerMatchThreshold(0.9)
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '         TGCAA  ')
+        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTG-AATG')
+        self.assertEqual(cons.getConsensus(),        'TAAGCTACCTG ANTG')
+
+        self.settings.setReversePrimer('GGGGGGG')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   'CCCCCCC               ')
+        self.assertEqual(cons.getAlignedSequence(0), '-------TAAGCTACCTGAATG')
+        self.assertEqual(cons.getConsensus(),        '       TAAGCTACCTGANTG')
+
+        # Now test a reverse trace alignment cases.  We only need to check that
+        # the alignment works as expected, because after that, the algorithm is
+        # the same.
+        cons = ConsensSeqBuilder((self.seqt9,), self.settings)
+        self.settings.setForwardPrimer('GAAT')
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   '         GAAT   ')
+        self.assertEqual(cons.getAlignedSequence(0), 'TCCTGNCACGAATTAC')
+        self.assertEqual(cons.getConsensus(),        'TCNTGNCNC       ')
+
+    def test_trimPrimerSFromAlignment(self):
+        """
+        Tests the primer trimming algorithm for two trace sequence.
+        """
+        # alignment of sequences 8 and reversecomp(9):   'TAAGCTACCTGA-ATG------'
         #                                                '-----T-CCTGNCACGAATTAC'
 
-        #               T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
-        seqt1.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
-        #                                   T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
-        seqt2.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
-        seqt2.isreverse_comped = True
+        #                      T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
+        # self.seqt8.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
+        #                                          T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
+        # self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
 
         self.settings.setMinConfScore(10)
-        self.settings.setDoAutoTrim(False)
+        self.settings.setDoAutoTrim(True)
+        self.settings.setTrimPrimers(True)
+        self.settings.setPrimerMatchThreshold(0.5)
+        self.settings.setTrimEndGaps(False)
+        self.settings.setAutoTrimParams(1, 1)
         self.settings.setConsensusAlgorithm('Bayesian')
-        cons = ConsensSeqBuilder((seqt1, seqt2), self.settings)
+
+        # Test two sequences.
+        cons = ConsensSeqBuilder((self.seqt8, self.seqt9), self.settings)
         
-        # verify that the consensus sequence and alignment are as expected
+        # Verify that the consensus sequence and alignment are as expected.
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGA-ATG------')
         self.assertEqual(cons.getAlignedSequence(1), '-----T-CCTGNCACGAATTAC')
         self.assertEqual(cons.getConsensus(), 'TAAGCTACCTGACATGAATTAC')
