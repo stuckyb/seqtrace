@@ -672,16 +672,55 @@ class TestConsensus(unittest.TestCase):
             self.assertEqual(cons.getAlignedSequence(0), testcase[3])
             self.assertEqual(cons.getConsensus(), testcase[4])
 
-        # Now test a reverse trace alignment case.  We only need to check that
-        # the alignment works as expected, because after that, the algorithm is
-        # the same.
+        # Now test a few reverse trace alignment cases.  After the initial
+        # alignment, the algorithm is mostly the same, so we only need to
+        # test a few cases.
+        # Define the test cases, which are in the format
+        # [fwd_primer, threshold, primer_aligned, aligned_sequence, consensus].
+        testcases = [
+                ['GAAT', 0.5,
+                 '         GAAT   ',
+                 'TCCTGNCACGAATTAC',
+                 '             TNC'],
+
+                ['GATCCT', 0.5,
+                 'GATCCT            ',
+                 '--TCCTGNCACGAATTAC',
+                 '      GNCNCGAATTNC'],
+
+                ['GATCTGACA', 0.5,
+                 'GAT-CTGACA        ',
+                 '--TCCTGNCACGAATTAC',
+                 '          CGAATTNC'],
+
+                ['ATCGCT', 0.5,
+                 'ATCGCT            ',
+                 '-TC-CTGNCACGAATTAC',
+                 '      GNCNCGAATTNC'],
+
+                ['TACGG', 0.5,
+                 '             TACGG',
+                 'TCCTGNCACGAATTAC--',
+                 '                  '],
+
+                ['GGGGGG', 0.5,
+                 'GGGGGG                ',
+                 '------TCCTGNCACGAATTAC',
+                 '      TCNTGNCNCGAATTNC']
+                ]
+
+        # Run the test cases.
         self.seqt9.isreverse_comped = True
         cons = ConsensSeqBuilder((self.seqt9,), self.settings)
-        self.settings.setForwardPrimer('GAAT')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '         GAAT   ')
-        self.assertEqual(cons.getAlignedSequence(0), 'TCCTGNCACGAATTAC')
-        self.assertEqual(cons.getConsensus(),        'TCNTGNCNC       ')
+        self.settings.setReversePrimer('ATTC')
+        for testcase in testcases:
+            self.settings.setForwardPrimer(testcase[0])
+            self.settings.setPrimerMatchThreshold(testcase[1])
+            cons.makeConsensusSequence()
+            self.assertEqual(cons.getAlignedPrimers(), testcase[2])
+            self.assertEqual(cons.getAlignedSequence(0), testcase[3])
+            self.assertEqual(cons.getConsensus(), testcase[4])
+        
         self.seqt9.isreverse_comped = False
 
     def test_trimPrimersFromAlignment(self):

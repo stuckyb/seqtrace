@@ -856,14 +856,24 @@ class ConsensSeqBuilder:
             return
 
         # See if enough primer bases match to consider the alignment valid.
-        # If so, trim the sequence.
+        # If so, trim the sequence.  Forward traces are trimmed from the left
+        # end of the primer, reverse traces are trimmed from the right end of
+        # the primer.
         if float(prmatches) / prtotallen >= self.settings.getPrimerMatchThreshold():
-            # Find the starting location of the primer in the alignment.
-            index = 0
-            while praligned[index] == ' ':
-                index += 1
+            if self.seqt1.isReverseComplemented():
+                # Find the starting location of the primer in the alignment.
+                index = len(praligned) - 1
+                while praligned[index] == ' ':
+                    index -= 1
 
-            self.consensus = self.consensus[0:index] + ' ' * (len(self.alignedseqs[0]) - index)
+                self.consensus = ' ' * (index + 1) + self.consensus[index + 1:]
+            else:
+                # Find the starting location of the primer in the alignment.
+                index = 0
+                while praligned[index] == ' ':
+                    index += 1
+
+                self.consensus = self.consensus[0:index] + ' ' * (len(self.alignedseqs[0]) - index)
 
     def trimAlignedPrimerEnds(self, alignedp):
         """

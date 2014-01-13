@@ -1021,6 +1021,8 @@ class MainWindow(gtk.Window, CommonDialogs):
             seqt = self.openTraceFileFromItem(projectitem)
             if seqt == None:
                 return None
+            if projectitem.getIsReverse():
+                seqt.reverseComplement()
             seqtraces.append(seqt)
         else:
             children = projectitem.getChildren()
