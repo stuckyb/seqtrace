@@ -25,6 +25,7 @@ import unittest
 class TestConsensus(unittest.TestCase):
     def setUp(self):
         self.settings = ConsensSeqSettings()
+        self.settings.setTrimConsensus(True)
         self.settings.setTrimPrimers(False)
 
         # Set up some simple sequence trace data.
@@ -102,7 +103,7 @@ class TestConsensus(unittest.TestCase):
         """
         Test consensus sequence construction on a single sequence trace.
         """
-        self.settings.setDoAutoTrim(False)
+        self.settings.setDoQualityTrim(False)
 
         self.settings.setMinConfScore(30)
         cons = ConsensSeqBuilder((self.seqt1,), self.settings)
@@ -237,7 +238,7 @@ class TestConsensus(unittest.TestCase):
         Test consensus sequence construction with two (forward/reverse) sequence traces using
         the Bayesian consensus algorithm.
         """
-        self.settings.setDoAutoTrim(False)
+        self.settings.setDoQualityTrim(False)
         self.settings.setForwardPrimer('')
         self.settings.setReversePrimer('')
         self.settings.setConsensusAlgorithm('Bayesian')
@@ -282,7 +283,7 @@ class TestConsensus(unittest.TestCase):
         Test consensus sequence construction with two (forward/reverse) sequence traces using
         the legacy (SeqTrace 8.0) consensus algorithm.
         """
-        self.settings.setDoAutoTrim(False)
+        self.settings.setDoQualityTrim(False)
         self.settings.setForwardPrimer('')
         self.settings.setReversePrimer('')
         self.settings.setConsensusAlgorithm('legacy')
@@ -414,7 +415,7 @@ class TestConsensus(unittest.TestCase):
         Test the trimming of the end gap portion of the sequence.
         """
         self.settings.setMinConfScore(10)
-        self.settings.setDoAutoTrim(False)
+        self.settings.setDoQualityTrim(False)
         self.settings.setConsensusAlgorithm('legacy')
         cons = ConsensSeqBuilder((self.seqt2, self.seqt2), self.settings)
         
@@ -531,62 +532,62 @@ class TestConsensus(unittest.TestCase):
         confscore/windowsize/num good bases combinations, including special cases.
         """
         self.settings.setMinConfScore(30)
-        self.settings.setDoAutoTrim(True)
-        self.settings.setAutoTrimParams(6, 6)
+        self.settings.setDoQualityTrim(True)
+        self.settings.setQualityTrimParams(6, 6)
         cons = ConsensSeqBuilder((self.seqt1,), self.settings)
         self.assertEqual(cons.getConsensus(), '          ACATGA      ')
 
-        self.settings.setAutoTrimParams(6, 5)
+        self.settings.setQualityTrimParams(6, 5)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '       CTNACATGANTTA  ')
 
-        self.settings.setAutoTrimParams(6, 4)
+        self.settings.setQualityTrimParams(6, 4)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '      NCTNACATGANTTAN ')
 
-        self.settings.setAutoTrimParams(6, 3)
+        self.settings.setQualityTrimParams(6, 3)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '   NTNNCTNACATGANTTANN')
 
-        self.settings.setAutoTrimParams(7, 6)
+        self.settings.setQualityTrimParams(7, 6)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '       CTNACATGANTTA  ')
 
-        self.settings.setAutoTrimParams(7, 7)
+        self.settings.setQualityTrimParams(7, 7)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '                      ')
 
         self.settings.setMinConfScore(5)
-        self.settings.setAutoTrimParams(3, 2)
+        self.settings.setQualityTrimParams(3, 2)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), 'ANGCTACCTGACATGATTTACG')
 
-        self.settings.setAutoTrimParams(3, 3)
+        self.settings.setQualityTrimParams(3, 3)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '  GCTACCTGACATGATTTACG')
 
         self.settings.setMinConfScore(20)
-        self.settings.setAutoTrimParams(3, 2)
+        self.settings.setQualityTrimParams(3, 2)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), ' NGCTNNCTNACATGATTTANG')
 
-        self.settings.setAutoTrimParams(3, 3)
+        self.settings.setQualityTrimParams(3, 3)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '  GCTNNCTNACATGATTTA  ')
 
         # now some special cases: window size of 1
         self.settings.setMinConfScore(30)
-        self.settings.setAutoTrimParams(1, 1)
+        self.settings.setQualityTrimParams(1, 1)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '    TNNCTNACATGANTTA  ')
 
         # window size equal to the sequence length, base count 1 more than the number of good bases
-        self.settings.setAutoTrimParams(22, 13)
+        self.settings.setQualityTrimParams(22, 13)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), '                      ')
 
         # window size equal to the sequence length, base count exactly equal to the number of good bases
-        self.settings.setAutoTrimParams(22, 12)
+        self.settings.setQualityTrimParams(22, 12)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), 'NNNNTNNCTNACATGANTTANN')
 
@@ -595,11 +596,11 @@ class TestConsensus(unittest.TestCase):
         Tests the primer trimming algorithm for a single trace sequence.
         """
         self.settings.setMinConfScore(10)
-        self.settings.setDoAutoTrim(True)
+        self.settings.setDoQualityTrim(True)
         self.settings.setTrimPrimers(True)
         self.settings.setPrimerMatchThreshold(0.5)
         self.settings.setTrimEndGaps(False)
-        self.settings.setAutoTrimParams(1, 1)
+        self.settings.setQualityTrimParams(1, 1)
         self.settings.setConsensusAlgorithm('Bayesian')
 
         #                      T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
@@ -688,11 +689,11 @@ class TestConsensus(unittest.TestCase):
         Tests the primer trimming algorithm for two trace sequence.
         """
         self.settings.setMinConfScore(10)
-        self.settings.setDoAutoTrim(True)
+        self.settings.setDoQualityTrim(True)
         self.settings.setTrimPrimers(True)
         self.settings.setPrimerMatchThreshold(0.5)
         self.settings.setTrimEndGaps(False)
-        self.settings.setAutoTrimParams(1, 1)
+        self.settings.setQualityTrimParams(1, 1)
         self.settings.setConsensusAlgorithm('Bayesian')
 
         # alignment of sequences 8 and reversecomp(9):   'TAAGCTACCTGA-ATG------'
@@ -864,7 +865,7 @@ class TestModifiableConsensus(unittest.TestCase):
         self.seqt1.bcconf = [5, 4, 20, 24, 34, 12, 8, 30, 32, 16, 34, 40, 52, 61, 61, 61, 28, 61, 46, 32, 12, 24]
 
         self.settings = ConsensSeqSettings()
-        self.settings.setDoAutoTrim(False)
+        self.settings.setDoQualityTrim(False)
         self.settings.setMinConfScore(4)
         self.cons = ModifiableConsensSeqBuilder((self.seqt1,), self.settings)
 

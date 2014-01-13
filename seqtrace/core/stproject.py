@@ -49,9 +49,10 @@ class SeqTraceProjWriter:
     def setConsensSeqSettings(self, settings):
         self.proj_data['consseqsettings']['min_confscore'] = settings.getMinConfScore()
         self.proj_data['consseqsettings']['consensus_algorithm'] = settings.getConsensusAlgorithm()
-        self.proj_data['consseqsettings']['do_autotrim'] = settings.getDoAutoTrim()
-        self.proj_data['consseqsettings']['autotrim_winsize'] = settings.getAutoTrimParams()[0]
-        self.proj_data['consseqsettings']['autotrim_basecnt'] = settings.getAutoTrimParams()[1]
+        self.proj_data['consseqsettings']['trim_consensus'] = settings.getTrimConsensus()
+        self.proj_data['consseqsettings']['do_qualitytrim'] = settings.getDoQualityTrim()
+        self.proj_data['consseqsettings']['qualitytrim_winsize'] = settings.getQualityTrimParams()[0]
+        self.proj_data['consseqsettings']['qualitytrim_basecnt'] = settings.getQualityTrimParams()[1]
         self.proj_data['consseqsettings']['trim_endgaps'] = settings.getTrimEndGaps()
         self.proj_data['consseqsettings']['trim_primers'] = settings.getTrimPrimers()
         self.proj_data['consseqsettings']['primermatch_threshold'] = settings.getPrimerMatchThreshold()
@@ -114,28 +115,47 @@ class SeqTraceProjReader:
     def getConsensSeqSettings(self):
         settings = ConsensSeqSettings()
 
+        # Check if we got an old file format, and convert it if needed.
+        if self.proj_data['formatversion'] == '0.8':
+            self.convertSettings8To9()
+
         settings.setMinConfScore(self.proj_data['consseqsettings']['min_confscore'])
-        settings.setDoAutoTrim(self.proj_data['consseqsettings']['do_autotrim'])
-        settings.setAutoTrimParams(
-            self.proj_data['consseqsettings']['autotrim_winsize'], self.proj_data['consseqsettings']['autotrim_basecnt']
-            )
+        settings.setConsensusAlgorithm(self.proj_data['consseqsettings']['consensus_algorithm'])
+
+        settings.setTrimConsensus(self.proj_data['consseqsettings']['trim_consensus'])
         settings.setTrimEndGaps(self.proj_data['consseqsettings']['trim_endgaps'])
 
-        # Handle settings not included in the 0.8 version of the file format.
-        if self.proj_data['formatversion'] == '0.8':
-            settings.setConsensusAlgorithm('legacy')
-            settings.setTrimPrimers(False)
-            settings.setPrimerMatchThreshold(0.8)
-            settings.setForwardPrimer('')
-            settings.setReversePrimer('')
-        else:
-            settings.setConsensusAlgorithm(self.proj_data['consseqsettings']['consensus_algorithm'])
-            #settings.setTrimPrimers(self.proj_data['consseqsettings']['trim_primers'])
-            #settings.setPrimerMatchThreshold(self.proj_data['consseqsettings']['primermatch_threshold'])
-            #settings.setForwardPrimer(self.proj_data['consseqsettings']['forward_primer'])
-            #settings.setReversePrimer(self.proj_data['consseqsettings']['reverse_primer'])
+        settings.setTrimPrimers(self.proj_data['consseqsettings']['trim_primers'])
+        settings.setPrimerMatchThreshold(self.proj_data['consseqsettings']['primermatch_threshold'])
+        settings.setForwardPrimer(self.proj_data['consseqsettings']['forward_primer'])
+        settings.setReversePrimer(self.proj_data['consseqsettings']['reverse_primer'])
+
+        settings.setDoQualityTrim(self.proj_data['consseqsettings']['do_qualitytrim'])
+        settings.setQualityTrimParams(
+            self.proj_data['consseqsettings']['qualitytrim_winsize'], self.proj_data['consseqsettings']['qualitytrim_basecnt']
+            )
 
         return settings
+
+    def convertSettings8To9(self):
+        """
+        Converts a settings dictionary from the 0.8 format to the 0.9 format.
+        """
+        if self.proj_data['formatversion'] != '0.8':
+            return
+
+        # Handle settings for which the key name changed from 0.8 to 0.9.
+        self.proj_data['consseqsettings']['do_qualitytrim'] = self.proj_data['consseqsettings']['do_autotrim']
+        self.proj_data['consseqsettings']['qualitytrim_winsize'] = self.proj_data['consseqsettings']['autotrim_winsize']
+        self.proj_data['consseqsettings']['qualitytrim_basecnt'] = self.proj_data['consseqsettings']['autotrim_basecnt']
+
+        # Handle settings not included in the 0.8 version of the file format.
+        self.proj_data['consseqsettings']['consensus_algorithm'] = 'legacy'
+        self.proj_data['consseqsettings']['trim_consensus'] = self.proj_data['consseqsettings']['do_autotrim']
+        self.proj_data['consseqsettings']['trim_primers'] = False
+        self.proj_data['consseqsettings']['primermatch_threshold'] = 0.8
+        self.proj_data['consseqsettings']['forward_primer'] = ''
+        self.proj_data['consseqsettings']['reverse_primer'] = ''
 
     def __iter__(self):
         self.iter_index = 0

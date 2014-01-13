@@ -39,25 +39,26 @@ class ConsensSeqSettings(Observable):
         self.consensus_algorithm = 'Bayesian'
         # Whether to trim the ends of the sequences.
         self.do_autotrim = True
-        # Settings for automatic quality trimming.
-        self.autotrim_winsize = 10 
-        self.autotrim_basecnt = 8
         # Whether to trim the end gap regions from forward/reverse alignments.
-        self.trim_endgaps = True
+        self.trim_endgaps = False
         # Whether to search for and trim primer sequences from the consensus sequence.
-        self.trim_primers = True
+        self.trim_primers = False
         # The proportion of bases that must match to consider a primer alignment valid.
         self.primermatch = 0.8
         # The primer sequences.
         self.fwdprimer = ''
         self.revprimer = ''
+        # Settings for automatic quality trimming.
+        self.do_qualitytrim = True
+        self.autotrim_winsize = 10 
+        self.autotrim_basecnt = 8
 
         # A flag to indicate if a setAll() operation is in progress.
         self.notify_all = True
 
         # Initialize observable events.  The event "settings_change" is triggered whenever 
         # the value of any setting is changed.  The remaining events give notification of
-        # specific settings changes.
+        # more specific settings changes.
         self.defineObservableEvents(['settings_change', 'min_confscore_change',
             'autotrim_change', 'consensus_algorithm_change'])
 
@@ -67,30 +68,32 @@ class ConsensSeqSettings(Observable):
         """
         self.min_confscore = settings.getMinConfScore()
         self.consensus_algorithm = settings.getConsensusAlgorithm()
-        self.do_autotrim = settings.getDoAutoTrim()
-        self.autotrim_winsize = settings.getAutoTrimParams()[0]
-        self.autotrim_basecnt = settings.getAutoTrimParams()[1]
+        self.do_autotrim = settings.getTrimConsensus()
         self.trim_endgaps = settings.getTrimEndGaps()
         self.trim_primers = settings.getTrimPrimers()
         self.primermatch = settings.getPrimerMatchThreshold()
         self.fwdprimer = settings.getForwardPrimer()
         self.revprimer = settings.getReversePrimer()
+        self.do_qualitytrim = settings.getDoQualityTrim()
+        self.autotrim_winsize = settings.getQualityTrimParams()[0]
+        self.autotrim_basecnt = settings.getQualityTrimParams()[1]
 
-    def setAll(self, min_confscore, consensus_algorithm, do_autotrim, autotrim_params, trim_endgaps,
-            trim_primers, primermatch_threshold, fwd_primer, rev_primer):
+    def setAll(self, min_confscore, consensus_algorithm, do_autotrim, trim_endgaps, trim_primers,
+            primermatch_threshold, fwd_primer, rev_primer, do_qualitytrim, qualitytrim_params):
         self.notify_all = False
         self.change_made = False
 
         try:
             self.setMinConfScore(min_confscore)
             self.setConsensusAlgorithm(consensus_algorithm)
-            self.setDoAutoTrim(do_autotrim)
-            self.setAutoTrimParams(*autotrim_params)
+            self.setTrimConsensus(do_autotrim)
             self.setTrimEndGaps(trim_endgaps)
             self.setTrimPrimers(trim_primers)
             self.setPrimerMatchThreshold(primermatch_threshold)
             self.setForwardPrimer(fwd_primer)
             self.setReversePrimer(rev_primer)
+            self.setDoQualityTrim(do_qualitytrim)
+            self.setQualityTrimParams(*qualitytrim_params)
         finally:
             self.notify_all = True
             if self.change_made:
@@ -132,19 +135,28 @@ class ConsensSeqSettings(Observable):
             self.notifyObservers('consensus_algorithm_change', ())
             self.notifySettingsChanged()
 
-    def getDoAutoTrim(self):
+    def getTrimConsensus(self):
         return self.do_autotrim
 
-    def setDoAutoTrim(self, newval):
+    def setTrimConsensus(self, newval):
         if self.do_autotrim != newval:
             self.do_autotrim = newval
             self.notifyObservers('autotrim_change', ())
             self.notifySettingsChanged()
 
-    def getAutoTrimParams(self):
+    def getDoQualityTrim(self):
+        return self.do_qualitytrim
+
+    def setDoQualityTrim(self, newval):
+        if self.do_qualitytrim != newval:
+            self.do_qualitytrim = newval
+            self.notifyObservers('autotrim_change', ())
+            self.notifySettingsChanged()
+
+    def getQualityTrimParams(self):
         return (self.autotrim_winsize, self.autotrim_basecnt)
 
-    def setAutoTrimParams(self, windowsize, basecount):
+    def setQualityTrimParams(self, windowsize, basecount):
         if basecount > windowsize:
             raise ConsensSeqSettingsError('The number of correct base calls cannot exceed the window size.')
 
@@ -169,6 +181,7 @@ class ConsensSeqSettings(Observable):
     def setTrimPrimers(self, newval):
         if self.trim_primers != newval:
             self.trim_primers = newval
+            self.notifyObservers('autotrim_change', ())
             self.notifySettingsChanged()
 
     def getPrimerMatchThreshold(self):
@@ -180,6 +193,7 @@ class ConsensSeqSettings(Observable):
 
         if self.primermatch != newval:
             self.primermatch = newval
+            self.notifyObservers('autotrim_change', ())
             self.notifySettingsChanged()
 
     def getForwardPrimer(self):
@@ -188,6 +202,7 @@ class ConsensSeqSettings(Observable):
     def setForwardPrimer(self, primerseq):
         if self.fwdprimer != primerseq:
             self.fwdprimer = primerseq
+            self.notifyObservers('autotrim_change', ())
             self.notifySettingsChanged()
 
     def getReversePrimer(self):
@@ -196,6 +211,7 @@ class ConsensSeqSettings(Observable):
     def setReversePrimer(self, primerseq):
         if self.revprimer != primerseq:
             self.revprimer = primerseq
+            self.notifyObservers('autotrim_change', ())
             self.notifySettingsChanged()
 
 
@@ -301,7 +317,7 @@ class ConsensSeqBuilder:
                 self.makeLegacyConsensus(min_confscore)
 
         # Do sequence trimming, if requested.
-        if self.settings.getDoAutoTrim():
+        if self.settings.getTrimConsensus():
             if self.settings.getTrimPrimers() and haveprimers:
                 if self.numseqs == 1:
                     self.trimPrimerFromSequence()
@@ -311,8 +327,9 @@ class ConsensSeqBuilder:
             if self.settings.getTrimEndGaps():
                 self.trimEndGaps()
 
-            winsize, basecnt = self.settings.getAutoTrimParams()
-            self.trimConsensus(winsize, basecnt)
+            if self.settings.getDoQualityTrim():
+                winsize, basecnt = self.settings.getQualityTrimParams()
+                self.trimConsensus(winsize, basecnt)
 
     def makeBayesianConsensus(self, min_confscore):
         """

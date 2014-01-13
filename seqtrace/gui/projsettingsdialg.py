@@ -61,7 +61,7 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         vb.pack_start(tf_hb1)
         vb.pack_start(tf_hb2)
 
-        self.fc_checkbox = gtk.CheckButton('use relative folder path')
+        self.fc_checkbox = gtk.CheckButton('Use relative folder path')
         if os.path.isabs(self.project.getTraceFileDir()):
             self.fc_checkbox.set_active(False)
         else:
@@ -131,34 +131,59 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
 
         vb.pack_start(hb1)
 
-        # set up UI components for sequence trimming settings
-        vb2 = gtk.VBox()
-        self.autotrim_checkbox = gtk.CheckButton('automatically trim sequence ends')
+        frame = gtk.Frame('Consensus settings')
+        frame.add(vb)
+        mainvb.pack_start(frame)
+
+        # Set up UI components for sequence trimming settings.
+        vb = gtk.VBox(False, 20)
+        vb.set_border_width(10)
+        self.autotrim_checkbox = gtk.CheckButton('Automatically trim sequence ends')
         self.autotrim_checkbox.connect('toggled', self.autoTrimToggled)
-        vb2.pack_start(self.autotrim_checkbox)
+        vb.pack_start(self.autotrim_checkbox)
 
-        autotrim_winsize, autotrim_basecnt = cssettings.getAutoTrimParams()
-
+        # Create UI components for primer trimming.
+        vb2 = gtk.VBox(False, 6)
         hb2 = gtk.HBox()
-        hb2.pack_start(gtk.Label('Trim until at least '), False)
-        self.autotrim_basecnt_adj = gtk.Adjustment(autotrim_basecnt, 1, autotrim_winsize, 1)
-        self.autotrim_basecnt_spin = gtk.SpinButton(self.autotrim_basecnt_adj)
-        hb2.pack_start(self.autotrim_basecnt_spin, False, False)
+        self.trimprimers_checkbox = gtk.CheckButton('Trim primers; ')
+        self.trimprimers_checkbox.set_active(cssettings.getTrimPrimers())
+        hb2.pack_start(self.trimprimers_checkbox, False)
+        self.primermatch_th_adj = gtk.Adjustment(int(cssettings.getPrimerMatchThreshold() * 100), 1, 100, 1)
+        self.primermatch_th_spin = gtk.SpinButton(self.primermatch_th_adj)
+        hb2.pack_start(self.primermatch_th_spin, False, False)
+        self.trimprimers_label = gtk.Label(' % of primer sequence must match the trace.')
+        hb2.pack_start(self.trimprimers_label, False)
 
-        hb2.pack_start(gtk.Label(' out of '), False)
-        self.autotrim_winsize_adj = gtk.Adjustment(autotrim_winsize, 1, 20, 1)
-        self.autotrim_winsize_spin = gtk.SpinButton(self.autotrim_winsize_adj)
-        hb2.pack_start(self.autotrim_winsize_spin, False, False)
-        self.autotrim_winsize_adj.connect('value_changed', self.autoTrimWinSizeChanged)
-
-        hb2.pack_start(gtk.Label(' bases are correctly called.'), False)
         vb2.pack_start(hb2)
 
-        self.trimgaps_checkbox = gtk.CheckButton('trim alignment end gap regions')
+        # Check box for end gap trimming.
+        self.trimgaps_checkbox = gtk.CheckButton('Trim alignment end gap regions')
         self.trimgaps_checkbox.set_active(cssettings.getTrimEndGaps())
         vb2.pack_start(self.trimgaps_checkbox)
 
-        self.autotrim_checkbox.set_active(cssettings.getDoAutoTrim())
+        qualtrim_winsize, qualtrim_basecnt = cssettings.getQualityTrimParams()
+
+        # Check box and spin buttons for end quality trimming.
+        hb2 = gtk.HBox()
+        self.qualtrim_checkbox = gtk.CheckButton('Trim until at least ')
+        self.qualtrim_checkbox.set_active(cssettings.getDoQualityTrim())
+        hb2.pack_start(self.qualtrim_checkbox, False)
+        self.qualtrim_basecnt_adj = gtk.Adjustment(qualtrim_basecnt, 1, qualtrim_winsize, 1)
+        self.qualtrim_basecnt_spin = gtk.SpinButton(self.qualtrim_basecnt_adj)
+        hb2.pack_start(self.qualtrim_basecnt_spin, False, False)
+
+        self.qualtrim_label1 = gtk.Label(' out of ')
+        hb2.pack_start(self.qualtrim_label1, False)
+        self.qualtrim_winsize_adj = gtk.Adjustment(qualtrim_winsize, 1, 20, 1)
+        self.qualtrim_winsize_spin = gtk.SpinButton(self.qualtrim_winsize_adj)
+        hb2.pack_start(self.qualtrim_winsize_spin, False, False)
+        self.qualtrim_winsize_adj.connect('value_changed', self.autoTrimWinSizeChanged)
+
+        self.qualtrim_label2 = gtk.Label(' bases are correctly called.')
+        hb2.pack_start(self.qualtrim_label2, False)
+        vb2.pack_start(hb2)
+
+        self.autotrim_checkbox.set_active(cssettings.getTrimConsensus())
         self.autotrim_checkbox.toggled()
 
         vb.pack_start(vb2)
@@ -222,7 +247,7 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
                 self.getMinConfScore(),
                 self.getConsensusAlgorithm(),
                 self.autotrim_checkbox.get_active(),
-                (int(self.autotrim_winsize_adj.get_value()), int(self.autotrim_basecnt_adj.get_value())),
+                (int(self.qualtrim_winsize_adj.get_value()), int(self.qualtrim_basecnt_adj.get_value())),
                 self.trimgaps_checkbox.get_active()
                 )
 
@@ -274,18 +299,30 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
 
     def autoTrimToggled(self, button):
         if self.autotrim_checkbox.get_active():
-            self.autotrim_basecnt_spin.set_sensitive(True)
-            self.autotrim_winsize_spin.set_sensitive(True)
+            self.trimprimers_checkbox.set_sensitive(True)
+            self.primermatch_th_spin.set_sensitive(True)
+            self.trimprimers_label.set_sensitive(True)
+            self.qualtrim_basecnt_spin.set_sensitive(True)
+            self.qualtrim_winsize_spin.set_sensitive(True)
             self.trimgaps_checkbox.set_sensitive(True)
+            self.qualtrim_checkbox.set_sensitive(True)
+            self.qualtrim_label1.set_sensitive(True)
+            self.qualtrim_label2.set_sensitive(True)
         else:
-            self.autotrim_basecnt_spin.set_sensitive(False)
-            self.autotrim_winsize_spin.set_sensitive(False)
+            self.trimprimers_checkbox.set_sensitive(False)
+            self.primermatch_th_spin.set_sensitive(False)
+            self.trimprimers_label.set_sensitive(False)
+            self.qualtrim_basecnt_spin.set_sensitive(False)
+            self.qualtrim_winsize_spin.set_sensitive(False)
             self.trimgaps_checkbox.set_sensitive(False)
+            self.qualtrim_checkbox.set_sensitive(False)
+            self.qualtrim_label1.set_sensitive(False)
+            self.qualtrim_label2.set_sensitive(False)
 
     def autoTrimWinSizeChanged(self, adj):
-        winsize = self.autotrim_winsize_adj.get_value()
+        winsize = self.qualtrim_winsize_adj.get_value()
 
-        if self.autotrim_basecnt_adj.get_value() > winsize:
-            self.autotrim_basecnt_adj.set_value(winsize)
+        if self.qualtrim_basecnt_adj.get_value() > winsize:
+            self.qualtrim_basecnt_adj.set_value(winsize)
 
-        self.autotrim_basecnt_adj.set_upper(winsize)
+        self.qualtrim_basecnt_adj.set_upper(winsize)

@@ -33,6 +33,9 @@ class TestProject(unittest.TestCase):
         self.proj.setProjectFileName(self.filename)
 
     def test_init(self):
+        """
+        Checks if the initial state of a new project is as expected.
+        """
         self.assertEqual(self.proj.getFwdTraceSearchStr(), '_F')
         self.assertEqual(self.proj.getRevTraceSearchStr(), '_R')
         self.assertEqual(self.proj.getTraceFileDir(), '.')
@@ -40,9 +43,15 @@ class TestProject(unittest.TestCase):
 
         csettings = self.proj.getConsensSeqSettings()
         self.assertEqual(csettings.getMinConfScore(), 30)
-        self.assertEqual(csettings.getDoAutoTrim(), True)
-        self.assertEqual(csettings.getAutoTrimParams(), (10, 8))
-        self.assertTrue(csettings.getTrimEndGaps())
+        self.assertEqual(csettings.getConsensusAlgorithm(), 'Bayesian')
+        self.assertTrue(csettings.getTrimConsensus())
+        self.assertFalse(csettings.getTrimEndGaps())
+        self.assertFalse(csettings.getTrimPrimers())
+        self.assertEqual(csettings.getForwardPrimer(), '')
+        self.assertEqual(csettings.getReversePrimer(), '')
+        self.assertEqual(csettings.getPrimerMatchThreshold(), 0.8)
+        self.assertTrue(csettings.getDoQualityTrim())
+        self.assertEqual(csettings.getQualityTrimParams(), (10, 8))
 
         self.assertEqual(self.proj.getProjectFileName(), os.path.abspath(self.filename))
         self.assertEqual(self.proj.getProjectDir(), os.getcwd())
@@ -220,9 +229,15 @@ class TestProject(unittest.TestCase):
 
         csettings = self.proj.getConsensSeqSettings()
         csettings.setMinConfScore(20)
-        csettings.setDoAutoTrim(False)
-        csettings.setAutoTrimParams(20, 18)
+        csettings.setConsensusAlgorithm('legacy')
+        csettings.setTrimConsensus(False)
+        csettings.setTrimPrimers(True)
+        csettings.setPrimerMatchThreshold(0.2)
+        csettings.setForwardPrimer('AAAT')
+        csettings.setReversePrimer('AAAT')
         csettings.setTrimEndGaps(False)
+        csettings.setDoQualityTrim(False)
+        csettings.setQualityTrimParams(20, 18)
 
         self.proj.clearProject()
 
@@ -237,9 +252,15 @@ class TestProject(unittest.TestCase):
 
         csettings = self.proj.getConsensSeqSettings()
         self.assertEqual(csettings.getMinConfScore(), 30)
-        self.assertEqual(csettings.getDoAutoTrim(), True)
-        self.assertEqual(csettings.getAutoTrimParams(), (10, 8))
-        self.assertTrue(csettings.getTrimEndGaps())
+        self.assertEqual(csettings.getConsensusAlgorithm(), 'Bayesian')
+        self.assertTrue(csettings.getTrimConsensus())
+        self.assertFalse(csettings.getTrimEndGaps())
+        self.assertFalse(csettings.getTrimPrimers())
+        self.assertEqual(csettings.getForwardPrimer(), '')
+        self.assertEqual(csettings.getReversePrimer(), '')
+        self.assertEqual(csettings.getPrimerMatchThreshold(), 0.8)
+        self.assertTrue(csettings.getDoQualityTrim())
+        self.assertEqual(csettings.getQualityTrimParams(), (10, 8))
 
     def test_projectItem(self):
         self.proj.addFiles(self.tracefiles)
@@ -310,16 +331,23 @@ class TestProject(unittest.TestCase):
         self.proj.setRevTraceSearchStr('_R_')
         self.proj.setTraceFileDir('tracedir')
 
+        # Set all consensus settings.
         csettings = self.proj.getConsensSeqSettings()
         csettings.setMinConfScore(20)
-        csettings.setDoAutoTrim(False)
-        csettings.setAutoTrimParams(10, 6)
-        csettings.setTrimEndGaps(False)
+        csettings.setConsensusAlgorithm('legacy')
+        csettings.setTrimConsensus(False)
+        csettings.setTrimPrimers(True)
+        csettings.setPrimerMatchThreshold(0.2)
+        csettings.setForwardPrimer('AAAT')
+        csettings.setReversePrimer('GGGC')
+        csettings.setTrimEndGaps(True)
+        csettings.setDoQualityTrim(False)
+        csettings.setQualityTrimParams(20, 18)
 
-        # create an associative item
+        # Create an associative item.
         a_item = self.proj.associateItems((self.proj.getItemById(2), self.proj.getItemById(3)), 'new item')
 
-        # set some properties of the associative item and its children
+        # Set some properties of the associative item and its children.
         a_item.setNotes('sample notes')
         a_item.setConsensusSequence('AATTAATTGGCC', 'AA TT AA TT GGCC')
         a_item.setUseSequence(True)
@@ -330,7 +358,7 @@ class TestProject(unittest.TestCase):
         child1.setConsensusSequence('CATCATGATCATTAGTAC', 'CATCATGATCAT TAGTAC')
         child2.setIsReverse(True)
 
-        # set sequences and notes for the remaining items
+        # Set sequences and notes for the remaining items.
         # item 0: ''
         # item 1: 'AT'
         # item 3: 'ATATAT'
@@ -343,18 +371,25 @@ class TestProject(unittest.TestCase):
         self.proj.clearProject()
         self.proj.loadProjectFile(self.filename)
         
-        # test if the project properties saved properly
+        # Test if the project properties saved properly.
         self.assertFalse(self.proj.isProjectEmpty())
         self.assertEqual(self.proj.getFwdTraceSearchStr(), '_F_')
         self.assertEqual(self.proj.getRevTraceSearchStr(), '_R_')
         self.assertEqual(self.proj.getTraceFileDir(), 'tracedir')
         self.assertEqual(self.proj.getAbsTraceFileDir(), os.path.join(os.getcwd(), 'tracedir'))
 
+        # Test if the consensus settings saved properly.
         csettings = self.proj.getConsensSeqSettings()
         self.assertEqual(csettings.getMinConfScore(), 20)
-        self.assertEqual(csettings.getDoAutoTrim(), False)
-        self.assertEqual(csettings.getAutoTrimParams(), (10, 6))
-        self.assertFalse(csettings.getTrimEndGaps())
+        self.assertEqual(csettings.getConsensusAlgorithm(), 'legacy')
+        self.assertFalse(csettings.getTrimConsensus())
+        self.assertTrue(csettings.getTrimPrimers())
+        self.assertEqual(csettings.getPrimerMatchThreshold(), 0.2)
+        self.assertEqual(csettings.getForwardPrimer(), 'AAAT')
+        self.assertEqual(csettings.getReversePrimer(), 'GGGC')
+        self.assertTrue(csettings.getTrimEndGaps())
+        self.assertFalse(csettings.getDoQualityTrim())
+        self.assertEqual(csettings.getQualityTrimParams(), (20, 18))
 
         self.proj.setTraceFileDir('.')
         for file in self.tracefiles:
