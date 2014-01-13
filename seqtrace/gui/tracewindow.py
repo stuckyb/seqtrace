@@ -411,7 +411,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
 
         # Build a regular expression object for checking if the characters in the new
         # string are all valid bases.
-        reo = re.compile('[' + ''.join(ConsensSeqBuilder.allbases) + ' ]+')
+        reo = re.compile('[' + ''.join(ConsensSeqBuilder.allbases) + ' ]*')
 
         # Display the dialog until the user presses cancel, closes the dialog, or submits
         # an acceptable string.

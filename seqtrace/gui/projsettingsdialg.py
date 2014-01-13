@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from seqtrace.core.consens import ConsensSeqBuilder
 from seqtrace.gui.dialgs import CommonDialogs
 
 import pygtk
@@ -22,6 +23,7 @@ pygtk.require('2.0')
 import gtk
 
 import os.path
+import re
 
 
 class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
@@ -38,7 +40,10 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         tracevb = gtk.VBox(False, 20)
         tracevb.set_border_width(10)
 
-        # set up UI components for the trace file location
+        # Get the consensus sequence settings from the project.
+        cssettings = self.project.getConsensSeqSettings()
+
+        # Set up UI components for the trace file location.
         vb = gtk.VBox()
         tf_hb1 = gtk.HBox()
         tf_hb1.pack_start(gtk.Label('Location of trace files:'), False)
@@ -96,14 +101,36 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
 
         tracevb.pack_start(vb)
 
+        # Set up UI components for the forward/reverse primer strings.
+        vb = gtk.VBox()
+        pr_hb1 = gtk.HBox()
+        pr_hb1.pack_start(gtk.Label("Primer sequences (5' to 3'):"), False)
+
+        # Create a layout table for the labels and text entries.
+        table = gtk.Table(2, 2)
+
+        self.fwdprimer_entry = gtk.Entry()
+        self.fwdprimer_entry.set_width_chars(36)
+        self.fwdprimer_entry.set_text(cssettings.getForwardPrimer())
+        table.attach(gtk.Label('Forward primer: '), 0, 1, 0, 1, xoptions=0)
+        table.attach(self.fwdprimer_entry, 1, 2, 0, 1, xoptions=0)
+        
+        self.revprimer_entry = gtk.Entry()
+        self.revprimer_entry.set_width_chars(36)
+        self.revprimer_entry.set_text(cssettings.getReversePrimer())
+        table.attach(gtk.Label('Reverse primer: '), 0, 1, 1, 2, xoptions=0)
+        table.attach(self.revprimer_entry, 1, 2, 1, 2, xoptions=0)
+
+        vb.pack_start(pr_hb1)
+        vb.pack_start(table)
+
+        tracevb.pack_start(vb)
+
         frame = gtk.Frame('Trace files settings')
         frame.add(tracevb)
         mainvb.pack_start(frame)
 
-        # get the consensus sequence settings
-        cssettings = self.project.getConsensSeqSettings()
-
-        # set up UI components for choosing the confidence score cutoff value
+        # Set up UI components for choosing the confidence score cutoff value.
         vb = gtk.VBox(False, 20)
         vb.set_border_width(10)
         hb1 = gtk.HBox()
@@ -214,24 +241,65 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
     def getTraceFileFolder(self):
         return self.fc_entry.get_text()
 
-    def checkSettingsValues(self):
-        settings_valid = True
+    def getForwardPrimerStr(self):
+        return self.fwdprimer_entry.get_text().strip().upper()
 
+    def getReversePrimerStr(self):
+        return self.revprimer_entry.get_text().strip().upper()
+
+    def checkSettingsValues(self):
+        """
+        Checks some of the project settings inputs for validity.  If any problems are
+        found, an appropriate message is displayed, and the method returns False.
+        Otherwise, the method returns True.
+        """
         tffpath = os.path.abspath(
                 os.path.join(self.project.getProjectDir(), self.getTraceFileFolder())
                 )
         if not(os.path.isdir(tffpath)):
             self.showMessage('The trace file location "' + self.getTraceFileFolder() +
                     '" is not valid.  Verify that the specified directory exists and that you have permission to read it.')
-            settings_valid = False
-        elif self.getFwdTraceSearchStr() == '':
+            return False
+
+        if self.getFwdTraceSearchStr() == '':
             self.showMessage('You must specify a search string for identifying forward sequencing trace files.')
-            settings_valid = False
+            return False
+
         elif self.getRevTraceSearchStr() == '':
             self.showMessage('You must specify a search string for identifying reverse sequencing trace files.')
-            settings_valid = False
+            return False
 
-        return settings_valid
+        # Build a regular expression object for checking if the characters in the primer
+        # sequence strings are all valid bases.
+        reo = re.compile('[' + ''.join(ConsensSeqBuilder.allbases) + ']*')
+
+        # Check the forward primer string.
+        match = reo.match(self.getForwardPrimerStr())
+        if (match.end() - match.start()) != len(self.getForwardPrimerStr()):
+            self.showMessage('The forward primer sequence contains invalid characters.  You may only use IUPAC nucleotide codes.')
+            return False
+
+        # Check the reverse primer string.
+        match = reo.match(self.getReversePrimerStr())
+        if (match.end() - match.start()) != len(self.getReversePrimerStr()):
+            self.showMessage('The reverse primer sequence contains invalid characters.  You may only use IUPAC nucleotide codes.')
+            return False
+
+        # If primer trimming is enabled, make sure that we have sequences for both primers.
+        if self.trimprimers_checkbox.get_active():
+            if self.getForwardPrimerStr() == '' or self.getReversePrimerStr() == '':
+                # Create a customized error message.
+                if self.getForwardPrimerStr() == '' and self.getReversePrimerStr() == '':
+                    msgdetail = 'forward and reverse primer sequences are'
+                elif self.getForwardPrimerStr() == '':
+                    msgdetail = 'forward primer sequence is'
+                elif self.getReversePrimerStr() == '':
+                    msgdetail = 'reverse primer sequence is'
+
+                self.showMessage('You have enabled primer trimming, but the ' + msgdetail + ' missing.  Please specify both primer sequences or disable primer trimming.')
+                return False
+    
+        return True
 
     def updateProjectSettings(self):
         # trace file settings
@@ -247,8 +315,12 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
                 self.getMinConfScore(),
                 self.getConsensusAlgorithm(),
                 self.autotrim_checkbox.get_active(),
+                self.trimgaps_checkbox.get_active(),
+                self.trimprimers_checkbox.get_active(),
+                float(self.primermatch_th_adj.get_value()) / 100.0,
+                self.getForwardPrimerStr(), self.getReversePrimerStr(),
+                self.qualtrim_checkbox.get_active(),
                 (int(self.qualtrim_winsize_adj.get_value()), int(self.qualtrim_basecnt_adj.get_value())),
-                self.trimgaps_checkbox.get_active()
                 )
 
     def chooseDirectory(self, widget, entry):
