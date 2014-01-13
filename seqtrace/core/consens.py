@@ -805,55 +805,81 @@ class ConsensSeqBuilder:
                 + (' ' * (len(self.consensus) - rgindex - 1)))
 
     def trimConsensus(self, winsize, basecnt):
-        if len(self.consensus) < winsize:
-            return
+        """
+        Trims the ends of the consensus sequence until basecnt bases within a
+        run of winsize bases meet the minimum quality threshold.  Any spaces in
+        the sequence are ignored and not counted in the window size.
+        """
+        # Build a dictionary for all valid nucleotide codes that will be
+        # used for counting the number of good bases in a window.
+        base_to_int = {}
+        for base in self.allbases:
+            base_to_int[base] = 1
+        base_to_int['N'] = 0
 
-        base_to_int = {'A': 1, 'C': 1, 'G': 1, 'T': 1, 'N': 0, ' ': 0}
+        # First, eliminate spaces from the consensus sequence.
+        compcons = self.consensus.replace(' ', '')
+
+        # Make sure there are enough bases to actually do the analysis.
+        if len(compcons) < winsize:
+            return
 
         # Build a list mapping the consensus sequence to simple integer values.  Correctly-called
         # bases get assigned a 1, incorrectly-called bases get assigned a 0.
-        consvals = [base_to_int[base] for base in self.consensus]
+        consvals = [base_to_int[base] for base in compcons]
 
-        # trim the left end (5') of the sequence first
+        # Analyze the left end (5') of the sequence first.
         index = 0
 
-        # initialize the count of good bases
+        # Initialize the count of good bases.
         num_good = sum(consvals[0:winsize])
 
-        # slide the window along the sequence until it contains enough correct base calls
-        while (num_good < basecnt) and ((index + winsize) < len(self.consensus)):
+        # Slide the window along the sequence until it contains enough correct base calls.
+        while (num_good < basecnt) and ((index + winsize) < len(compcons)):
             num_good += consvals[index + winsize]
             num_good -= consvals[index]
 
             index += 1
             #print index, num_good
 
-        index_left = index
+        # Find the correct index in the consensus after accounting for any ignored spaces.
+        index_left = skipcnt = -1
+        while skipcnt != index:
+            index_left += 1
+            if self.consensus[index_left] != ' ':
+                skipcnt += 1
         #print 'index_left:', index_left, 'num_good:', num_good
 
-        # now trim the right end (3') of the sequence
-        index = len(self.consensus) - 1
+        # Now analyze the right end (3') of the sequence.
+        indexold = index
+        index = len(compcons) - 1
 
-        # initialize the count of good bases
+        # Initialize the count of good bases.
         num_good = sum(consvals[len(consvals) - winsize:len(consvals)])
 
-        # slide the window along the sequence until it contains enough correct base calls
-        while (num_good < basecnt) and ((index - winsize) >= index_left):
+        # Slide the window along the sequence until it contains enough correct base calls.
+        while (num_good < basecnt) and ((index - winsize) >= indexold):
             num_good += consvals[index - winsize]
             num_good -= consvals[index]
 
             index -= 1
-            #print index, num_good
+        #print index, num_good
 
-        index_right = index
-        #print 'index_right:', index, 'num_good:', num_good
+        # Find the correct index in the consensus after accounting for any ignored spaces.
+        index_right = skipcnt = -1
+        while skipcnt != index:
+            index_right += 1
+            if self.consensus[index_right] != ' ':
+                skipcnt += 1
+        #print 'index:', index
+        #print 'index_right:', index_right, 'num_good:', num_good
 
         if num_good < basecnt:
             # If we failed to find a sufficient number of quality bases anywhere in the sequence,
             # simply trim the entire string.
             new_consensus = ' ' * len(self.consensus)
         else:
-            # build the trimmed consensus sequence
+            # Build the trimmed consensus sequence.
             new_consensus = ((' ' * index_left) + self.consensus[index_left:index_right + 1]
                     + (' ' * (len(self.consensus) - index_right - 1)))
 

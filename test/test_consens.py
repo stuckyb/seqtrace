@@ -439,6 +439,10 @@ class TestConsensus(unittest.TestCase):
                 ['-------ACACGAATTAC',
                  'GCTCCTG-----------',
                  '                  '],
+                # extra gaps at alignment ends
+                ['----CTGACACGAAT---',
+                 '-C-CCTGACACGAA----',
+                 '    NTGACACGAA    '],
                 # no sequence
                 ['------------------',
                  'GCTCCTGACACGAATTAC',
@@ -451,7 +455,7 @@ class TestConsensus(unittest.TestCase):
                     cons.alignedseqs[0] = gttest[0]
                     cons.alignedseqs[1] = gttest[1]
                 else:
-                    # switch the order the second time around
+                    # Switch the order the second time around.
                     cons.alignedseqs[0] = gttest[1]
                     cons.alignedseqs[1] = gttest[0]
 
@@ -459,11 +463,46 @@ class TestConsensus(unittest.TestCase):
                 cons.trimEndGaps()
                 self.assertEqual(cons.getConsensus(), gttest[2])
 
+    def test_trimConsenus(self):
+        """
+        Tests the window-based end trimming algorithm for consensus sequences.
+        """
+        cons = ConsensSeqBuilder((self.seqt1,), self.settings)
 
-    # Test the automatic trimming of sequence ends.
-    def test_trimConsensus(self):
-        # Test consensus construction with end trimming by testing a bunch of different
-        # confscore/windowsize/num good bases combinations, including special cases.
+        # Define a series of test cases.  Each is of the form
+        # [consensus_sequence, windowsize, basecnt, expected_result].
+        testcases = [
+                ['CATGCTCCTGACACGAATTACG', 4, 3, 'CATGCTCCTGACACGAATTACG'],
+                ['CNTNCTCCTGACACGAANTAN ', 4, 3, '  TNCTCCTGACACGAANTA  '],
+                ['C TNCTCCTGACACGAANTAN ', 4, 3, 'C TNCTCCTGACACGAANTA  '],
+                ['  TN  CCTGACACGAA  AN ', 4, 3, '  TN  CCTGACACGAA  AN '],
+                ['  NT  CNTGACACGAN  AN ', 4, 3, '   T  CNTGACACGAN  A  '],
+                ['  TN  CCTGACACGAA  NA ', 4, 3, '  TN  CCTGACACGAA  NA '],
+                ['  TN  C TGACACG A  AN ', 4, 3, '  TN  C TGACACG A  AN '],
+                ['  NT  C NGACACG N  AN ', 4, 3, '   T  C NGACACG N  A  '],
+                ['NANNCNCNNGANANNAANNANG', 4, 3, '         GANA         '],
+                ['   NC CNNGANAN  AN  NG', 4, 3, '         GANA         '],
+                ['       AANG           ', 4, 3, '       AANG           '],
+                ['       A              ', 4, 3, '       A              '],
+                [' T     A    C G       ', 4, 3, ' T     A    C G       '],
+                ['NANNCNCNNGNNANNAANNANG', 4, 3, '                      '],
+                ['   NC CNNGNNAN  AN  NG', 4, 3, '                      '],
+                ['       ANNG           ', 4, 3, '                      '],
+                ['                      ', 4, 3, '                      '],
+                ['CAWGCTCBTDACASGAATTACG', 4, 3, 'CAWGCTCBTDACASGAATTACG']
+                ]
+
+        # Run the test cases.
+        for testcase in testcases:
+            cons.setConsensSequence(testcase[0])
+            cons.trimConsensus(testcase[1], testcase[2])
+            self.assertEqual(cons.getConsensus(), testcase[3])
+
+    def test_consensusWithEndTrimming(self):
+        """
+        Tests consensus construction with end trimming by testing a bunch of different
+        confscore/windowsize/num good bases combinations, including special cases.
+        """
         self.settings.setMinConfScore(30)
         self.settings.setDoAutoTrim(True)
         self.settings.setAutoTrimParams(6, 6)
@@ -523,6 +562,7 @@ class TestConsensus(unittest.TestCase):
         self.settings.setAutoTrimParams(22, 12)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getConsensus(), 'NNNNTNNCTNACATGANTTANN')
+
 
 
 class TestModifiableConsensus(unittest.TestCase):
