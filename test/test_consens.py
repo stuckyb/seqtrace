@@ -75,14 +75,13 @@ class TestConsensus(unittest.TestCase):
         self.seqt9 = SequenceTrace()
         self.seqt8.basecalls = 'TAAGCTACCTGAATG'
         self.seqt9.basecalls = 'TCCTGNCACGAATTAC'
-        # alignment of sequences 8 and reversecomp(9):   'TAAGCTACCTGA-ATG------'
-        #                                                '-----T-CCTGNCACGAATTAC'
+        # alignment of sequences 8 and 9:   'TAAGCTACCTGA-ATG------'
+        #                                   '-----T-CCTGNCACGAATTAC'
 
         #                    T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
-        self.seqt8.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
+        self.seqt8.bcconf = [12, 9,  20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
         #                                        T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
-        self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
-        self.seqt9.isreverse_comped = True
+        self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 9,  12]
 
     def test_consensus(self):
         """
@@ -600,38 +599,39 @@ class TestConsensus(unittest.TestCase):
         self.settings.setConsensusAlgorithm('Bayesian')
 
         #                      T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
-        # self.seqt8.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
+        # self.seqt8.bcconf = [12, 9,  20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
         #                                          T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
-        # self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
+        # self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 9,  12]
 
         # Verify that the consensus sequence is as expected.
         cons = ConsensSeqBuilder((self.seqt8,), self.settings)
-        self.assertEqual(cons.getConsensus(), 'TAAGCTACCTGANTG')
+        self.assertEqual(cons.getConsensus(), 'TNAGCTACCTGANTG')
 
         # First check forward trace alignment and trimming.
         self.settings.setReversePrimer('ATTC')
+        self.settings.setForwardPrimer('ATTC')
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '          GAAT ')
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        'TAAGCTACCT     ')
+        self.assertEqual(cons.getConsensus(),        'TNAGCTACCT     ')
 
         self.settings.setReversePrimer('ATCA')
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '         TG-AT ')
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        'TAAGCTACC      ')
+        self.assertEqual(cons.getConsensus(),        'TNAGCTACC      ')
 
         self.settings.setReversePrimer('AACAT')
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '            ATGTT')
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG--')
-        self.assertEqual(cons.getConsensus(),        'TAAGCTACCTGA     ')
+        self.assertEqual(cons.getConsensus(),        'TNAGCTACCTGA     ')
 
         self.settings.setPrimerMatchThreshold(0.8)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '            ATGTT')
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG--')
-        self.assertEqual(cons.getConsensus(),        'TAAGCTACCTGANTG  ')
+        self.assertEqual(cons.getConsensus(),        'TNAGCTACCTGANTG  ')
 
         self.settings.setPrimerMatchThreshold(0.5)
         self.settings.setReversePrimer('TTACC')
@@ -644,49 +644,43 @@ class TestConsensus(unittest.TestCase):
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   'GGTAA            ')
         self.assertEqual(cons.getAlignedSequence(0), '--TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        '  TAAGCTACCTGANTG')
+        self.assertEqual(cons.getConsensus(),        '  TNAGCTACCTGANTG')
 
         self.settings.setPrimerMatchThreshold(0.5)
         self.settings.setReversePrimer('TTGCA')
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '         TGCAA  ')
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTG-AATG')
-        self.assertEqual(cons.getConsensus(),        'TAAGCTACC       ')
+        self.assertEqual(cons.getConsensus(),        'TNAGCTACC       ')
 
         self.settings.setPrimerMatchThreshold(0.9)
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '         TGCAA  ')
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTG-AATG')
-        self.assertEqual(cons.getConsensus(),        'TAAGCTACCTG ANTG')
+        self.assertEqual(cons.getConsensus(),        'TNAGCTACCTG ANTG')
 
         self.settings.setReversePrimer('GGGGGGG')
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   'CCCCCCC               ')
         self.assertEqual(cons.getAlignedSequence(0), '-------TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        '       TAAGCTACCTGANTG')
+        self.assertEqual(cons.getConsensus(),        '       TNAGCTACCTGANTG')
 
-        # Now test a reverse trace alignment cases.  We only need to check that
+        # Now test a reverse trace alignment case.  We only need to check that
         # the alignment works as expected, because after that, the algorithm is
         # the same.
+        self.seqt9.isreverse_comped = True
         cons = ConsensSeqBuilder((self.seqt9,), self.settings)
         self.settings.setForwardPrimer('GAAT')
         cons.makeConsensusSequence()
         self.assertEqual(cons.getAlignedPrimers(),   '         GAAT   ')
         self.assertEqual(cons.getAlignedSequence(0), 'TCCTGNCACGAATTAC')
         self.assertEqual(cons.getConsensus(),        'TCNTGNCNC       ')
+        self.seqt9.isreverse_comped = False
 
-    def test_trimPrimerSFromAlignment(self):
+    def test_trimPrimersFromAlignment(self):
         """
         Tests the primer trimming algorithm for two trace sequence.
         """
-        # alignment of sequences 8 and reversecomp(9):   'TAAGCTACCTGA-ATG------'
-        #                                                '-----T-CCTGNCACGAATTAC'
-
-        #                      T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
-        # self.seqt8.bcconf = [12, 14, 20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
-        #                                          T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
-        # self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 32, 12]
-
         self.settings.setMinConfScore(10)
         self.settings.setDoAutoTrim(True)
         self.settings.setTrimPrimers(True)
@@ -695,13 +689,160 @@ class TestConsensus(unittest.TestCase):
         self.settings.setAutoTrimParams(1, 1)
         self.settings.setConsensusAlgorithm('Bayesian')
 
-        # Test two sequences.
-        cons = ConsensSeqBuilder((self.seqt8, self.seqt9), self.settings)
-        
+        # alignment of sequences 8 and reversecomp(9):   'TAAGCTACCTGA-ATG------'
+        #                                                '-----T-CCTGNCACGAATTAC'
+
+        #                      T   A   A   G   C   T   A   C   C   T   G   A       A   T   G
+        # self.seqt8.bcconf = [12, 9,  20, 24, 34, 12, 12, 30, 32, 16, 34, 12,     8,  61, 50                        ]
+        #                                          T       C   C   T   G   N   C   A   C   G   A   A   T   T   A   C
+        # self.seqt9.bcconf = [                    34,     12,  8, 30, 16, 8, 40,  4,  42, 61, 61, 30, 61, 46, 9,  12]
+
         # Verify that the consensus sequence and alignment are as expected.
+        self.seqt8.isreverse_comped = True
+        cons = ConsensSeqBuilder((self.seqt8, self.seqt9), self.settings)
         self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGA-ATG------')
         self.assertEqual(cons.getAlignedSequence(1), '-----T-CCTGNCACGAATTAC')
-        self.assertEqual(cons.getConsensus(), 'TAAGCTACCTGACATGAATTAC')
+        self.assertEqual(cons.getConsensus(), 'TNAGCTACCTGACATGAATTNC')
+
+        # Define the test cases.  They are in the format
+        # [fwd_primer, rev_primer, threshold, primers_aligned, [aligned_1, aligned_2], consensus].
+        testcases = [
+                ['AAG', 'TAA', 0.5,
+                 ' AAG              TTA ',
+                ['TAAGCTACCTGA-ATG------',
+                 '-----T-CCTGNCACGAATTAC'],
+                 '    CTACCTGACATGAA    '],
+
+                ['TAG', 'GAA', 0.5,
+                 'T-AG              TT-C',
+                ['TAAGCTACCTGA-ATG------',
+                 '-----T-CCTGNCACGAATTAC'],
+                 '    CTACCTGACATGAA    '],
+
+                ['TAG', 'GAA', 0.9,
+                 'T-AG              TT-C',
+                ['TAAGCTACCTGA-ATG------',
+                 '-----T-CCTGNCACGAATTAC'],
+                 'TNAGCTACCTGACATGAATTNC'],
+
+                ['CCTAA', 'CCGTA', 0.5,
+                 'CCTAA                TACGG',
+                ['--TAAGCTACCTGA-ATG--------',
+                 '-------T-CCTGNCACGAATTAC--'],
+                 '     GCTACCTGACATGAAT     '],
+
+                ['CCTAA', 'CCGTA', 0.9,
+                 'CCTAA                TACGG',
+                ['--TAAGCTACCTGA-ATG--------',
+                 '-------T-CCTGNCACGAATTAC--'],
+                 '  TNAGCTACCTGACATGAATTNC  '],
+
+                ['AGCAA', 'ATTAA', 0.5,
+                 '  AGCAA           TTAAT   ',
+                ['TAAGC--TACCTGA-ATG--------',
+                 '-------T-CCTGNCACG--AATTAC'],
+                 '       TACCTGACATG        '],
+
+                ['AGCAA', 'ATTAA', 0.9,
+                 '  AGCAA           TTAAT   ',
+                ['TAAGC--TACCTGA-ATG--------',
+                 '-------T-CCTGNCACG--AATTAC'],
+                 'TNAGC  TACCTGACATG  AATTNC'],
+
+                ['AATG', 'TACAT', 0.5,
+                 ' AATG             ATGTA ',
+                ['TAA-GCTACCTGA-ATG-------',
+                 '------T-CCTGNCACGAAT-TAC'],
+                 '     CTACCTGACATGA      '],
+
+                ['AATG', 'TACAT', 0.9,
+                 ' AATG             ATGTA ',
+                ['TAA-GCTACCTGA-ATG-------',
+                 '------T-CCTGNCACGAAT-TAC'],
+                 'TNA GCTACCTGACATGAAT TNC'],
+
+                ['TGAA', 'TACAT', 0.9,
+                 'TGAA              ATGTA ',
+                ['T-AAGCTACCTGA-ATG-------',
+                 '------T-CCTGNCACGAAT-TAC'],
+                 'T NAGCTACCTGACATGAAT TNC'],
+
+                ['ATGAAGCTT', 'CCGTACATTAA', 0.5,
+                 'ATGAAGCTT           TTAATGTACGG',
+                ['-T-AAGC--TACCTGA-ATG-----------',
+                 '---------T-CCTGNCACG--AAT-TAC--'],
+                 '         TACCTGACATG           '],
+
+                ['ATGAAGCTT', 'CCGTACATTAA', 0.55,
+                 'ATGAAGCTT           TTAATGTACGG',
+                ['-T-AAGC--TACCTGA-ATG-----------',
+                 '---------T-CCTGNCACG--AAT-TAC--'],
+                 '         TACCTGACATG  AAT TNC  '],
+
+                ['ATGAAGCTT', 'CCGTACATTAA', 0.8,
+                 'ATGAAGCTT           TTAATGTACGG',
+                ['-T-AAGC--TACCTGA-ATG-----------',
+                 '---------T-CCTGNCACG--AAT-TAC--'],
+                 ' T NAGC  TACCTGACATG  AAT TNC  '],
+
+                ['GGGG', 'CCCC', 0.5,
+                 'GGGG                GGGG      ',
+                ['----TAAGCTACCTGA-ATG----------',
+                 '---------T-CCTGNCACG----AATTAC'],
+                 '    TNAGCTACCTGACATG    AATTNC']
+            ]
+
+        # Run each test case twice, reversing the order of the traces the second time.
+        seq1 = 0
+        seq2 = 1
+        for cnt in range(2):
+            # Reverse the trace order the second time through.
+            if cnt == 1:
+                cons = ConsensSeqBuilder((self.seqt9, self.seqt8), self.settings)
+                seq1 = 1
+                seq2 = 0
+
+            for testcase in testcases:
+                self.settings.setForwardPrimer(testcase[0])
+                self.settings.setReversePrimer(testcase[1])
+                self.settings.setPrimerMatchThreshold(testcase[2])
+                cons.makeConsensusSequence()
+                #print
+                #print cons.getAlignedPrimers()
+                #print cons.getAlignedSequence(0)
+                #print cons.getAlignedSequence(1)
+                self.assertEqual(cons.getAlignedPrimers(), testcase[3])
+                self.assertEqual(cons.getAlignedSequence(0), testcase[4][seq1])
+                self.assertEqual(cons.getAlignedSequence(1), testcase[4][seq2])
+                self.assertEqual(cons.getConsensus(), testcase[5])
+
+        # Test a case where there is no end gap sequence with which to align
+        # either primer.
+        self.seqt8.isreverse_comped = False
+        self.seqt9.isreverse_comped = True
+        cons = ConsensSeqBuilder((self.seqt8, self.seqt9), self.settings)
+        self.settings.setForwardPrimer('AAG')
+        self.settings.setReversePrimer('TAA')
+        self.settings.setPrimerMatchThreshold(0.5)
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   'AAG                      TTA')
+        self.assertEqual(cons.getAlignedSequence(0), '---TAAGCTACCTGA-ATG---------')
+        self.assertEqual(cons.getAlignedSequence(1), '--------T-CCTGNCACGAATTAC---')
+        self.assertEqual(cons.getConsensus(),        '   TNAGCTACCTGACATGAATTNC   ')
+
+        # Finally, test a case using the legacy consensus algorithm.
+        self.seqt8.isreverse_comped = True
+        self.seqt9.isreverse_comped = False
+        self.settings.setConsensusAlgorithm('legacy')
+        cons = ConsensSeqBuilder((self.seqt8, self.seqt9), self.settings)
+        self.settings.setForwardPrimer('ATGAAGCTT')
+        self.settings.setReversePrimer('CCGTACATTAA')
+        self.settings.setPrimerMatchThreshold(0.8)
+        cons.makeConsensusSequence()
+        self.assertEqual(cons.getAlignedPrimers(),   'ATGAAGCTT           TTAATGTACGG')
+        self.assertEqual(cons.getAlignedSequence(0), '-T-AAGC--TACCTGA-ATG-----------')
+        self.assertEqual(cons.getAlignedSequence(1), '---------T-CCTGNCACG--AAT-TAC--')
+        self.assertEqual(cons.getConsensus(),        ' T NAGC  TACCTGACNNG  AAT TNC  ')
 
 
 

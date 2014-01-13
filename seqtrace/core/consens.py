@@ -272,13 +272,11 @@ class ConsensSeqBuilder:
             self.seqindexes[0] = range(0, len(self.alignedseqs[0]))
 
         # Align the primers to the alignment or single sequence, if we have them.
-        haveprimers = False
-        if self.numseqs == 1 and self.settings.getReversePrimer() != '':
-            haveprimers = True
-            self.alignPrimerToSequence()
-        else:
-            if self.settings.getForwardPrimer() != '' and self.settings.getReversePrimer() != '':
-                haveprimers = True
+        haveprimers = (self.settings.getForwardPrimer() != '' and self.settings.getReversePrimer() != '')
+        if haveprimers:
+            if self.numseqs == 1:
+                self.alignPrimerToSequence()
+            else:
                 self.alignPrimersToAlignment()
 
         # Build the consensus sequence.
@@ -482,7 +480,7 @@ class ConsensSeqBuilder:
                 cbase = cbase2
             elif self.alignedseqs[0][cnt] == '-' and self.alignedseqs[1][cnt] == '-':
                 # We encountered a gap in both sequences due to the primer alignment.
-                cscore = 0
+                cscore = cscore2 = 0
                 cbase = ' '
             else:
                 cbase = 'N'
@@ -659,8 +657,9 @@ class ConsensSeqBuilder:
         # sequence, and consensus quality score list to include the extra gaps.
         for index in range(len(lendaligned)):
             if lendaligned[index] == '-':
-                # Update the start of the right end gap to reflect the new gaps
+                # Update the starts of the end gaps to reflect the new gaps
                 # that are added to the left side of the alignment.
+                lgapstart += 1
                 rgapstart += 1
 
                 # Update both aligned sequences and sequence indexes.
@@ -755,7 +754,7 @@ class ConsensSeqBuilder:
         if self.numseqs != 2:
             return
 
-        # Retrienve the primer and end gap alignments.
+        # Retrieve the primer and end gap alignments.
         fwdaligned = self.pr_alignments[0][0]
         lendaligned = self.pr_alignments[0][1]
         revaligned = self.pr_alignments[1][0]
@@ -772,7 +771,7 @@ class ConsensSeqBuilder:
         #print fwdmatches, fwdtotallen, (float(fwdmatches) / fwdtotallen)
 
         # If there are enough matches to consider the alignment valid, trim
-        # the finished sequence.
+        # the forward primer from the finished sequence.
         if float(fwdmatches) / fwdtotallen >= self.settings.getPrimerMatchThreshold():
             # Find the ending location of the forward primer in the alignment.
             index = len(fwdaligned) - 1
@@ -792,17 +791,15 @@ class ConsensSeqBuilder:
         #print revmatches, revtotallen, (float(revmatches) / revtotallen)
 
         # If there are enough matches to consider the alignment valid, trim
-        # the finished sequence.
+        # the reverse primer from the finished sequence.
         if float(revmatches) / revtotallen >= self.settings.getPrimerMatchThreshold():
             # Find the starting location of the reverse primer in the alignment.
             index = 0
             while revaligned[index] == ' ':
                 index += 1
+            alindex = len(self.consensus) - (len(revaligned) - index)
 
-            self.consensus = self.consensus[0:index + rgapstart + 1] + ' ' * (len(revaligned) - index)
-
-        print self.getLeftEndGapStart()
-        print len(self.alignedseqs[0]) - self.getRightEndGapStart()
+            self.consensus = self.consensus[0:alindex] + ' ' * (len(revaligned) - index)
 
     def trimPrimerFromSequence(self):
         """
