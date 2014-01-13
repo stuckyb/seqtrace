@@ -466,6 +466,10 @@ class TestConsensus(unittest.TestCase):
                 ['----CTGACACGAAT-A-',
                  '-CT-CTGACACGAA----',
                  '    NTGACACGAA    '],
+                # extra gaps at alignment ends
+                ['----CTGACACGA-T-A-',
+                 '-CT--TGACACGAA----',
+                 '    NTGACACGAA    '],
                 # no sequence
                 ['------------------',
                  'GCTCCTGACACGAATTAC',
@@ -607,63 +611,65 @@ class TestConsensus(unittest.TestCase):
         cons = ConsensSeqBuilder((self.seqt8,), self.settings)
         self.assertEqual(cons.getConsensus(), 'TNAGCTACCTGANTG')
 
-        # First check forward trace alignment and trimming.
-        self.settings.setReversePrimer('ATTC')
+        # First check forward trace alignment and trimming.  Define the test
+        # cases, which are in the format
+        # [rev_primer, threshold, primer_aligned, aligned_sequence, consensus].
+        testcases = [
+                ['ATTC', 0.5,
+                 '          GAAT ',
+                 'TAAGCTACCTGAATG',
+                 'TNAGCTACCT     '],
+
+                ['ATCA', 0.5,
+                 '         TG-AT ',
+                 'TAAGCTACCTGAATG',
+                 'TNAGCTACC      '],
+
+                ['AACAT', 0.5,
+                 '            ATGTT',
+                 'TAAGCTACCTGAATG--',
+                 'TNAGCTACCTGA     '],
+
+                ['AACAT', 0.8,
+                 '            ATGTT',
+                 'TAAGCTACCTGAATG--',
+                 'TNAGCTACCTGANTG  '],
+
+                ['TTACC', 0.5,
+                 'GGTAA            ',
+                 '--TAAGCTACCTGAATG',
+                 '                 '],
+
+                ['TTACC', 0.8,
+                 'GGTAA            ',
+                 '--TAAGCTACCTGAATG',
+                 '  TNAGCTACCTGANTG'],
+
+                ['TTGCA', 0.5,
+                 '         TGCAA  ',
+                 'TAAGCTACCTG-AATG',
+                 'TNAGCTACC       '],
+
+                ['TTGCA', 0.9,
+                 '         TGCAA  ',
+                 'TAAGCTACCTG-AATG',
+                 'TNAGCTACCTG ANTG'],
+
+                ['GGGGGGG', 0.9,
+                 'CCCCCCC               ',
+                 '-------TAAGCTACCTGAATG',
+                 '       TNAGCTACCTGANTG']
+                ]
+
+        # Run the test cases.
         self.settings.setForwardPrimer('ATTC')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '          GAAT ')
-        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        'TNAGCTACCT     ')
-
-        self.settings.setReversePrimer('ATCA')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '         TG-AT ')
-        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        'TNAGCTACC      ')
-
-        self.settings.setReversePrimer('AACAT')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '            ATGTT')
-        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG--')
-        self.assertEqual(cons.getConsensus(),        'TNAGCTACCTGA     ')
-
-        self.settings.setPrimerMatchThreshold(0.8)
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '            ATGTT')
-        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTGAATG--')
-        self.assertEqual(cons.getConsensus(),        'TNAGCTACCTGANTG  ')
-
-        self.settings.setPrimerMatchThreshold(0.5)
-        self.settings.setReversePrimer('TTACC')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   'GGTAA            ')
-        self.assertEqual(cons.getAlignedSequence(0), '--TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        '                 ')
-
-        self.settings.setPrimerMatchThreshold(0.8)
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   'GGTAA            ')
-        self.assertEqual(cons.getAlignedSequence(0), '--TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        '  TNAGCTACCTGANTG')
-
-        self.settings.setPrimerMatchThreshold(0.5)
-        self.settings.setReversePrimer('TTGCA')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '         TGCAA  ')
-        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTG-AATG')
-        self.assertEqual(cons.getConsensus(),        'TNAGCTACC       ')
-
-        self.settings.setPrimerMatchThreshold(0.9)
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   '         TGCAA  ')
-        self.assertEqual(cons.getAlignedSequence(0), 'TAAGCTACCTG-AATG')
-        self.assertEqual(cons.getConsensus(),        'TNAGCTACCTG ANTG')
-
-        self.settings.setReversePrimer('GGGGGGG')
-        cons.makeConsensusSequence()
-        self.assertEqual(cons.getAlignedPrimers(),   'CCCCCCC               ')
-        self.assertEqual(cons.getAlignedSequence(0), '-------TAAGCTACCTGAATG')
-        self.assertEqual(cons.getConsensus(),        '       TNAGCTACCTGANTG')
+        for testcase in testcases:
+            self.settings.setReversePrimer(testcase[0])
+            self.settings.setPrimerMatchThreshold(testcase[1])
+            cons.makeConsensusSequence()
+            self.assertEqual(cons.getAlignedPrimers(), testcase[2])
+            self.assertEqual(cons.getAlignedSequence(0), testcase[3])
+            self.assertEqual(cons.getConsensus(), testcase[4])
 
         # Now test a reverse trace alignment case.  We only need to check that
         # the alignment works as expected, because after that, the algorithm is
@@ -843,6 +849,8 @@ class TestConsensus(unittest.TestCase):
         self.assertEqual(cons.getAlignedSequence(0), '-T-AAGC--TACCTGA-ATG-----------')
         self.assertEqual(cons.getAlignedSequence(1), '---------T-CCTGNCACG--AAT-TAC--')
         self.assertEqual(cons.getConsensus(),        ' T NAGC  TACCTGACNNG  AAT TNC  ')
+
+        self.seqt8.isreverse_comped = False
 
 
 
