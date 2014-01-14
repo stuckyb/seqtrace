@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Brian J. Stucky
+# Copyright (C) 2014 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

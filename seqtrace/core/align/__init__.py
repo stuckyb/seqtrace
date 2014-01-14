@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Brian J. Stucky
+# Copyright (C) 2014 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,9 +21,9 @@
 # it will be used automatically; otherwise, the native Python module will be used.
 
 try:
-    # try to load the compiled C module
+    # Try to load the compiled C module.
     from calign import PairwiseAlignment
 except ImportError:
-    # if that fails, load the Python module
+    # If that fails, load the Python module.
     from pyalign import PairwiseAlignment
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (C) 2012 Brian J. Stucky
+# Copyright (C) 2014 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1286,7 +1286,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         #diag.set_authors(['Brian Stucky'])
         diag.set_comments('by Brian Stucky\n\na program for viewing and processing sequencing trace files')
         diag.set_license(
-        '''Copyright (C) 2012 Brian J. Stucky
+        '''Copyright (C) 2014 Brian J. Stucky
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
