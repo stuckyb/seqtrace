@@ -52,10 +52,25 @@ class TestConsensus(unittest.TestCase):
         self.seqt5 = SequenceTrace()
         self.seqt4.basecalls = 'AWAGNCACTCACAB'
         self.seqt5.basecalls = 'GNCCGTGNCADG'
+        # Alignment of sequences 4 and 5:  AWAGNCAC-TCACAB-
+        #                                  ---GNC-CGTGNCADG
+
         #                    A   W   A   G   N   C   A   C       T   C   A   C   A   B
-        self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52, 10    ]
+        self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 52,     40, 6,  34, 40, 20, 10    ]
         #                                G   N   C       C   G   T   G   N   C   A   D   G
-        self.seqt5.bcconf = [            20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 10, 50]
+        self.seqt5.bcconf = [            20, 8,  10,     52, 30, 10, 40, 12, 40, 12, 10, 50]
+
+        self.seqt10 = SequenceTrace()
+        self.seqt11 = SequenceTrace()
+        self.seqt10.basecalls = 'ATAGGCATGCTCAAT'
+        self.seqt11.basecalls = 'GGAACATGCAATG'
+        # Alignment of sequences 10 and 11:  ATAGG--CATGCTCAAT-
+        #                                    ---GGAACATGC--AATG
+
+        #                     A   T   A   G   G           C   A   T   G   C   T   C   A   A   T
+        self.seqt10.bcconf = [40, 32, 4,  20, 40,         40, 52, 40, 20, 20, 6,  34, 40, 52, 10    ]
+        #                                 G   G   A   A   C   A   T   G           C   A   A   T   G
+        self.seqt11.bcconf = [            20, 10, 10, 12, 40, 52, 10, 20,         12, 10, 52, 10, 10]
 
         # Trace data with all 11 IUPAC ambiguity codes for testing the single-sequence
         # and legacy consensus algorithms.
@@ -233,6 +248,72 @@ class TestConsensus(unittest.TestCase):
             for base in ('A', 'T', 'G', 'C'):
                 self.assertAlmostEqual(result[base], nppd[base])
 
+    def test_getGapFlankingScore(self):
+        """
+        Tests the algorithm for calculating the average quality score of the bases flanking
+        an internal gap in an aligned sequence.
+        """
+        self.settings.setDoQualityTrim(False)
+        self.settings.setForwardPrimer('')
+        self.settings.setReversePrimer('')
+        self.settings.setConsensusAlgorithm('Bayesian')
+
+        # First test an alignment with single-base gaps.
+        cons = ConsensSeqBuilder((self.seqt4, self.seqt5), self.settings)
+
+        # Verify that the alignment is correct.
+        self.assertEqual(cons.getAlignedSequence(0), 'AWAGNCAC-TCACAB-')
+        self.assertEqual(cons.getAlignedSequence(1), '---GNC-CGTGNCADG')
+
+        #                      A   W   A   G   N   C   A   C       T   C   A   C   A   B
+        # self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 52,     40, 6,  34, 40, 20, 10    ]
+        #                                  G   N   C       C   G   T   G   N   C   A   D   G
+        # self.seqt5.bcconf = [            20, 8,  10,     52, 30, 10, 40, 12, 40, 12, 10, 50]
+
+        # Define the test cases in the format [seqnum, pos, expected_score].
+        testcases = [
+                [0, 8, 42.744576201],
+                [1, 6, 13.010025944]
+                ]
+
+        # Run each test case twice, switching the sequence order the second time.
+        for cnt in range(2):
+            if cnt == 1:
+                # Switch the sequence order the second time through.
+                cons = ConsensSeqBuilder((self.seqt5, self.seqt4), self.settings)
+
+            for testcase in testcases:
+                self.assertAlmostEqual(cons.getGapFlankingScore((testcase[0] + cnt) % 2, testcase[1]), testcase[2])
+
+        # Now test an alignment with multi-base gaps.
+        cons = ConsensSeqBuilder((self.seqt10, self.seqt11), self.settings)
+
+        # Verify that the alignment is correct.
+        self.assertEqual(cons.getAlignedSequence(0), 'ATAGG--CATGCTCAAT-')
+        self.assertEqual(cons.getAlignedSequence(1), '---GGAACATG--CAATG')
+
+        #                       A   T   A   G   G           C   A   T   G   C   T   C   A   A   T
+        # self.seqt10.bcconf = [40, 32, 4,  20, 40,         40, 52, 40, 20, 20, 6,  34, 40, 52, 10    ]
+        #                                   G   G   A   A   C   A   T   G           C   A   A   T   G
+        # self.seqt11.bcconf = [            20, 10, 10, 12, 40, 52, 10, 20,         12, 10, 52, 10, 10]
+
+        # Define the test cases in the format [seqnum, pos, expected_score].
+        testcases = [
+                [0, 5, 40],
+                [0, 6, 40],
+                [1, 11, 14.371379615],
+                [1, 12, 14.371379615]
+                ]
+
+        # Run each test case twice, switching the sequence order the second time.
+        for cnt in range(2):
+            if cnt == 1:
+                # Switch the sequence order the second time through.
+                cons = ConsensSeqBuilder((self.seqt11, self.seqt10), self.settings)
+
+            for testcase in testcases:
+                self.assertAlmostEqual(cons.getGapFlankingScore((testcase[0] + cnt) % 2, testcase[1]), testcase[2])
+
     def test_BayesianConsensus(self):
         """
         Test consensus sequence construction with two (forward/reverse) sequence traces using
@@ -255,10 +336,12 @@ class TestConsensus(unittest.TestCase):
         self.assertEqual(cons.getAlignedSequence(1), '---GNC-CGTGNCADG')
 
         #                      A   W   A   G   N   C   A   C       T   C   A   C   A   B
-        # self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 20,     40, 6,  34, 40, 52, 10    ]
+        # self.seqt4.bcconf = [40, 32, 4,  20, 12, 10, 12, 52,     40, 6,  34, 40, 20, 10    ]
         #                                  G   N   C       C   G   T   G   N   C   A   D   G
-        # self.seqt5.bcconf = [            20, 8,  10,     12, 30, 10, 40, 12, 40, 52, 10, 50]
-        expconsconf = [40, 32, 4, 44.6841, 1, 23.8739, 12, 36.4455, 30, 54.3132, 34.3809, 34, 84.7703, 108.7711, 2.0412, 50]
+        # self.seqt5.bcconf = [            20, 8,  10,     52, 30, 10, 40, 12, 40, 12, 10, 50]
+
+        # Define the expected consensus quality scores.
+        expconsconf = [40, 32, 4, 44.6841, 1, 23.8739, 12, 108.7711, 30, 54.3132, 34.3809, 34, 84.7703, 36.4455, 2.0412, 50]
 
         # Run the tests with seqt4 first, then with seqt5 first.
         for cnt in range(2):
@@ -273,6 +356,39 @@ class TestConsensus(unittest.TestCase):
 
             # Check that the consensus sequence is correct.
             self.assertEqual(cons.getConsensus(), 'AWNGNNNCGTGACANG')
+
+            # Check that the consensus quality scores are correct.
+            for (expconf, conf) in zip(expconsconf, confvals):
+                self.assertAlmostEqual(expconf, conf)
+
+        # Now check anothe pair of sequences to verify that internal gaps are handled correctly.
+        cons = ConsensSeqBuilder((self.seqt10, self.seqt11), self.settings)
+
+        # Verify that the alignment is correct.
+        self.assertEqual(cons.getAlignedSequence(0), 'ATAGG--CATGCTCAAT-')
+        self.assertEqual(cons.getAlignedSequence(1), '---GGAACATG--CAATG')
+
+        #                       A   T   A   G   G           C   A   T   G   C   T   C   A   A   T
+        # self.seqt10.bcconf = [40, 32, 4,  20, 40,         40, 52, 40, 20, 20, 6,  34, 40, 52, 10    ]
+        #                                   G   G   A   A   C   A   T   G           C   A   A   T   G
+        # self.seqt11.bcconf = [            20, 10, 10, 12, 40, 52, 10, 20,         12, 10, 52, 10, 10]
+
+        # Define the expected consensus quality scores.
+        expconsconf = [40, 32, 4, 44.6841, 54.3132, 10, 12, 84.7703, 108.7711, 54.3132, 44.6841, 20, 6, 50.4865, 54.3132, 108.7711, 23.8739, 10]
+
+        # Run the tests with seqt10 first, then with seqt11 first.
+        for cnt in range(2):
+            if cnt == 1:
+                # Swap the sequence trace order on the second pass through the loop.
+                cons = ConsensSeqBuilder((self.seqt11, self.seqt10), self.settings)
+
+            cons.makeConsensusSequence()
+
+            # Get the consensus quality scores, rounding each to 4 decimal places.
+            confvals = [round(cval, 4) for cval in cons.consconf]
+
+            # Check that the consensus sequence is correct.
+            self.assertEqual(cons.getConsensus(), 'ATNGG  CATGNNCAANN')
 
             # Check that the consensus quality scores are correct.
             for (expconf, conf) in zip(expconsconf, confvals):

@@ -265,9 +265,11 @@ class ConsensSeqBuilder:
         if self.settings == None:
             self.settings = ConsensSeqSettings()
 
-        self.seqt1 = sequencetraces[0]
+        #self.seqtraces[0] = sequencetraces[0]
+        self.seqtraces = []
+        self.seqtraces.append(sequencetraces[0])
         if self.numseqs == 2:
-            self.seqt2 = sequencetraces[1]
+            self.seqtraces.append(sequencetraces[1])
 
         # Set up lists for the aligned sequences and alignment indices.
         self.alignedseqs = [None] * self.numseqs
@@ -291,15 +293,15 @@ class ConsensSeqBuilder:
         # Get the raw sequences and align the forward/reverse traces if we have both.
         if self.numseqs == 2:
             align = PairwiseAlignment()
-            align.setSequences(self.seqt1.getBaseCalls(), self.seqt2.getBaseCalls())
+            align.setSequences(self.seqtraces[0].getBaseCalls(), self.seqtraces[1].getBaseCalls())
             align.doAlignment()
             self.alignedseqs[0], self.alignedseqs[1] = align.getAlignedSequences()
             self.seqindexes[0], self.seqindexes[1] = align.getAlignedSeqIndexes()
         else:
-            self.alignedseqs[0] = self.seqt1.getBaseCalls()
+            self.alignedseqs[0] = self.seqtraces[0].getBaseCalls()
             self.seqindexes[0] = range(0, len(self.alignedseqs[0]))
 
-        # Align the primers to the alignment or single sequence, if we have them.
+        # If we have primers, align them to the alignment or single sequence.
         haveprimers = (self.settings.getForwardPrimer() != '' and self.settings.getReversePrimer() != '')
         if haveprimers:
             if self.numseqs == 1:
@@ -331,6 +333,21 @@ class ConsensSeqBuilder:
                 winsize, basecnt = self.settings.getQualityTrimParams()
                 self.trimConsensus(winsize, basecnt)
 
+    def getGapFlankingScore(self, seqnum, pos):
+        """
+        Returns the log-adjusted mean score of the two bases flanking an
+        internal gap at the position specified by ps in sequence seqnum.
+        """
+        # Get the locations of the flanking bases.
+        index1 = (self.seqindexes[seqnum][pos] + 1) * -1 - 1
+        index2 = index1 + 1
+
+        # Calculate the mean quality score of the two flanking bases.
+        p1 = 10.0 ** (self.seqtraces[seqnum].getBaseCallConf(index1) / -10.0)
+        p2 = 10.0 ** (self.seqtraces[seqnum].getBaseCallConf(index2) / -10.0)
+
+        return -10 * math.log10((p1 + p2) / 2)
+
     def makeBayesianConsensus(self, min_confscore):
         """
         Constructs a consensus sequence using Bayesian inference to assign base
@@ -342,34 +359,55 @@ class ConsensSeqBuilder:
         # Create a dictionary to use for nucleotide posterior probability distributions.
         nppd = {'A': 0.0, 'T': 0.0, 'G': 0.0, 'C': 0.0}
 
+        # Get the start indices for the end gap regions of the alignment.
+        lgapstart = self.getLeftEndGapStart()
+        rgapstart = self.getRightEndGapStart()
+
         for cnt in range(len(self.alignedseqs[0])):
             # Initialize variables to indicate no usable data at this position.
             base1 = base2 = 'N'
 
-            # See which traces have usable data at this position.
-            if self.alignedseqs[0][cnt] not in ('-', 'N'):
-                base1 = self.alignedseqs[0][cnt]
-                score1 = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
-            if self.alignedseqs[1][cnt] not in ('-', 'N'):
-                base2 = self.alignedseqs[1][cnt]
-                score2 = self.seqt2.getBaseCallConf(self.seqindexes[1][cnt])
+                # If the mean quality score exceeds the minimum AND the quality of the
+                # gap-introducing base is less than the minimum, then keep the gap in the
+                # consensus sequence.
+                #if mqual >= min_confscore and self.seqtraces[0].getBaseCallConf(self.seq1indexed[cnt]) < min_confscore:
+                #    base2 = '-'
+                #    score2 = mqual
+
+
+            # Get the base calls at this position.
+            base1 = self.alignedseqs[0][cnt]
+            base2 = self.alignedseqs[1][cnt]
 
             # Determine the consensus base at this position.
-            if base1 != 'N' and base2 != 'N':
+            gapflankscore = -1.0
+            if base1 not in ('-', 'N') and base2 not in ('-', 'N'):
                 # Both traces have usable data, so calculate the posterior probability
                 # distribution of nucleotides using Bayes' Theorem, then determine the
                 # consensus base.
-                self.calcPosteriorBasePrDist(base1, score1, base2, score2, nppd)
+                self.calcPosteriorBasePrDist(
+                        base1, self.seqtraces[0].getBaseCallConf(self.seqindexes[0][cnt]),
+                        base2, self.seqtraces[1].getBaseCallConf(self.seqindexes[1][cnt]), nppd)
                 cbase, cscore = self.getMostProbableBase(nppd)
-            elif base1 != 'N':
+            elif base1 not in ('-', 'N'):
                 # Only the first trace has usable data.
                 cbase = base1
-                cscore = score1
-            elif base2 != 'N':
+                cscore = self.seqtraces[0].getBaseCallConf(self.seqindexes[0][cnt])
+
+                # Check if this is an internal gap.
+                if cnt >= lgapstart and cnt <= rgapstart and base2 == '-':
+                    # It is, so get the mean score of the flanking bases.
+                    gapflankscore = self.getGapFlankingScore(1, cnt)
+            elif base2 not in ('-', 'N'):
                 # Only the second trace has usable data.
                 cbase = base2
-                cscore = score2
-            elif self.alignedseqs[0][cnt] == '-' and self.alignedseqs[1][cnt] == '-':
+                cscore = self.seqtraces[1].getBaseCallConf(self.seqindexes[1][cnt])
+
+                # Check if this is an internal gap.
+                if cnt >= lgapstart and cnt <= rgapstart and base1 == '-':
+                    # It is, so get the mean score of the flanking bases.
+                    gapflankscore = self.getGapFlankingScore(0, cnt)
+            elif base1 == '-' and base2 == '-':
                 # We encountered a gap in both sequences due to the primer alignment.
                 cbase = ' '
                 cscore = 0
@@ -380,7 +418,12 @@ class ConsensSeqBuilder:
 
             # Update the consensus sequence and associated quality score.
             if cscore < min_confscore and cbase != ' ':
-                cbase = 'N'
+                if gapflankscore > min_confscore:
+                    # Consider this a spurious gap and delete the position from
+                    # the consensus sequence.
+                    cbase = ' '
+                else:
+                    cbase = 'N'
             cons.append(cbase)
             consconf.append(cscore)
 
@@ -489,16 +532,16 @@ class ConsensSeqBuilder:
         consconf = list()
         #print self.alignedseqs[1]
         #print self.seqindexes[1]
-        #print len(self.seqt2.getBaseCalls())
+        #print len(self.seqtraces[1].getBaseCalls())
 
         for cnt in range(len(self.alignedseqs[0])):
             cscore = cscore2 = -1
             if (self.alignedseqs[0][cnt] != '-') and (self.alignedseqs[0][cnt] != 'N'):
                 cbase = self.alignedseqs[0][cnt]
-                cscore = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
+                cscore = self.seqtraces[0].getBaseCallConf(self.seqindexes[0][cnt])
             if (self.alignedseqs[1][cnt] != '-') and (self.alignedseqs[1][cnt] != 'N'):
                 cbase2 = self.alignedseqs[1][cnt]
-                cscore2 = self.seqt2.getBaseCallConf(self.seqindexes[1][cnt])
+                cscore2 = self.seqtraces[1].getBaseCallConf(self.seqindexes[1][cnt])
 
             if cscore >= min_confscore:
                 if cscore2 >= min_confscore:
@@ -537,7 +580,7 @@ class ConsensSeqBuilder:
             cscore = 0
             cbase = self.alignedseqs[0][cnt]
             if cbase != '-':
-                cscore = self.seqt1.getBaseCallConf(self.seqindexes[0][cnt])
+                cscore = self.seqtraces[0].getBaseCallConf(self.seqindexes[0][cnt])
 
                 if cscore < min_confscore:
                     cbase = 'N'
@@ -631,7 +674,7 @@ class ConsensSeqBuilder:
             return
 
         # Figure out which trace is the reverse trace.
-        if self.seqt1.isReverseComplemented():
+        if self.seqtraces[0].isReverseComplemented():
             rev = 0
             fwd = 1
         else:
@@ -741,7 +784,7 @@ class ConsensSeqBuilder:
 
         # Figure out if we're working on a reverse trace and get the
         # appropriate primer sequence to search for.
-        isreverse = self.seqt1.isReverseComplemented()
+        isreverse = self.seqtraces[0].isReverseComplemented()
         if isreverse:
             primer = self.settings.getForwardPrimer()
         else:
@@ -860,7 +903,7 @@ class ConsensSeqBuilder:
         # end of the primer, reverse traces are trimmed from the right end of
         # the primer.
         if float(prmatches) / prtotallen >= self.settings.getPrimerMatchThreshold():
-            if self.seqt1.isReverseComplemented():
+            if self.seqtraces[0].isReverseComplemented():
                 # Find the starting location of the primer in the alignment.
                 index = len(praligned) - 1
                 while praligned[index] == ' ':
@@ -1009,28 +1052,19 @@ class ConsensSeqBuilder:
         if (sequence_num < 0) or (sequence_num >= self.numseqs):
             raise ConsensSeqBuilderError('Invalid sequence number.')
 
-        if sequence_num == 0:
-            return self.alignedseqs[0]
-        else:
-            return self.alignedseqs[1]
+        return self.alignedseqs[sequence_num]
 
     def getSequenceTrace(self, sequence_num):
         if (sequence_num < 0) or (sequence_num >= self.numseqs):
             raise ConsensSeqBuilderError('Invalid sequence number.')
 
-        if sequence_num == 0:
-            return self.seqt1
-        else:
-            return self.seqt2
+        return self.seqtraces[sequence_num]
 
     def getActualSeqIndex(self, sequence_num, alignment_index):
         if (sequence_num < 0) or (sequence_num >= self.numseqs):
             raise ConsensSeqBuilderError('Invalid sequence number.')
 
-        if sequence_num == 0:
-            return self.seqindexes[0][alignment_index]
-        else:
-            return self.seqindexes[1][alignment_index]
+        return self.seqindexes[sequence_num][alignment_index]
 
 
 class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
