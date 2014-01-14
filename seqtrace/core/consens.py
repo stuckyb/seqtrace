@@ -1099,10 +1099,12 @@ class ModifiableConsensSeqBuilder(ConsensSeqBuilder, Observable):
         oldcons = self.consensus
         self.makeConsensusSequence()
 
+        # Any time the consensus sequence is recalculated, trigger a change event.
+        self.notifyObservers('consensus_changed', (0, len(self.consensus) - 1))
+
         if oldcons != self.consensus:
             self.undo_stack.append({'start': 0, 'end': len(self.consensus) - 1, 'data': oldcons})
 
-            self.notifyObservers('consensus_changed', (0, len(self.consensus) - 1))
             if len(self.undo_stack) == 1:
                 self.notifyObservers('undo_state_changed', (True,))
 

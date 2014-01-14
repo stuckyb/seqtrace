@@ -321,18 +321,51 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         self.fheight = self.txtlayout.get_pixel_size()[1]
         self.fwidth = self.txtlayout.get_pixel_size()[0]
 
+        self.setDrawingSize()
+
+    def getSizeRequirements(self):
+        """
+        Calculates the total size requirements in pixels in order view the consensus
+        sequence object, including the alignment and primers, if they are provided,
+        given the set current font metrics.  The size is returned as (width, height).
+        """
+        settings = self.cons.getSettings()
+        haveprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
+        
+        totalheight = self.fheight*(self.numseqs+1) + self.margins*2 + self.padding
+        if haveprimers:
+            totalheight += self.fheight
+
+        return (self.fwidth*len(self.cons.getAlignedSequence(0)), totalheight)
+
+    def setDrawingSize(self):
+        """
+        Sets the size request for the viewer to accomodate all displayable components
+        of the consensus sequence object.  The total size is determined by the method
+        getSizeRequirements().  Also updates the location of the top of the alignment
+        and the flag indicating whether primers should be displayed.
+        """
+        # Determine whether primers should be drawn.
+        settings = self.cons.getSettings()
+        self.drawprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
+
         # Set the location of the top of the alignment.
         self.al_top = self.margins
         if self.drawprimers:
             self.al_top += self.fheight
 
-        totalheight = self.fheight*(self.numseqs+1) + self.margins*2 + self.padding
-        if self.drawprimers:
-            totalheight += self.fheight
-        self.set_size_request(self.fwidth*len(self.cons.getAlignedSequence(0)),
-                totalheight)
+        # Set the size request.
+        width, height = self.getSizeRequirements()
+        self.set_size_request(width, height)
 
     def consensusChanged(self, start, end):
+        # Check if any size requirements for the drawing area have changed,
+        # and update the size request if needed.
+        oldwidth, oldheight = self.get_size_request()
+        newwidth, newheight = self.getSizeRequirements()
+        if oldwidth != newwidth or oldheight != newheight:
+            self.setDrawingSize()
+
         self.redrawConsensus(start, end)
 
     def updatedisplay(self, da, event):
@@ -484,10 +517,21 @@ class ScrolledConsensusSequenceViewer(gtk.ScrolledWindow):
         gtk.ScrolledWindow.__init__(self)
 
         self.da = ConsensusSequenceViewer(mod_consensseq_builder)
-        innerhbox = gtk.HBox(False)
-        innerhbox.pack_start(self.da, expand=False, fill=False)
+        self.innerhbox = gtk.HBox(False)
+        self.innerhbox.pack_start(self.da, expand=False, fill=False)
         self.set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_NEVER)
-        self.add_with_viewport(innerhbox)
+        self.add_with_viewport(self.innerhbox)
+
+        self.da.connect('size-request', self.consViewerResized)
+
+    def consViewerResized(self, widget, req):
+        """
+        Respond to size request changes by the child ConsensusSequenceViewer.  The
+        HBox inside the viewport does not seem to respond properly to changes in its
+        child's size request, so take care of that manually here.
+        """
+        width, height = self.da.get_size_request()
+        self.innerhbox.set_size_request(width, height)
 
     def getConsensusSequenceViewer(self):
         return self.da

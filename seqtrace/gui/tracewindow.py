@@ -187,7 +187,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
             <toolitem action="Modify" />
         </toolbar>'''
 
-        # these actions are (usually) always enabled
+        # These actions are (usually) always enabled.
         self.main_ag = gtk.ActionGroup('main_actions')
         self.main_ag.add_actions([
             ('File', None, '_File'),
