@@ -16,6 +16,7 @@
 
 
 from seqtrace.core import sequencetrace
+from seqtrace.core import seqwriter
 from seqtrace.core.consens import ConsensSeqBuilder
 from seqtrace.core.observable import Observable
 
@@ -27,6 +28,7 @@ from seqtrace.gui.statusbar import ConsensSeqStatusBar
 import seqtrace.gui.pyperclip as pyperclip
 
 import xml.sax.saxutils
+import os
 import re
 
 import pygtk
@@ -466,6 +468,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
     def exportConsensus(self, widget):
         # create a file chooser dialog to get a file name and format from the user
         fc = seqwriter.SeqWriterFileDialog(self, 'Export Consensus Sequence')
+        fc.set_current_folder(os.getcwd())
         response = fc.run()
         fname = fc.get_filename()
         fformat = fc.getFileFormat()
@@ -493,6 +496,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
     def exportRawSequence(self, widget):
         # create a file chooser dialog to get a file name and format from the user
         fc = seqwriter.SeqWriterFileDialog(self, 'Export Raw Sequence(s)')
+        fc.set_current_folder(os.getcwd())
         response = fc.run()
         fname = fc.get_filename()
         fformat = fc.getFileFormat()
@@ -521,6 +525,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
     def exportAlignment(self, widget):
         # create a file chooser dialog to get a file name and format from the user
         fc = seqwriter.SeqWriterFileDialog(self, 'Export Alignment')
+        fc.set_current_folder(os.getcwd())
         response = fc.run()
         fname = fc.get_filename()
         fformat = fc.getFileFormat()
