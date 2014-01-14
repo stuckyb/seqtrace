@@ -1207,12 +1207,18 @@ class MainWindow(gtk.Window, CommonDialogs):
             return
 
         items = self.projview.getSelection()
+
+        # Only get the items that are not files.
+        groupitems = []
         for item in items:
             if not(item.isFile()):
-                # if there is an open trace window for the file or an associative node that contains
-                # it, close the window(s) first
-                self.tw_manager.closeByItemId(item.getId())
-                self.project.removeAssociativeItem(item)
+                groupitems.append(item)
+
+        for item in groupitems:
+            # If there are any open trace windows for this group, close
+            # them first.
+            self.tw_manager.closeByItemId(item.getId())
+            self.project.removeAssociativeItem(item)
 
     def findFwdRev(self, widget):
         # confirm this is what the user wants to do

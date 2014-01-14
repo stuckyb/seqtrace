@@ -333,21 +333,6 @@ class ConsensSeqBuilder:
                 winsize, basecnt = self.settings.getQualityTrimParams()
                 self.trimConsensus(winsize, basecnt)
 
-    def getGapFlankingScore(self, seqnum, pos):
-        """
-        Returns the log-adjusted mean score of the two bases flanking an
-        internal gap at the position specified by ps in sequence seqnum.
-        """
-        # Get the locations of the flanking bases.
-        index1 = (self.seqindexes[seqnum][pos] + 1) * -1 - 1
-        index2 = index1 + 1
-
-        # Calculate the mean quality score of the two flanking bases.
-        p1 = 10.0 ** (self.seqtraces[seqnum].getBaseCallConf(index1) / -10.0)
-        p2 = 10.0 ** (self.seqtraces[seqnum].getBaseCallConf(index2) / -10.0)
-
-        return -10 * math.log10((p1 + p2) / 2)
-
     def makeBayesianConsensus(self, min_confscore):
         """
         Constructs a consensus sequence using Bayesian inference to assign base
@@ -429,6 +414,21 @@ class ConsensSeqBuilder:
 
         self.consensus = ''.join(cons)
         self.consconf = consconf
+
+    def getGapFlankingScore(self, seqnum, pos):
+        """
+        Returns the log-adjusted mean score of the two bases flanking an
+        internal gap at the position specified by ps in sequence seqnum.
+        """
+        # Get the locations of the flanking bases.
+        index1 = (self.seqindexes[seqnum][pos] + 1) * -1 - 1
+        index2 = index1 + 1
+
+        # Calculate the mean quality score of the two flanking bases.
+        p1 = 10.0 ** (self.seqtraces[seqnum].getBaseCallConf(index1) / -10.0)
+        p2 = 10.0 ** (self.seqtraces[seqnum].getBaseCallConf(index2) / -10.0)
+
+        return -10 * math.log10((p1 + p2) / 2)
 
     def getMostProbableBase(self, nppd):
         """
@@ -703,9 +703,12 @@ class ConsensSeqBuilder:
         #print leftend
         #print rightend
 
-        # Align the forward primer sequence to the left end gap sequence.
+        # Align the forward primer sequence to the left end gap sequence.  Using
+        # a harsher gap penalty (-12 instead of -6) seems to generally produce
+        # more useful alignments.
         forward = self.settings.getForwardPrimer()
         align = PairwiseAlignment()
+        align.setGapPenalty(-9)
         align.setSequences(forward, leftend)
         align.doAlignment()
         fwdaligned, lendaligned = align.getAlignedSequences()
