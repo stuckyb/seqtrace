@@ -21,6 +21,7 @@ from seqtrace.core import seqwriter
 import pygtk
 pygtk.require('2.0')
 import gtk
+import cairo
 import pango
 
 import os.path
@@ -37,7 +38,7 @@ class SequenceTraceViewer:
 
         self.seqt = sequencetrace
 
-        # initialize drawing settings
+        # Initialize drawing settings.
         self.tracecolors = {
                 'A': gtk.gdk.color_parse('#009000'),    # green
                 'C': gtk.gdk.color_parse('#0000ff'),    # blue
@@ -55,6 +56,14 @@ class SequenceTraceViewer:
                 'V': gtk.gdk.color_parse('#003055'),    # mix of A, C, and G
                 'N': gtk.gdk.color_parse('#999')        # gray
                 }
+        # Set up colors with an alpha channel to use for the lines from
+        # the base calls to the trace peaks.
+        self.pklinecolors = {}
+        self.pklinecolors['A'] = (self.tracecolors['A'].red, self.tracecolors['A'].green, self.tracecolors['A'].blue, 0.84)
+        self.pklinecolors['C'] = (self.tracecolors['C'].red, self.tracecolors['C'].green, self.tracecolors['C'].blue, 0.6)
+        self.pklinecolors['G'] = (self.tracecolors['G'].red, self.tracecolors['G'].green, self.tracecolors['G'].blue, 0.6)
+        self.pklinecolors['T'] = (self.tracecolors['T'].red, self.tracecolors['T'].green, self.tracecolors['T'].blue, 0.68)
+
         self.bottom_margin = 2
         self.bcpadding = 4
 
@@ -124,30 +133,49 @@ class SequenceTraceViewer:
         #print '(', event.area.x, ',', event.area.y
         startx = event.area.x
         dwidth = event.area.width
+        if startx > 0:
+            # Becase the Cairo coordinates are shifted by +0.5 for the trace
+            # drawing, make sure that we have sufficient overlap with previous
+            # drawing operations so that we don't get breaks in the antialiasing.
+            startx -= 1
+            dwidth += 1
         #print startx, dwidth
 
-        self.eraseda(dwin, gc, startx=startx, dwidth=dwidth)
-        self.drawBaseCalls(dwin, gc, startx=startx, dwidth=dwidth)
-        self.drawTrace(dwin, gc, startx=startx, dwidth=dwidth)
+        # Create the Cairo context.
+        cr = dwin.cairo_create()
+        cr.set_antialias(cairo.ANTIALIAS_DEFAULT)
+        cr.set_line_join(cairo.LINE_JOIN_ROUND)
+
+        self.eraseda(dwin, cr, startx=startx, dwidth=dwidth)
+        self.drawBaseCalls(dwin, cr, startx=startx, dwidth=dwidth)
+        self.drawTrace(dwin, cr, startx=startx, dwidth=dwidth)
         if self.highlighted != self.seqt.getNumBaseCalls():
             self.highlightBaseInternal(self.highlighted);
 
-    def eraseda(self, dwin, gc, startx=0, dwidth=0):
+    def eraseda(self, dwin, cr, startx=0, dwidth=0):
         width, height = dwin.get_size()
         if dwidth == 0:
             dwidth = width
 
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#ffffff'))
-        dwin.draw_rectangle(gc, True, startx, 0, dwidth, height)
+        cr.set_source_color(gtk.gdk.color_parse('#ffffff'))
+        cr.rectangle(startx, 0, dwidth, height)
+        cr.fill()
 
-    def drawTrace(self, dwin, gc, startx=0, dwidth=0):
+    def drawTrace(self, dwin, cr, startx=0, dwidth=0):
+        """
+        Draw the trace lines using Cairo.  Note that because we are drawing
+        1-pixel width lines, 0.5 is added to the x and y coordinates, which
+        guarantees that the lines are drawn in the same position as with
+        the regular GTK drawing routines and also ensures that vertical and
+        horizontal lines are exactly 1 pixel wide.
+        """
         width, height = dwin.get_size()
         if dwidth == 0:
             dwidth = width
 
         drawheight = height - self.bottom_margin - self.bcheight
 
-        gc.set_line_attributes(0, gtk.gdk.LINE_SOLID, gtk.gdk.CAP_BUTT, gtk.gdk.JOIN_MITER)
+        cr.set_line_width(1)
 
         samps = self.seqt.getTraceLength()
         startsamp = (startx * samps) / width
@@ -159,7 +187,8 @@ class SequenceTraceViewer:
         xscale = float(width) / samps
 
         for base in ('A','C','G','T'):
-            gc.set_rgb_fg_color(self.tracecolors[base])
+            #gc.set_rgb_fg_color(self.tracecolors[base])
+            cr.set_source_color(self.tracecolors[base])
             data = self.seqt.getTraceSamples(base)
 
             oldx = int(startsamp * xscale)
@@ -167,14 +196,25 @@ class SequenceTraceViewer:
             for cnt in range(startsamp, endsamp):
                 x = int(cnt * xscale)
                 y = int((self.sigmax - data[cnt]) * yscale + 0.5)
-                dwin.draw_line(gc, oldx, oldy, x, y)
+                cr.move_to(oldx+0.5, oldy+0.5)
+                cr.line_to(x+0.5, y+0.5)
                 oldx = x
                 oldy = y
+            cr.stroke()
 
-    def drawBaseCalls(self, dwin, gc, startx=0, dwidth=0):
+    def drawBaseCalls(self, dwin, cr, startx=0, dwidth=0):
+        """
+        Draws the base calls, confidence scores and bars, and lines from
+        the base calls to the trace peaks.
+        """
         width, height = dwin.get_size()
         if dwidth == 0:
             dwidth = width
+
+        # Save the Cairo context settings.
+        cr.save()
+        cr.set_dash((1,1))
+        cr.set_line_width(1)
 
         drawheight = height - self.bottom_margin - self.bcheight
         confbarmax = drawheight / 4
@@ -198,36 +238,40 @@ class SequenceTraceViewer:
         yscale = float(drawheight) / self.sigmax
         y = drawheight + self.bcpadding
 
-        gc.set_line_attributes(0, gtk.gdk.LINE_ON_OFF_DASH, gtk.gdk.CAP_BUTT, gtk.gdk.JOIN_MITER)
-        gc.set_dashes(0, (1,1))
+        confbarcolor = gtk.gdk.color_parse('#c8c8c8')
 
         for index in range(startbcindex, endbcindex):
-            # get the base and position
+            # Get the base and position.
             base = self.seqt.getBaseCall(index)
             pos = self.seqt.getBaseCallPos(index)
 
             x = int(pos * xscale)
 
             if self.show_confidence:
-                # draw the confidence bar
+                # Draw the confidence bar.
                 bcconf = self.seqt.getBaseCallConf(index)
-                gc.set_rgb_fg_color(gtk.gdk.color_parse('#c8c8c8'))
+                cr.set_source_color(confbarcolor)
                 #hue = float(bcconf) * (conf_hue_best - conf_hue_worst) / 61 + conf_hue_worst
                 #gc.set_rgb_fg_color(gtk.gdk.color_from_hsv(hue, 0.34, 1.0))
-                dwin.draw_rectangle(gc, True, x-6, 6, 12, (confbarmax*bcconf)/61)
+                cr.rectangle(x-6, 6, 12, (confbarmax*bcconf)/61)
+                cr.fill()
 
-                # draw the confidence score
+                # Draw the confidence score.
                 hue = float(bcconf) * (conf_hue_best - conf_hue_worst) / 61 + conf_hue_worst
-                gc.set_rgb_fg_color(gtk.gdk.color_from_hsv(hue, 1.0, 0.9))
+                cr.set_source_color(gtk.gdk.color_from_hsv(hue, 1.0, 0.9))
                 self.bclayout.set_text(str(bcconf))
                 txtwidth = self.bclayout.get_pixel_size()[0]
-                dwin.draw_layout(gc, x - (txtwidth/2), 6, self.bclayout)
+                cr.move_to(x - (txtwidth/2), 6)
+                cr.layout_path(self.bclayout)
+                cr.fill()
 
-            # draw the base
-            gc.set_rgb_fg_color(self.tracecolors[base])
+            # Draw the base.
+            cr.set_source_color(self.tracecolors[base])
             self.bclayout.set_text(base)
             txtwidth = self.bclayout.get_pixel_size()[0]
-            dwin.draw_layout(gc, x - (txtwidth/2), y, self.bclayout)
+            cr.move_to(x - (txtwidth/2), y)
+            cr.layout_path(self.bclayout)
+            cr.fill()
 
             # Calculate the y coordinate of the trace location for this base and draw a line to
             # it from the base call.  It only makes sense to do this for non-ambiguous bases.
@@ -235,8 +279,17 @@ class SequenceTraceViewer:
                 traceval = self.seqt.getTraceSample(base, pos)
                 ysamp = int((self.sigmax - traceval) * yscale + 0.5)
 
-                # draw the line to the trace
-                dwin.draw_line(gc, x, ysamp, x, y-(self.bcpadding/2))
+                # Draw the line to the trace.
+                # As with drawing the trace lines, add 0.5 to the x coordinates to ensure
+                # the lines appear in the "correct" location (with reference to the standard
+                # GTK drawing routines and that they are exactly 1 pixel wide.
+                cr.set_source_rgba(*self.pklinecolors[base])
+                cr.move_to(x+0.5, ysamp)
+                cr.line_to(x+0.5, y-(self.bcpadding/2))
+                cr.stroke()
+
+        # Restore the old Cairo context settings.
+        cr.restore()
 
     def highlightBase(self, bindex):
         # draw the highlight, if needed
