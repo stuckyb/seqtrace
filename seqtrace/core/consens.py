@@ -704,7 +704,7 @@ class ConsensSeqBuilder:
         #print rightend
 
         # Align the forward primer sequence to the left end gap sequence.  Using
-        # a harsher gap penalty (-12 instead of -6) seems to generally produce
+        # a harsher gap penalty (-9 instead of -6) seems to generally produce
         # more useful alignments.
         forward = self.settings.getForwardPrimer()
         align = PairwiseAlignment()
