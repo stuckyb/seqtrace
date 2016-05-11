@@ -20,6 +20,7 @@ import struct
 import zlib
 import os.path
 from datetime import datetime
+import math
 
 
 class TraceFileError(Exception):
@@ -1209,12 +1210,70 @@ class SCFSequenceTrace(SequenceTrace):
         if numbases != len(self.basecalls):
             raise SCFDataError(numbases, len(self.basecalls))
 
-        # build the confidence scores list
-        for cnt in range(0, numbases):
-            base = self.basecalls[cnt]
-            self.bcconf.append(probs[base][cnt])
-
+        self.bcconf = self._buildConfScoresList(self.basecalls, probs)
         #print self.bcconf
+
+    def _buildConfScoresList(self, basecalls, scfbaseprobs):
+        """
+        Uses the SCF base probability data to derive quality scores for each
+        base call.
+        The SCF standard defines the probability numbers as the "probability of
+        it [a base] being" a particular value (A, C, G, or T)
+        (see http://staden.sourceforge.net/manual/formats_unix_5.html), which
+        means that, in theory, the probabilities derived from all four numbers
+        for each base position should sum to 1.0.  In practice, for
+        non-ambiguous base calls, the "probability" of the called base is just
+        set to the phred score for the call and the "probabilities" of the
+        other three possible base values are set to 0.  Thus, the probability
+        is actually the probability of an incorrect base call, not the
+        probability of a particular base.
+        Because of the way the SCF format represents quality information, the
+        only reasonable way to get quality scores for ambiguous nucleotide
+        codes is by summing the probabilities for each possible base, given the
+        ambiguity code.  To do this, this method assumes that the probability
+        scores in the SCF file are in phred-score format; that is, that they
+        were calculated as -10 * log10(P), where P is the probability that a
+        given base call would be in error.
+        This seems to be the most logical way to handle ambiguous codes, but
+        the SCF standard does not specify how quality scores for ambiguity
+        codes should be encoded in an SCF file, so there is no guarantee that
+        other software will handle quality scores for ambiguity codes in the
+        same way.  Nevertheless, even if quality information for an ambiguous
+        base call is only associated with a single base value (e.g., the phred
+        score for a call of 'W' is assigned to 'A' in the SCF file and all
+        other probabilities are set to 0), the algorithm implemented here will
+        still produce the correct result.
+        """
+        # Define a lookup table that provides the individual quality scores to
+        # sum for each ambiguity code.
+        codes_to_sum = { 'W': ('A','T'), 'S': ('C','G'), 'M': ('A','C'),
+                'K': ('G','T'), 'R': ('A','G'), 'Y': ('C','T'),
+                'B': ('C','G','T'), 'D': ('A','G','T'), 'H': ('A','C','T'),
+                    'V': ('A','C','G'), 'N': ('A','C','G','T') }
+
+        # Build the confidence scores list.
+        cscores = []
+        for cnt in range(0, len(basecalls)):
+            base = basecalls[cnt]
+            if base in ('A','C','G','T'):
+                cscores.append(scfbaseprobs[base][cnt])
+            elif base in codes_to_sum:
+                # This is an ambiguous base call, so sum the derived probabilities
+                # for each possible base.  This is a bit tricky, because we first
+                # need to use the phred-type score to calculate the probability
+                # that each base call would be correct, sum these probabilities,
+                # then convert the sum back to an error probability and a final
+                # phred-type score.
+                probsum = 0.0
+                for sbase in codes_to_sum[base]:
+                    probsum += 1.0 - (10.0 ** (scfbaseprobs[sbase][cnt] / -10.0))
+                # Convert the sum back to an error probability and a phred score.
+                qscore = int(-10 * math.log10(1.0 - probsum))
+                cscores.append(qscore)
+            else:
+                raise SCFError('Unrecognized base call code in SCF file: ' + base)
+
+        return cscores
 
     def readTraceData(self, numsamps, sampstart, sampsize):
         if sampsize == 1:
