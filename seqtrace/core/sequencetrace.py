@@ -1318,6 +1318,12 @@ class SCFSequenceTrace(SequenceTrace):
         if final_charval != 0:
             raise SCFError('Missing null character at end of comments section.  The file appears to be damaged.')
 
+        # Make sure that the number of bytes read from the comments section
+        # matches the total comments size reported in the file header.
+        if total != commentslen:
+            raise SCFError(str(total) + ' bytes read from the comments section, but ' +
+                    str(commentslen) + ' bytes were expected.')
+
 
 
 
