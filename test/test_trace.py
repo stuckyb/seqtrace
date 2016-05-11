@@ -324,6 +324,31 @@ class TestSCFSequenceTrace(unittest.TestCase, TestSequenceTrace):
         self.trace = SCFSequenceTrace()
         self.trace.loadFile(self.filename)
 
+    def test_buildConfScoresList(self):
+        """
+        Tests the algorithm for deriving quality scores from SCF base
+        "probability" data, since the process is rather complex when ambiguous
+        nucleotide codes are involved.
+        """
+        # Test non-ambiguous base calls.
+        basecalls = ['A', 'T', 'G', 'C']
+        probs = {'A': [20,0,0,0], 'C': [0,0,12,0], 'G': [0,0,30,0], 'T': [0,16,0,0]}
+
+        res = self.trace._buildConfScoresList(basecalls, probs)
+        self.assertListEqual(res, [20, 16, 30, 0])
+
+        # Test ambiguous base calls.
+        basecalls = ['W', 'S', 'B', 'N', 'M', 'K', 'R', 'Y', 'D', 'H', 'V']
+        probs = {'A': [3, 1,  8, 0, 1, 8, 1, 8, 2, 2, 2],
+                 'C': [0, 20, 2, 0, 2, 8, 8, 1, 8, 1, 1],
+                 'G': [0, 0,  1, 0, 8, 1, 2, 8, 1, 8, 2],
+                 'T': [2, 16, 2, 0, 8, 2, 8, 2, 2, 2, 8]}
+
+        # The correct non-rounded phred scores (calculated manually):
+        # [8.7895, 20.0, 12.4993, 0.0, 3.7131, 3.7131, 3.7131, 3.7131, 12.4993, 12.4993, 12.4993].
+        res = self.trace._buildConfScoresList(basecalls, probs)
+        self.assertListEqual(res, [9, 20, 12, 0, 4, 4, 4, 4, 12, 12, 12])
+
     def test_errors(self):
         """
         As with the other formats, we do not attempt to test every error that
