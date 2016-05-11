@@ -325,12 +325,27 @@ class TestSCFSequenceTrace(unittest.TestCase, TestSequenceTrace):
         self.trace.loadFile(self.filename)
 
     def test_errors(self):
+        """
+        As with the other formats, we do not attempt to test every error that
+        might be raised while reading an SCF file.
+        """
         self.assertRaises(SCFVersionError, self.trace.loadFile, test_data + 'error-wrong_version.scf')
         self.assertRaises(SCFError, self.trace.loadFile, test_data + 'error-bad_samp_size.scf')
         self.assertRaises(SCFError, self.trace.loadFile, test_data + 'error-bad_codeset.scf')
         self.assertRaises(SCFError, self.trace.loadFile, test_data + 'error-base_call_locs.scf')
         self.assertRaises(SCFDataError, self.trace.loadFile, test_data + 'error-missing_bases.scf')
         self.assertRaises(SCFError, self.trace.loadFile, test_data + 'error-missing_comments.scf')
+
+    def test_altCommentsFormat(self):
+        """
+        Tests reading an SCF file with the alternative comments format in which
+        the final comments entry is not terminated with a newline but instead
+        ends with the null character.
+        """
+        self.trace = SCFSequenceTrace()
+        self.trace.loadFile(test_data + 'forward_altcomments.scf')
+
+        self.test_dataLoaded()
 
     def test_comments(self):
         super(TestSCFSequenceTrace, self).test_comments()
