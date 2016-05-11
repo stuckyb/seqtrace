@@ -1278,9 +1278,20 @@ class SCFSequenceTrace(SequenceTrace):
                 data[cnt] = actual
 
     def readComments(self, commentslen, commentsstart):
+        """
+        Reads the comments section of an SCF file.  The SCF standard specifies
+        that the comments are a "zero-terminated list of \\n-separated entries"
+        (see http://staden.sourceforge.net/manual/formats_unix_6.html).  It is
+        not entirely clear whether the last entry  in the list is supposed to
+        also end with a '\\n', but this seems to be the common interpretation
+        in actual SCF files.  However, not all software does this, so we need
+        to also detect the case where the final entry does not end with a '\\n'
+        character and instead ends with the zero terminator.
+        """
         self.tf.seek(commentsstart, 0)
 
         total = 0
+        final_charval = -1
         while total < (commentslen - 1):
             line = self.tf.readline()
             total += len(line)
@@ -1288,18 +1299,24 @@ class SCFSequenceTrace(SequenceTrace):
             if line == '':
                 raise SCFError('Unable to read the comments section of the SCF file.  The file appears to be damaged.')
 
-            # get rid of the trailing '\n'
+            # Get the numeric value of the trailing character, then remove it
+            # from the string.  This should always be a '\n' except, in some
+            # cases, on the last comment line, when it might be a '\0'.
+            final_charval = ord(line[-1])
             line = line[:-1]
 
             key, sep, value = line.partition('=')
             #print key + ': ' + value
             self.comments[key] = value
 
-        # make sure the next character is the null-terminator for the comments list
-        if self.tf.read(1) != '\0':
+        if total < commentslen:
+            final_charval = ord(self.tf.read(1))
+            total += 1
+
+        # Make sure the final character was the null terminator for the
+        # comments list.
+        if final_charval != 0:
             raise SCFError('Missing null character at end of comments section.  The file appears to be damaged.')
-
-
 
 
 
