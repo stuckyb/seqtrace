@@ -1268,7 +1268,7 @@ class SCFSequenceTrace(SequenceTrace):
                 for sbase in codes_to_sum[base]:
                     probsum += 1.0 - (10.0 ** (scfbaseprobs[sbase][cnt] / -10.0))
                 # Convert the sum back to an error probability and a phred score.
-                qscore = int(-10 * math.log10(1.0 - probsum))
+                qscore = int(round(-10 * math.log10(1.0 - probsum), 0))
                 cscores.append(qscore)
             else:
                 raise SCFError('Unrecognized base call code in SCF file: ' + base)
