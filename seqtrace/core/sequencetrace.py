@@ -1132,6 +1132,9 @@ class SCFDataError(SCFError):
 
 
 class SCFSequenceTrace(SequenceTrace):
+    # Define the code set identifiers that are accepted.
+    CODE_SETS = (0, 2, 4)
+
     def loadFile(self, filename):
         self.fname = filename
 
@@ -1173,10 +1176,13 @@ class SCFSequenceTrace(SequenceTrace):
             raise SCFVersionError(version[0], version[2:])
 
         if samplesize not in (1, 2):
-            raise SCFError('Invalid sample size value in SCF header.  The size specified was ' + str(samplesize) + ', but must be either 1 or 2.')
+            raise SCFError('Invalid sample size value in SCF header.  The size specified was ' +
+                    str(samplesize) + ', but must be either 1 or 2.')
 
-        if codeset != 0:
-            raise SCFError('Invalid code set specified in SCF header.  This file uses code set ' + str(codeset) + ', but this software only supports code set 0.')
+        if codeset not in self.CODE_SETS:
+            raise SCFError('Invalid code set specified in SCF header.  This file uses code set ' +
+                    str(codeset) + ', but this software only recognizes the following code sets: ' +
+                    str(self.CODE_SETS) + '.')
 
         self.readBasesData(numbases, basesstart)
         self.readTraceData(numsamps, sampstart, samplesize)
