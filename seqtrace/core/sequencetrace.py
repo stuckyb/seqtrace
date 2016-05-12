@@ -1120,7 +1120,9 @@ class SCFVersionError(SCFError):
         self.revision = revision
 
     def __str__(self):
-        return 'This file uses version ' + self.version + '.' + self.revision + ' of the SCF format.  This software only supports version 3.00 of the format.'
+        return ('This file uses version ' + self.version + '.' + self.revision +
+                ' of the SCF format.  This software supports the following versions: ' +
+                '(' + ', '.join(SCFSequenceTrace.VERSIONS) + ').')
 
 class SCFDataError(SCFError):
     def __init__(self, expectedlen, actuallen):
@@ -1132,6 +1134,9 @@ class SCFDataError(SCFError):
 
 
 class SCFSequenceTrace(SequenceTrace):
+    # Define the supported versions.
+    VERSIONS = ('3.00', '3.10')
+
     # Define the code set identifiers that are accepted.
     CODE_SETS = (0, 2, 4)
 
@@ -1172,7 +1177,7 @@ class SCFSequenceTrace(SequenceTrace):
         except struct.error:
             raise SCFError('The SCF file header is invalid.  The file appears to be damaged.')
 
-        if version != '3.00':
+        if version not in self.VERSIONS:
             raise SCFVersionError(version[0], version[2:])
 
         if samplesize not in (1, 2):
