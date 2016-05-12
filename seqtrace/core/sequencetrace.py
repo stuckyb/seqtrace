@@ -1380,8 +1380,13 @@ class SCFSequenceTrace(SequenceTrace):
             self.comments[key] = value
 
         if total < commentslen:
-            final_charval = ord(self.tf.read(1))
-            total += 1
+            final_char = self.tf.read(1)
+            if len(final_char) == 1:
+                final_charval = ord()
+                total += 1
+            else:
+                raise SCFError('Invalid comments section: ' + str(commentslen) + ' bytes were expected, but ' +
+                        str(total) + ' bytes were found.')
 
         # Make sure the final character was the null terminator for the
         # comments list.
