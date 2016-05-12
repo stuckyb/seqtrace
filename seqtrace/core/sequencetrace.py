@@ -1243,6 +1243,11 @@ class SCFSequenceTrace(SequenceTrace):
         score for a call of 'W' is assigned to 'A' in the SCF file and all
         other probabilities are set to 0), the algorithm implemented here will
         still produce the correct result.
+        Note also that the interpretation of the "probability" scores described
+        above appears to be fully consistent with the proposed 3.10 version of
+        the SCF standard.  This proposal was included with 1.8 series source
+        code distributions of the Staden package's io_lib.  (See, e.g.,
+        https://sourceforge.net/projects/staden/files/io_lib/1.8.12/ .)
         """
         # Define a lookup table that provides the individual quality scores to
         # sum for each ambiguity code.
