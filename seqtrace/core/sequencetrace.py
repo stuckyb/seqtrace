@@ -1377,7 +1377,8 @@ class SCFSequenceTrace(SequenceTrace):
         # matches the total comments size reported in the file header.
         if readsize != commentslen:
             raise SCFError('Invalid comments section: ' + str(commentslen) +
-                    ' bytes were expected, but ' + str(readsize) + ' bytes were found.')
+                    ' bytes were expected, but only ' + str(readsize) +
+                    ' bytes could be read.')
 
         # Make sure the final character was the null terminator for the
         # comments list.
