@@ -1381,8 +1381,14 @@ class SCFSequenceTrace(SequenceTrace):
                     ' bytes could be read.')
 
         # Make sure the final character was the null terminator for the
-        # comments list.
-        if ord(commentssec[-1]) != 0:
+        # comments list.  Some software produces SCF files with comments
+        # sections that end with the newline character ('\n') rather than the
+        # null terminator (e.g., the AutoSeq base caller from the Cybertory
+        # educational software suite; see
+        # http://www.cybertory.org/downloads/index.html).  Although this is
+        # invalid according to the SCF standard, the Staden package software
+        # still reads these files, so SeqTrace will, too.
+        if ord(commentssec[-1]) not in (0,10):
             raise SCFError('Invalid comments section: Missing null terminator.')
 
         # Get rid of the null terminator.
