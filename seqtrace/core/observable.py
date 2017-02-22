@@ -34,30 +34,55 @@ class Observable:
     to receive event notifications.
     """
     def defineObservableEvents(self, event_names):
-        self.__observers = {}
+        """
+        event_names: A list of event name strings.
+        """
+        try:
+            self._observers
+        except AttributeError:
+            self._observers = {}
 
         for event_name in event_names:
-            self.__observers[event_name] = []
+            if event_name not in self._observers:
+                self._observers[event_name] = set()
 
     def registerObserver(self, event_name, observer):
+        """
+        Registers a new observer that will be notified whenever event_name
+        occurs.
+
+        event_name (string): The event name to observe.
+        observer: A callable object (typically a function or method) with an
+            interface that matches the arguments passed when event_name occurs.
+        """
         try:
-            self.__observers[event_name].append(observer)
+            self._observers[event_name].add(observer)
         except KeyError:
             raise UnrecognizedEventError(event_name)
 
     def unregisterObserver(self, event_name, observer):
+        """
+        Removes an observer from the list of observers that will be notified
+        when event_name occurs.
+        """
         try:
-            if observer in self.__observers[event_name]:
-                self.__observers[event_name].remove(observer)
+            if observer in self._observers[event_name]:
+                self._observers[event_name].remove(observer)
         except KeyError:
             raise UnrecognizedEventError(event_name)
 
     def notifyObservers(self, event_name, args):
+        """
+        Notify all observers registered for event_name.  Notification arguments
+        are provided as an iterable that will be unpacked when calling the
+        observer.
+
+        event_name (string): The event name for which to send notifications.
+        args: An iterable of arguments to send to the observer.
+        """
         try:
-            for observer in self.__observers[event_name]:
+            for observer in self._observers[event_name]:
                 observer(*args)
         except KeyError as e:
             raise UnrecognizedEventError(event_name)
-
-
 

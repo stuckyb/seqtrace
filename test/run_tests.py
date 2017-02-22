@@ -24,7 +24,10 @@ import unittest
 # are needed, so the test suites are very easy to run on any platform without needing to install
 # additional packages.
 
-test_modules = ['test_align', 'test_consens', 'test_trace', 'test_project', 'test_seqwriter']
+test_modules = [
+    'test_align', 'test_consens', 'test_trace', 'test_project',
+    'test_seqwriter', 'test_observable'
+]
 
 successful = True
 total = 0
