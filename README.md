@@ -2,7 +2,7 @@ SeqTrace is an application for viewing and processing DNA sequencing chromatogra
 
 SeqTrace also includes a full-featured trace file viewer and editor. You can view your sequencing chromatograms at a variety of scales and zoom levels, simultaneously view matching forward and reverse traces, edit the called bases, and export individual DNA sequences as well as forward/reverse alignments. SeqTrace supports popular trace file formats, including ABIF, [SCF](http://staden.sourceforge.net/manual/formats_unix_2.html), and [ZTR](http://staden.sourceforge.net/manual/formats_unix_12.html).
 
-To get started using SeqTrace, see the quick start guide, read the installation instructions, or browse the full user documentation.
+To get started using SeqTrace, see the [quick start guide](https://github.com/stuckyb/seqtrace/wiki/Quick-Start-Guide), read the [installation instructions](https://github.com/stuckyb/seqtrace/wiki/Installation), or browse the [full user documentation](https://github.com/stuckyb/seqtrace/wiki/Home).
 
 http://seqtrace.googlecode.com/svn/wiki/images/screenshot-xubuntu.png'>http://seqtrace.googlecode.com/svn/wiki/images/screenshot-xubuntu-small.png' />
 
