@@ -157,7 +157,7 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         hb1.pack_start(gtk.Label('Min. confidence score:  '), False)
 
         self.ph_adj = gtk.Adjustment(cssettings.getMinConfScore(), 1, 61, 1)
-        spin = gtk.SpinButton(self.ph_adj)
+        spin = gtk.SpinButton(self.ph_adj, 0, 0)
         hb1.pack_start(spin, False, False)
 
         vb.pack_start(hb1)
@@ -196,7 +196,7 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         self.trimprimers_checkbox.set_active(cssettings.getTrimPrimers())
         hb2.pack_start(self.trimprimers_checkbox, False)
         self.primermatch_th_adj = gtk.Adjustment(int(cssettings.getPrimerMatchThreshold() * 100), 1, 100, 1)
-        self.primermatch_th_spin = gtk.SpinButton(self.primermatch_th_adj)
+        self.primermatch_th_spin = gtk.SpinButton(self.primermatch_th_adj, 0, 0)
         hb2.pack_start(self.primermatch_th_spin, False, False)
         self.trimprimers_label = gtk.Label(' % of the primer alignment matches.')
         hb2.pack_start(self.trimprimers_label, False)
@@ -216,13 +216,13 @@ class ProjectSettingsDialog(gtk.Dialog, CommonDialogs):
         self.qualtrim_checkbox.set_active(cssettings.getDoQualityTrim())
         hb2.pack_start(self.qualtrim_checkbox, False)
         self.qualtrim_basecnt_adj = gtk.Adjustment(qualtrim_basecnt, 1, qualtrim_winsize, 1)
-        self.qualtrim_basecnt_spin = gtk.SpinButton(self.qualtrim_basecnt_adj)
+        self.qualtrim_basecnt_spin = gtk.SpinButton(self.qualtrim_basecnt_adj, 0, 0)
         hb2.pack_start(self.qualtrim_basecnt_spin, False, False)
 
         self.qualtrim_label1 = gtk.Label(' out of ')
         hb2.pack_start(self.qualtrim_label1, False)
         self.qualtrim_winsize_adj = gtk.Adjustment(qualtrim_winsize, 1, 20, 1)
-        self.qualtrim_winsize_spin = gtk.SpinButton(self.qualtrim_winsize_adj)
+        self.qualtrim_winsize_spin = gtk.SpinButton(self.qualtrim_winsize_adj, 0, 0)
         hb2.pack_start(self.qualtrim_winsize_spin, False, False)
         self.qualtrim_winsize_adj.connect('value_changed', self.autoTrimWinSizeChanged)
 
