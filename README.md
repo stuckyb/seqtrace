@@ -4,9 +4,9 @@ SeqTrace also includes a full-featured trace file viewer and editor. You can vie
 
 To get started using SeqTrace, see the [quick start guide](https://github.com/stuckyb/seqtrace/wiki/Quick-Start-Guide), read the [installation instructions](https://github.com/stuckyb/seqtrace/wiki/Installation), or browse the [full user documentation](https://github.com/stuckyb/seqtrace/wiki/Home).
 
-http://seqtrace.googlecode.com/svn/wiki/images/screenshot-xubuntu.png'>http://seqtrace.googlecode.com/svn/wiki/images/screenshot-xubuntu-small.png' />
+<a href="https://github.com/stuckyb/seqtrace/wiki/images/screenshot-xubuntu.png"><img alt="SeqTrace running on XUbuntu 11.10." src="https://github.com/stuckyb/seqtrace/wiki/images/screenshot-xubuntu.png" width=500 /></a>
 
-Click the image above to see a full scale screen shot of SeqTrace running on XUbuntu 11.10\. You can also see screen shots of SeqTrace running on other operating systems.
+Click the image above to see a full scale screen shot of SeqTrace running on XUbuntu 11.10. You can also see [screen shots of SeqTrace](https://github.com/stuckyb/seqtrace/wiki/Screenshots) running on other operating systems.
 
 SeqTrace is written in [Python](http://www.python.org/), uses [PyGTK](http://www.pygtk.org/) with the [GTK+](http://www.gtk.org/) windowing toolkit, and runs on most popular operating systems, including GNU/Linux, Windows, and OSX. I welcome feedback, bug reports, or code contributions from users. To submit bug reports, please use SeqTrace's [issue tracking system](https://github.com/stuckyb/seqtrace/issues). To get in touch with me directly, see the [project information page](https://github.com/stuckyb/seqtrace/wiki/About) to read more about SeqTrace and how to contact me.
 
