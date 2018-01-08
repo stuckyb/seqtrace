@@ -4,7 +4,7 @@ SeqTrace also includes a full-featured trace file viewer and editor. You can vie
 
 To get started using SeqTrace, see the [quick start guide](https://github.com/stuckyb/seqtrace/wiki/Quick-Start-Guide), read the [installation instructions](https://github.com/stuckyb/seqtrace/wiki/Installation), or browse the [full user documentation](https://github.com/stuckyb/seqtrace/wiki/Home).
 
-<a href="https://github.com/stuckyb/seqtrace/wiki/images/screenshot-xubuntu.png"><img alt="SeqTrace running on XUbuntu 11.10." src="https://github.com/stuckyb/seqtrace/wiki/images/screenshot-xubuntu.png" width=600 /></a>
+<a href="https://github.com/stuckyb/seqtrace/wiki/images/screenshot-xubuntu.png"><img alt="SeqTrace running on XUbuntu 11.10." src="https://github.com/stuckyb/seqtrace/wiki/images/screenshot-xubuntu.png" width=700 /></a>
 
 Click the image above to see a full scale screen shot of SeqTrace running on XUbuntu 11.10. You can also see [screen shots of SeqTrace](https://github.com/stuckyb/seqtrace/wiki/Screenshots) running on other operating systems.
 
