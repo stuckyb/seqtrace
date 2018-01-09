@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright (C) 2016 Brian J. Stucky
+# Copyright (C) 2018 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
