@@ -1281,10 +1281,10 @@ class MainWindow(gtk.Window, CommonDialogs):
     def showAbout(self, widget):
         diag = gtk.AboutDialog()
         diag.set_name('SeqTrace')
-        diag.set_version('0.9.0')
-        diag.set_copyright('Copyright \xC2\xA9 2014 Brian J. Stucky')
+        diag.set_version('0.9.1')
+        diag.set_copyright('Copyright \xC2\xA9 2018 Brian J. Stucky')
         #diag.set_authors(['Brian Stucky'])
-        diag.set_comments('by Brian Stucky\n\na program for viewing and processing sequencing trace files')
+        diag.set_comments('by Brian Stucky\n\nA program for viewing and processing Sanger sequencing trace files.')
         diag.set_license(
         '''Copyright (C) 2018 Brian J. Stucky
 
