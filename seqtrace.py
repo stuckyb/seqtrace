@@ -18,25 +18,24 @@
 import gtk
 from seqtrace.gui.maingui import MainWindow
 
-from optparse import OptionParser
+from argparse import ArgumentParser
 
 
-
-argp = OptionParser(
-        usage='''usage:  %prog [filename]
-\n    If [filename] is provided and appears to be a project file
-(from its extension), ___ will attempt to load the project.  Otherwise,
-____ will treat the file as a sequencing trace file and attempt to load
-the trace file directly.''')
+argp = ArgumentParser(
+    description='User-friendly software for viewing and processing Sanger DNA '
+    'sequencing trace files.'
+)
+argp.add_argument(
+    'filename', type=str, nargs='?', default='', help='If [filename] is '
+    'provided and appears to be a project file (from its extension), SeqTrace '
+    'will attempt to load the project.  Otherwise, SeqTrace will treat the '
+    'file as a sequencing trace file and attempt to load the trace file '
+    'directly.'
+)
 
 # parse command-line arguments
-(options, args) = argp.parse_args()
-if len(args) == 0:
-    filein = ''
-elif len(args) > 1:
-    argp.error('unrecognized command argument(s)')
-else:
-    filein = args[0]
+args = argp.parse_args()
+filein = args.filename
 
 mainwin = MainWindow()
 
