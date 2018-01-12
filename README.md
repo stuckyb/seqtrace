@@ -12,11 +12,15 @@ SeqTrace is written in [Python](http://www.python.org/), uses [PyGTK](http://www
 
 ## News
 
+### January 11, 2018: SeqTrace 0.9.1 released
+
+SeqTrace 0.9.1 is now [available for download](http://code.google.com/p/seqtrace/downloads/list).  This new release does not introduce any major new features, but it does include several important improvements and bug fixes.  For many users, the most notable improvements are likely to be the various ways in which support for SCF input files has been enhanced.  SeqTrace 0.9.1 also fixes a critical bug that caused some of the settings controls to display incorrectly under recent versions of the GTK+ toolkit on Linux.  For full details of the improvements in 0.9.1, see the [release history](https://github.com/stuckyb/seqtrace/wiki/Release-History).
+
 ### January 14, 2014: SeqTrace 0.9.0 released
 
-It's been almost two years since the last release of SeqTrace, and after a lot of work, I'm very pleased to announce that SeqTrace 0.9.0 is now [available](http://code.google.com/p/seqtrace/downloads/list). This is a significant upgrade that includes many important improvements and new features as well as a few relatively minor bug fixes. I'd like to express my appreciation to all of the users who took the time to give me feedback on SeqTrace 0.8; your ideas and comments were very helpful in deciding what to focus on for 0.9.0\. You can read about all of the new features in SeqTrace 0.9.0 in the release history.
+It's been almost two years since the last release of SeqTrace, and after a lot of work, I'm very pleased to announce that SeqTrace 0.9.0 is now [available](http://code.google.com/p/seqtrace/downloads/list). This is a significant upgrade that includes many important improvements and new features as well as a few relatively minor bug fixes. I'd like to express my appreciation to all of the users who took the time to give me feedback on SeqTrace 0.8; your ideas and comments were very helpful in deciding what to focus on for 0.9.0. You can read about all of the new features in SeqTrace 0.9.0 in the [release history](https://github.com/stuckyb/seqtrace/wiki/Release-History).
 
 ### May 14, 2012: SeqTrace 0.8.1 released
 
-SeqTrace 0.8.1 fixes several bugs present in the 0.8.0 release. For full details, see the release history.
+SeqTrace 0.8.1 fixes several bugs present in the 0.8.0 release. For full details, see the [release history](https://github.com/stuckyb/seqtrace/wiki/Release-History).
 
