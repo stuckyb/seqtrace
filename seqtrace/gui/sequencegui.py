@@ -17,16 +17,44 @@
 
 from seqtrace.core.observable import Observable
 
-import pygtk
-pygtk.require('2.0')
-import gtk
-import pango
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+from gi.repository import Gdk
+from gi.repository import Pango
+from gi.repository import PangoCairo
+import cairo
 
 
+def parseHTMLColorStr(html_color):
+    """
+    Returns a Gdk.RGBA instance that represents the given HTML color string.
+    """
+    color = Gdk.RGBA()
+    color.parse(html_color)
 
-class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
+    return color
+
+def getInverseColor(color):
+    """
+    Returns a Gdk.RGBA that is the inverse of the provided color.
+    """
+    invcolor = Gdk.RGBA()
+    invcolor.red = 1.0 - color.red
+    invcolor.green = 1.0 - color.green
+    invcolor.blue = 1.0 - color.blue
+
+    return invcolor
+
+
+class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
+    """
+    Implements a widget for displaying a raw sequence or alignment of two raw
+    sequences, aligned primers, and a consensus sequence.  Also implements user
+    interactions with the sequences.
+    """
     def __init__(self, mod_consensseq_builder):
-        gtk.DrawingArea.__init__(self)
+        Gtk.DrawingArea.__init__(self)
 
         self.cons = mod_consensseq_builder
         self.numseqs = self.cons.getNumSeqs()
@@ -34,45 +62,53 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         self.drawprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
 
         self.cons.registerObserver('consensus_changed', self.consensusChanged)
-        self.connect('destroy', self.onDestroy)
 
         # Initialize drawing settings.
         self.basecolors = {
-                'A': gtk.gdk.color_parse('#009000'),    # green
-                'C': gtk.gdk.color_parse('#0000ff'),    # blue
-                'G': gtk.gdk.color_parse('#000000'),    # black
-                'T': gtk.gdk.color_parse('#ff0000'),    # red
-                'W': gtk.gdk.color_parse('#804800'),    # mix of A and T
-                'S': gtk.gdk.color_parse('#000080'),    # mix of C and G
-                'M': gtk.gdk.color_parse('#004880'),    # mix of A and C
-                'K': gtk.gdk.color_parse('#800000'),    # mix of G and T
-                'R': gtk.gdk.color_parse('#004800'),    # mix of A and G
-                'Y': gtk.gdk.color_parse('#800080'),    # mix of C and T
-                'B': gtk.gdk.color_parse('#550055'),    # mix of C, G, and T
-                'D': gtk.gdk.color_parse('#553000'),    # mix of A, G, and T
-                'H': gtk.gdk.color_parse('#553055'),    # mix of A, C, and T
-                'V': gtk.gdk.color_parse('#003055'),    # mix of A, C, and G
-                'N': gtk.gdk.color_parse('#999'),       # gray
-                '-': gtk.gdk.color_parse('#000'),       # black
-                ' ': gtk.gdk.color_parse('#999')}
+                'A': parseHTMLColorStr('#009000'),    # green
+                'C': parseHTMLColorStr('#0000ff'),    # blue
+                'G': parseHTMLColorStr('#000000'),    # black
+                'T': parseHTMLColorStr('#ff0000'),    # red
+                'W': parseHTMLColorStr('#804800'),    # mix of A and T
+                'S': parseHTMLColorStr('#000080'),    # mix of C and G
+                'M': parseHTMLColorStr('#004880'),    # mix of A and C
+                'K': parseHTMLColorStr('#800000'),    # mix of G and T
+                'R': parseHTMLColorStr('#004800'),    # mix of A and G
+                'Y': parseHTMLColorStr('#800080'),    # mix of C and T
+                'B': parseHTMLColorStr('#550055'),    # mix of C, G, and T
+                'D': parseHTMLColorStr('#553000'),    # mix of A, G, and T
+                'H': parseHTMLColorStr('#553055'),    # mix of A, C, and T
+                'V': parseHTMLColorStr('#003055'),    # mix of A, C, and G
+                'N': parseHTMLColorStr('#999'),       # gray
+                '-': parseHTMLColorStr('#000'),       # black
+                ' ': parseHTMLColorStr('#999')}
         self.bgcolors = {
                 # These are mostly lighter versions of the foreground colors above.
-                'A': gtk.gdk.color_parse('#cfc'),
-                'C': gtk.gdk.color_parse('#ccf'),
-                'G': gtk.gdk.color_parse('#ccc'),
-                'T': gtk.gdk.color_parse('#fcc'),
-                'W': gtk.gdk.color_parse('#DFD1BF'),    # mix of A and T
-                'S': gtk.gdk.color_parse('#BFBFDF'),    # mix of C and G
-                'M': gtk.gdk.color_parse('#BFD1DF'),    # mix of A and C
-                'K': gtk.gdk.color_parse('#DFBFBF'),    # mix of G and T
-                'R': gtk.gdk.color_parse('#BFD1BF'),    # mix of A and G
-                'Y': gtk.gdk.color_parse('#DFBFDF'),    # mix of C and T
-                'B': gtk.gdk.color_parse('#D5BFD5'),    # mix of C, G, and T
-                'D': gtk.gdk.color_parse('#D5CBBF'),    # mix of A, G, and T
-                'H': gtk.gdk.color_parse('#D5CBD5'),    # mix of A, C, and T
-                'V': gtk.gdk.color_parse('#BFCBD5'),    # mix of A, C, and G
-                'N': gtk.gdk.color_parse('#fff'),
-                '-': gtk.gdk.color_parse('#ff9')}
+                'A': parseHTMLColorStr('#cfc'),
+                'C': parseHTMLColorStr('#ccf'),
+                'G': parseHTMLColorStr('#ccc'),
+                'T': parseHTMLColorStr('#fcc'),
+                'W': parseHTMLColorStr('#DFD1BF'),    # mix of A and T
+                'S': parseHTMLColorStr('#BFBFDF'),    # mix of C and G
+                'M': parseHTMLColorStr('#BFD1DF'),    # mix of A and C
+                'K': parseHTMLColorStr('#DFBFBF'),    # mix of G and T
+                'R': parseHTMLColorStr('#BFD1BF'),    # mix of A and G
+                'Y': parseHTMLColorStr('#DFBFDF'),    # mix of C and T
+                'B': parseHTMLColorStr('#D5BFD5'),    # mix of C, G, and T
+                'D': parseHTMLColorStr('#D5CBBF'),    # mix of A, G, and T
+                'H': parseHTMLColorStr('#D5CBD5'),    # mix of A, C, and T
+                'V': parseHTMLColorStr('#BFCBD5'),    # mix of A, C, and G
+                'N': parseHTMLColorStr('#fff'),
+                '-': parseHTMLColorStr('#ff9')}
+
+        # Calculate inverses of the main colors for drawing
+        # selected/highlighted bases.
+        self.basecolors_inv = {}
+        for base in self.basecolors:
+            self.basecolors_inv[base] = getInverseColor(self.basecolors[base])
+        self.bgcolors_inv = {}
+        for base in self.bgcolors:
+            self.bgcolors_inv[base] = getInverseColor(self.bgcolors[base])
 
         # The space before the top of the alignment and after the bottom of the
         # consensus sequence.
@@ -84,7 +120,7 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         # The location of the top of the alignment.
         self.al_top = self.margins
 
-        self.txtlayout = pango.Layout(self.create_pango_context())
+        self.txtlayout = Pango.Layout(self.create_pango_context())
         self.fontdesc = self.txtlayout.get_context().get_font_description().copy()
 
         self.setFontSize(10)
@@ -100,17 +136,28 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         # indicates if the user is actively making a selection on the consensus sequence
         self.selecting_active = False
 
-        # set up event handling
-        self.connect('expose-event', self.updatedisplay)
-        self.set_events(gtk.gdk.BUTTON_PRESS_MASK | gtk.gdk.BUTTON_RELEASE_MASK | gtk.gdk.POINTER_MOTION_MASK
-                | gtk.gdk.POINTER_MOTION_HINT_MASK | gtk.gdk.LEAVE_NOTIFY_MASK)
+        # Set up event handling.
+        self.connect('destroy', self.onDestroy)
+        self.connect('draw', self.onDraw)
+        self.connect('configure-event', self.onConfigure)
+
+        self.set_events(
+            Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK
+            | Gdk.EventMask.POINTER_MOTION_MASK
+            | Gdk.EventMask.POINTER_MOTION_HINT_MASK
+            | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        )
         self.connect('button-press-event', self.mouseClick)
         self.connect('button-release-event', self.mouseRelease)
         self.connect('motion-notify-event', self.mouseMove)
         self.connect('leave-notify-event', self.mouseLeave)
 
-        self.clickable_cursor = gtk.gdk.Cursor(gtk.gdk.HAND2)
-        self.text_cursor = gtk.gdk.Cursor(gtk.gdk.XTERM)
+        # A cairo surface to use as an off-screen buffer for all drawing
+        # operations.
+        self.surface = None
+
+        self.clickable_cursor = Gdk.Cursor.new(Gdk.CursorType.HAND2)
+        self.text_cursor = Gdk.Cursor.new(Gdk.CursorType.XTERM)
         self.curr_cursor = None
 
         # initialize the observable events for this class
@@ -142,12 +189,12 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         alend = self.fheight*self.numseqs + self.al_top
         consend = alend + self.padding + self.fheight
         
-        # calculate the index of the base corresponding to the mouse click
+        # Calculate the index of the base corresponding to the mouse click.
         bindex = int(event.x / self.fwidth)
 
         if event.button == 1:
             if (event.y > self.al_top) and (event.y < alend):
-                # the mouse is over the alignment display
+                # The mouse is over the alignment display.
                 if event.y > (self.al_top + self.fheight):
                     seqnum = 1
                 else:
@@ -159,12 +206,14 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
                 else:
                     seq2index = -1
     
-                if self.highlighted != bindex:
-                    self.highlightAlignmentInternal(self.highlighted)
+                if (self.highlighted != -1) and (self.highlighted != bindex):
+                    # Unhighlight the previously selected alignment position.
+                    self.highlightAlignment(self.highlighted, False)
+
                 self.highlighted = bindex
                 self.notifyObservers('alignment_clicked', (seqnum, seq1index, seq2index))
             elif (event.y > (alend + self.padding)) and (event.y < consend):
-                # the mouse is over the consensus sequence display
+                # The mouse is over the consensus sequence display.
 
                 # see if there was a previous selection
                 if self.consselect_start != self.consselect_end:
@@ -192,10 +241,9 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
             self.selecting_active = False
 
     def mouseLeave(self, da, event):
-        dwin = self.window
         # if we just left the window, make sure we erased the highlight
         if (self.lastx != -1) and (self.lastx != self.highlighted):
-            self.highlightAlignmentInternal(self.lastx)
+            self.highlightAlignment(self.lastx, False)
             self.lastx = -1
             return
 
@@ -227,9 +275,7 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
                 self.updateConsensusHighlight()
             #print 'AFTER start, end, index:', self.consselect_start, self.consselect_end, index 
 
-        #if event.is_hint:
-        #    print "hint"
-        # check if the mouse pointer is on the alignment display
+        # Check if the mouse pointer is on the alignment display.
         if (event.y > self.al_top) and (event.y < (self.fheight*self.numseqs + self.al_top)):
             # change the cursor, if necessary
             self.setCursor(self.clickable_cursor)
@@ -237,14 +283,14 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
             # draw the highlight and erase the old one, if necessary
             if self.lastx != index:
                 if (self.lastx != self.highlighted) or (self.highlighted == -1):
-                    self.highlightAlignmentInternal(self.lastx)
+                    self.highlightAlignment(self.lastx, False)
                 self.lastx = index
                 if index != self.highlighted:
-                    self.highlightAlignmentInternal(index)
+                    self.highlightAlignment(index, True)
         else:
             # not on the alignment, so just erase the old highlight, if necessary
             if (self.lastx != -1) and (self.lastx != self.highlighted):
-                self.highlightAlignmentInternal(self.lastx)
+                self.highlightAlignment(self.lastx, False)
                 self.lastx = -1
 
             alend = self.fheight*self.numseqs + self.al_top
@@ -258,52 +304,69 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
 
     def setCursor(self, cursor):
         if self.curr_cursor != cursor:
-            self.window.set_cursor(cursor)
+            self.get_window().set_cursor(cursor)
             self.curr_cursor = cursor
         
-    def highlightAlignment(self, alignx):
-        if alignx != self.highlighted:
-            if self.highlighted != -1:
-                self.highlightAlignmentInternal(self.highlighted)
-            if alignx != self.lastx:
-                self.highlightAlignmentInternal(alignx)
-            self.highlighted = alignx
+    def highlightAlignment(self, index, highlight=True):
+        """
+        Highlights or unhighlights a position in the alignment display.
 
-    def highlightAlignmentInternal(self, alignx):
+        index: An index in the alignment.
+        highlight: If True, the position will be highlighted.  If False, the
+            position will be unhighlighted.
+        """
+        align1 = self.cons.getAlignedSequence(0)
+        base = align1[index]
+
+        cr = cairo.Context(self.surface)
+
+        x = index*self.fwidth
+
+        # Update the alignment on the off-screen buffer, then invalidate the
+        # corresponding region on the DrawingArea window.
+        self.drawAlignmentBase(base, x, self.al_top, cr, highlight)
+        self.queue_draw_area(x, self.al_top, self.fwidth, self.fheight)
+
+    def updateConsensusHighlight(self, cr=None):
         alend = self.fheight*self.numseqs + self.al_top
 
-        dwin = self.window
-        gc = dwin.new_gc(function=gtk.gdk.INVERT)
-        dwin.draw_rectangle(gc, True, alignx*self.fwidth, self.al_top, self.fwidth, self.fheight*self.numseqs)
-        #dwin.draw_rectangle(gc, True, alignx*self.fwidth, alend+self.padding, self.fwidth, self.fheight)
+        print self.consselect_start, self.consselect_end
+        if cr is None:
+            cr = self.get_window().cairo_create()
 
-    def updateConsensusHighlight(self):
-        alend = self.fheight*self.numseqs + self.al_top
-
-        dwin = self.window
-        gc = dwin.new_gc(function=gtk.gdk.INVERT)
+        highlight = True
 
         if (self.consselect_start == self.consselect_end):
             # no bases selected, so erase the current highlight
+            highlight = False
             start = self.chl_start
             end = self.chl_end
             self.chl_start = self.chl_end = -1
         else:
             # bases selected, so update the highlight if necessary
             if self.chl_start == -1:
+                highlight = True
                 start = self.chl_start = self.consselect_start
                 end = self.chl_end = self.consselect_end
             else:
                 start = self.chl_end
                 end = self.consselect_end
+                if (self.chl_start < self.chl_end) and (start < end):
+                    highlight = True
+                elif (self.chl_end < self.chl_start) and (end < start):
+                    highlight = True
+                else:
+                    highlight = False
                 self.chl_end = self.consselect_end
+
+        cons = self.cons.getConsensus()
 
         if start < end:
             for cnt in range(start, end):
-                dwin.draw_rectangle(gc, True, cnt*self.fwidth, alend+self.padding, self.fwidth, self.fheight)
+                self.drawConsensusBase(cons[cnt], cnt*self.fwidth, alend+self.padding, cr, highlight)
         else:
             for cnt in range(end, start):
-                dwin.draw_rectangle(gc, True, cnt*self.fwidth, alend+self.padding, self.fwidth, self.fheight)
+                self.drawConsensusBase(cons[cnt], cnt*self.fwidth, alend+self.padding, cr, highlight)
 
     def setFontSize(self, size):
         """
@@ -315,9 +378,9 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
         too far apart (in my opinion!).
         """
         # set up sequence font properties
-        self.fontdesc.set_size(size*pango.SCALE)
+        self.fontdesc.set_size(size*Pango.SCALE)
         self.txtlayout.set_font_description(self.fontdesc)
-        self.txtlayout.set_text('G')
+        self.txtlayout.set_text('G', 1)
         self.fheight = self.txtlayout.get_pixel_size()[1]
         self.fwidth = self.txtlayout.get_pixel_size()[0]
 
@@ -368,93 +431,59 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
 
         self.redrawConsensus(start, end)
 
-    def updatedisplay(self, da, event):
-        #print '(', event.area.x, ',', event.area.y
-        startx = event.area.x
-        dwidth = event.area.width
+    def onConfigure(self, widget, event):
+        print 'CONFIGURING!', self.get_allocated_width(), self.get_allocated_height()
 
-        startindex = startx / self.fwidth
-        endindex = (startx + dwidth) / self.fwidth
-        if endindex >= len(self.cons.getAlignedSequence(0)):
-            endindex -= 1
+        # Note that the Python cairo bindings do not expose
+        # cairo_surface_destroy() because this functionality is handled
+        # automatically by the Python library.
+
+        self.surface = self.get_window().create_similar_surface(
+            cairo.CONTENT_COLOR, self.get_allocated_width(),
+            self.get_allocated_height()
+        )
+
+        startindex = 0
+        endindex = len(self.cons.getAlignedSequence(0)) - 1
+
+        cr = cairo.Context(self.surface)
 
         if self.drawprimers:
-            self.redrawPrimers(startindex, endindex)
-        self.redrawAlignment(startindex, endindex)
-        self.redrawConsensus(startindex, endindex)
+            self.drawPrimers(startindex, endindex, cr)
+        self.drawAlignment(startindex, endindex, cr)
+        self.drawConsensus(startindex, endindex, cr)
 
-    def redrawPrimers(self, startindex, endindex):
+        return True
+
+    def onDraw(self, da, cr):
+        print 'DRAW EVENT!'
+
+        cr.set_source_surface(self.surface, 0, 0)
+        cr.paint()
+
+        return False
+
+    def drawPrimers(self, startindex, endindex, cr):
         dwin = self.window
-        gc = dwin.new_gc(function=gtk.gdk.COPY)
+        gc = dwin.new_gc(function=Gdk.COPY)
 
         self.erasePrimers(dwin, gc, startindex, endindex)
         self.drawPrimers(dwin, gc, startindex, endindex)
-
-    def redrawAlignment(self, startindex, endindex):
-        #self.setFontSize(14)
-        dwin = self.window
-        gc = dwin.new_gc(function=gtk.gdk.COPY)
-
-        self.eraseAlignment(dwin, gc, startindex, endindex)
-        self.drawAlignment(dwin, gc, startindex, endindex)
-
-        # restore alignment selection
-        if (self.highlighted >= startindex) and (self.highlighted <= endindex):
-            self.highlightAlignmentInternal(self.highlighted)
-
-    def redrawConsensus(self, startindex, endindex):
-        #self.setFontSize(14)
-        #print startindex, endindex
-        dwin = self.window
-        gc = dwin.new_gc(function=gtk.gdk.COPY)
-
-        self.eraseConsensus(dwin, gc, startindex, endindex)
-        self.drawConsensus(dwin, gc, startindex, endindex)
-
-        # restore consensus sequence selection
-        self.chl_start = self.chl_end = -1
-        self.updateConsensusHighlight()
 
     def erasePrimers(self, dwin, gc, startindex, endindex):
         startx = startindex*self.fwidth
         rwidth = (endindex-startindex+1)*self.fwidth
 
         # Draw the background for the primer sequences.
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#d8d8bb'))
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#dbdbdb'))
+        gc.set_rgb_fg_color(Gdk.color_parse('#d8d8bb'))
+        gc.set_rgb_fg_color(Gdk.color_parse('#dbdbdb'))
         dwin.draw_rectangle(gc, True, startx, self.margins, rwidth, self.fheight)
-
-    def eraseAlignment(self, dwin, gc, startindex, endindex):
-        startx = startindex*self.fwidth
-        rwidth = (endindex-startindex+1)*self.fwidth
-
-        # draw the gray background for the alignment
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#d2d2d2'))
-        dwin.draw_rectangle(gc, True, startx, 0, rwidth, self.margins-1)
-        dwin.draw_rectangle(gc, True, startx, self.al_top, rwidth,
-                self.fheight*self.numseqs + self.padding/2+1)
-
-    def eraseConsensus(self, dwin, gc, startindex, endindex):
-        startx = startindex*self.fwidth
-        rwidth = (endindex-startindex+1)*self.fwidth
-
-        # calculate the y-coordinate of the top of the working sequence ribbon
-        y = self.al_top + self.fheight*self.numseqs + self.padding
-
-        # draw the gray background
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#d2d2d2'))
-        dwin.draw_rectangle(gc, True, startx, y - self.padding/2, rwidth,
-                self.fheight + self.padding/2 + self.margins)
-
-        # draw the white background for the sequence characters
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#fff'))
-        dwin.draw_rectangle(gc, True, startx, y, rwidth, self.fheight)
 
     def drawPrimers(self, dwin, gc, startindex, endindex):
         palign = self.cons.getAlignedPrimers()
 
         y = self.al_top + self.fheight*self.numseqs
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#888'))
+        gc.set_rgb_fg_color(Gdk.color_parse('#888'))
         dwin.draw_line(gc, startindex*self.fwidth, self.margins-1, (endindex+1)*self.fwidth, self.margins-1)
 
         for index in range(startindex, endindex+1):
@@ -465,64 +494,135 @@ class ConsensusSequenceViewer(gtk.DrawingArea, Observable):
             if palign[index] != ' ':
                 self.drawAlignmentBase(dwin, gc, palign[index], x, y)
 
-    def drawAlignment(self, dwin, gc, startindex, endindex):
+    def drawAlignment(self, startindex, endindex, cr):
+        """
+        Draws the alignment from alignment positions startindex to endindex,
+        inclusive.
+        """
+        x = startindex * self.fwidth
+        rwidth = (endindex-startindex+1)*self.fwidth
+
+        # Draw the gray background for the alignment.
+        cr.set_source_rgba(*parseHTMLColorStr('#d2d2d2'))
+        cr.rectangle(x, 0, rwidth, self.margins + self.fheight*self.numseqs + self.padding/2+1)
+        cr.fill()
+
         align1 = self.cons.getAlignedSequence(0)
         if self.numseqs == 2:
             align2 = self.cons.getAlignedSequence(1)
 
+        # Draw the border lines for the alignment.
         y = self.al_top + self.fheight*self.numseqs
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('black'))
-        dwin.draw_line(gc, startindex*self.fwidth, self.al_top-1, (endindex+1)*self.fwidth, self.al_top-1)
-        #dwin.draw_line(gc, startindex*self.fwidth, self.margins-1, (endindex+1)*self.fwidth, self.margins-1)
-        dwin.draw_line(gc, startindex*self.fwidth, y, (endindex+1)*self.fwidth, y)
+        cr.set_source_rgba(0, 0, 0)
+        cr.set_line_width(1)
+        cr.move_to(startindex*self.fwidth, self.al_top-0.5)
+        cr.line_to((endindex+1)*self.fwidth, self.al_top-0.5)
+        cr.move_to(startindex*self.fwidth, y+0.5)
+        cr.line_to((endindex+1)*self.fwidth, y+0.5)
+        cr.stroke()
 
+        # Draw the alignment.
         for index in range(startindex, endindex+1):
             x = index * self.fwidth
             y = self.margins
 
             # Draw the base from the first aligned sequence.
-            self.drawAlignmentBase(dwin, gc, align1[index], x, self.al_top)
+            self.drawAlignmentBase(align1[index], x, self.al_top, cr)
 
             # Draw the base from the second aligned sequence, if present.
             if self.numseqs == 2:
                 self.drawAlignmentBase(dwin, gc, align2[index], x, self.al_top + self.fheight)
 
-    def drawAlignmentBase(self, dwin, gc, base, x, y):
-        gc.set_rgb_fg_color(self.bgcolors[base])
-        dwin.draw_rectangle(gc, True, x, y, self.fwidth, self.fheight)
-        gc.set_rgb_fg_color(self.basecolors[base])
-        #gc.set_rgb_fg_color(gtk.gdk.color_parse('#bbb'))
-        self.txtlayout.set_text(base)
+        # Restore the alignment selection, if any.
+        if (self.highlighted >= startindex) and (self.highlighted <= endindex):
+            self.highlightAlignment(self.highlighted, True, cr)
+
+    def drawAlignmentBase(self, base, x, y, cr, invert=False):
+        if invert:
+            cr.set_source_rgba(*self.bgcolors_inv[base])
+        else:
+            cr.set_source_rgba(*self.bgcolors[base])
+        cr.rectangle(x, y, self.fwidth, self.fheight)
+        cr.fill()
+
+        if invert:
+            cr.set_source_rgba(*self.basecolors_inv[base])
+        else:
+            cr.set_source_rgba(*self.basecolors[base])
+        self.txtlayout.set_text(base, 1)
         tw = self.txtlayout.get_pixel_size()[0]
-        dwin.draw_layout(gc, x + (self.fwidth-tw)/2, y, self.txtlayout)
+        cr.move_to(x + (self.fwidth-tw)/2, y)
+        PangoCairo.layout_path(cr, self.txtlayout)
+        cr.fill()
 
-    def drawConsensus(self, dwin, gc, startindex, endindex):
-        cons = self.cons.getConsensus()
+    def drawConsensus(self, startindex, endindex, cr):
+        """
+        Draws the consensus sequence from alignment positions startindex to
+        endindex, inclusive.
+        """
+        startx = startindex*self.fwidth
+        rwidth = (endindex-startindex+1)*self.fwidth
 
+        # calculate the y-coordinate of the top of the working sequence ribbon
         y = self.al_top + self.fheight*self.numseqs + self.padding
 
+        # draw the gray background
+        cr.set_source_rgba(*parseHTMLColorStr('#d2d2d2'))
+        cr.rectangle(startx, y - self.padding/2, rwidth,
+                self.fheight + self.padding/2 + self.margins)
+        cr.fill()
+
+        # draw the white background for the sequence characters
+        cr.set_source_rgba(1.0, 1.0, 1.0)
+        cr.rectangle(startx, y, rwidth, self.fheight)
+        cr.fill()
+
+        cons = self.cons.getConsensus()
+
+        # Draw the consensus sequence.
         for index in range(startindex, endindex+1):
             x = index * self.fwidth
 
             # draw the base from the consensus sequence
             base = cons[index]
-            gc.set_rgb_fg_color(self.basecolors[base])
-            self.txtlayout.set_text(base)
-            tw = self.txtlayout.get_pixel_size()[0]
-            dwin.draw_layout(gc, x + (self.fwidth-tw)/2, y, self.txtlayout)
+            self.drawConsensusBase(base, x, y, cr, False)
+
+        # Restore the consensus sequence selection, if any.
+        self.chl_start = self.chl_end = -1
+        self.updateConsensusHighlight(cr)
+
+    def drawConsensusBase(self, base, x, y, cr, invert=False):
+        if invert:
+            cr.set_source_rgba(0.2, 0.2, 0.2)
+        else:
+            cr.set_source_rgba(1.0, 1.0, 1.0)
+
+        cr.rectangle(x, y, self.fwidth, self.fheight)
+        cr.fill()
+
+        if invert:
+            cr.set_source_rgba(*self.basecolors_inv[base])
+        else:
+            cr.set_source_rgba(*self.basecolors[base])
+
+        self.txtlayout.set_text(base, 1)
+        tw = self.txtlayout.get_pixel_size()[0]
+        cr.move_to(x + (self.fwidth-tw)/2, y)
+        PangoCairo.layout_path(cr, self.txtlayout)
+        cr.fill()
 
 
-class ScrolledConsensusSequenceViewer(gtk.ScrolledWindow):
+class ScrolledConsensusSequenceViewer(Gtk.ScrolledWindow):
     def __init__(self, mod_consensseq_builder):
-        gtk.ScrolledWindow.__init__(self)
+        Gtk.ScrolledWindow.__init__(self)
 
         self.da = ConsensusSequenceViewer(mod_consensseq_builder)
-        self.innerhbox = gtk.HBox(False)
-        self.innerhbox.pack_start(self.da, expand=False, fill=False)
-        self.set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_NEVER)
+        self.innerhbox = Gtk.HBox(False)
+        self.innerhbox.pack_start(self.da, False, False, 0)
+        self.set_policy(Gtk.PolicyType.ALWAYS, Gtk.PolicyType.NEVER)
         self.add_with_viewport(self.innerhbox)
 
-        self.da.connect('size-request', self.consViewerResized)
+        #self.da.connect('size-request', self.consViewerResized)
 
     def consViewerResized(self, widget, req):
         """
