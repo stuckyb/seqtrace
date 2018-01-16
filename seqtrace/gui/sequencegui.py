@@ -125,9 +125,16 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         self.setFontSize(10)
 
+        # The index of the currently highlighted position in the alignment.
         self.lastx = -1
+        # The index of the currently selected (and highlighted) position in the
+        # alignment.
         self.highlighted = -1
-        # keep track of location of an active selection on the consensus sequence
+
+        # Keep track of location of an active selection on the consensus
+        # sequence. The values are interpreted such that the lower value (which
+        # could be either start or end) is the first selected position, and the
+        # higher value is 1 beyond the last selected position.
         self.consselect_start = -1
         self.consselect_end = -1
         # keep track of where a selection highlight has been drawn on the consensus sequence
@@ -213,28 +220,26 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
                 self.highlighted = bindex
                 self.notifyObservers('alignment_clicked', (seqnum, seq1index, seq2index))
             elif (event.y > (alend + self.padding)) and (event.y < consend):
-                # The mouse is over the consensus sequence display.
+                # The mouse was clicked on the consensus sequence display, so
+                # initiate a new consensus selection.
 
-                # see if there was a previous selection
-                if self.consselect_start != self.consselect_end:
-                    # there was a previous selection, so send notification that it is cleared
-                    self.notifyObservers('selection_state', (False,))
-
-                # determine if the click was on the left or right side of the character
+                # Determine if the click was on the left or right side of the
+                # character.
                 if (event.x % self.fwidth) < (self.fwidth / 2):
                     # on the left
-                    self.consselect_start = self.consselect_end = bindex
+                    sel_index = bindex
                 else:
                     # on the right
-                    self.consselect_start = self.consselect_end = bindex + 1
+                    sel_index = bindex + 1
 
-                self.selecting_active = True
-                self.updateConsensusHighlight()
+                self.updateConsSelection(sel_index, True)
 
         elif event.button == 3:
             if (event.y > (alend + self.padding)) and (event.y < consend):
                 # the mouse is over the consensus sequence display and was right clicked
-                self.notifyObservers('consensus_clicked', (self.consselect_start, self.consselect_end, event))
+                self.notifyObservers(
+                    'consensus_clicked', (self.consselect_start, self.consselect_end, event)
+                )
 
     def mouseRelease(self, da, event):
         if (event.button == 1) and self.selecting_active:
@@ -251,8 +256,8 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         index = int(event.x) / self.fwidth
 
         if self.selecting_active:
-            # we are in the process of selecting bases from the consensus sequence
-            #print 'BEFORE start, end, index:', self.consselect_start, self.consselect_end, index
+            # We are in the process of selecting bases from the consensus
+            # sequence.
 
             # determine if the event was on the left or right side of the character
             if (event.x % self.fwidth) < (self.fwidth / 2):
@@ -262,17 +267,7 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
                 # on the right
                 s_index = index + 1
 
-            if self.consselect_start == s_index:
-                # no bases are selected
-                self.consselect_end = self.consselect_start
-                self.updateConsensusHighlight()
-                self.notifyObservers('selection_state', (False,))
-            elif self.consselect_end != s_index:
-                # at least one new base was selected
-                if self.consselect_end == self.consselect_start:
-                    self.notifyObservers('selection_state', (True,))
-                self.consselect_end = s_index
-                self.updateConsensusHighlight()
+            self.updateConsSelection(s_index, False)
             #print 'AFTER start, end, index:', self.consselect_start, self.consselect_end, index 
 
         # Check if the mouse pointer is on the alignment display.
@@ -302,6 +297,128 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
                 # not on the consensus display, so change back the cursor to the default
                 self.setCursor(None)
 
+    def updateConsSelection(self, index, is_new):
+        """
+        Updates the active consensus sequence selection.
+
+        index: The alignment position corresponding to the mouse selection
+            event.
+        is_new: If True, this update should initiate a new selection process.
+        """
+        oldstart = self.consselect_start
+        oldend = self.consselect_end
+
+        # This check is necessary because mouse event coordinates can extend
+        # outside the DrawingArea display window.
+        cons = self.cons.getConsensus()
+        if index > len(cons):
+            index = len(cons)
+
+        if is_new:
+            if self.consselect_start != self.consselect_end:
+                # There was a previous selection, so send notification that it
+                # is cleared.
+                self.notifyObservers('selection_state', (False,))
+
+            self.consselect_start = self.consselect_end = index
+            self.selecting_active = True
+
+        elif self.consselect_end != index:
+            # An existing selection has changed.
+
+            if self.consselect_start == index:
+                # No bases are selected.
+                self.consselect_end = self.consselect_start
+                self.notifyObservers('selection_state', (False,))
+
+            else:
+                # At least one base was selected or unselected and an active
+                # selection remains.
+                if self.consselect_end == self.consselect_start:
+                    # This is a new selection.
+                    self.notifyObservers('selection_state', (True,))
+                self.consselect_end = index
+
+        if (oldstart != self.consselect_start) or (oldend != self.consselect_end):
+            self.updateConsSelDisplay(
+                oldstart, oldend, self.consselect_start, self.consselect_end
+            )
+
+    def updateConsSelDisplay(self, oldstart, oldend, newstart, newend):
+        """
+        Updates the consensus sequence selection display.
+
+        oldstart, oldend: The indexes of the old selection.
+        newstart, newend: The indexes of the new selection.
+        """
+        alend = self.fheight*self.numseqs + self.al_top
+
+        # Order the indexes so start <= end.
+        if oldend < oldstart:
+            tmp = oldstart
+            oldstart = oldend
+            oldend = tmp
+        if newend < newstart:
+            tmp = newstart
+            newstart = newend
+            newend = tmp
+
+        # Calculate which positions in the old selection need to be
+        # unhighlighted and which in the new selection need to be highlighted.
+
+        # Initialize two lists to accumulate regions (stored as pairs of
+        # indexes) that need to be highlighted or unhighlighted.
+        unhl = []
+        hl = []
+        if (oldend < newstart) or (newend < oldstart):
+            # No overlap between the old and new selections, so unhighlight the
+            # entire old selection and highlight the entire new selection (if
+            # there is one).
+            unhl.append((oldstart, oldend))
+            if (newstart != newend):
+                hl.append((newstart, newend))
+        else:
+            # There is at least some overlap, so calculate the changed regions.
+            if oldstart < newstart:
+                unhl.append((oldstart, newstart))
+            elif newstart < oldstart:
+                hl.append((newstart, oldstart))
+            if newend < oldend:
+                unhl.append((newend, oldend))
+            elif oldend < newend:
+                hl.append((oldend, newend))
+
+        cr = cairo.Context(self.surface)
+        cons = self.cons.getConsensus()
+
+        # Draw the newly unhighlighted regions.
+        for coords in unhl:
+            start = coords[0]
+            end = coords[1]
+            for index in range(start, end):
+                self.drawConsensusBase(
+                    cons[index], index*self.fwidth, alend+self.padding, cr, False
+                )
+
+            self.queue_draw_area(
+                start*self.fwidth, alend+self.padding,
+                self.fwidth*(end-start), self.fheight
+            )
+
+        # Draw the newly highlighted regions.
+        for coords in hl:
+            start = coords[0]
+            end = coords[1]
+            for index in range(start, end):
+                self.drawConsensusBase(
+                    cons[index], index*self.fwidth, alend+self.padding, cr, True
+                )
+
+            self.queue_draw_area(
+                start*self.fwidth, alend+self.padding,
+                self.fwidth*(end-start), self.fheight
+            )
+
     def setCursor(self, cursor):
         if self.curr_cursor != cursor:
             self.get_window().set_cursor(cursor)
@@ -326,47 +443,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         # corresponding region on the DrawingArea window.
         self.drawAlignmentBase(base, x, self.al_top, cr, highlight)
         self.queue_draw_area(x, self.al_top, self.fwidth, self.fheight)
-
-    def updateConsensusHighlight(self, cr=None):
-        alend = self.fheight*self.numseqs + self.al_top
-
-        print self.consselect_start, self.consselect_end
-        if cr is None:
-            cr = self.get_window().cairo_create()
-
-        highlight = True
-
-        if (self.consselect_start == self.consselect_end):
-            # no bases selected, so erase the current highlight
-            highlight = False
-            start = self.chl_start
-            end = self.chl_end
-            self.chl_start = self.chl_end = -1
-        else:
-            # bases selected, so update the highlight if necessary
-            if self.chl_start == -1:
-                highlight = True
-                start = self.chl_start = self.consselect_start
-                end = self.chl_end = self.consselect_end
-            else:
-                start = self.chl_end
-                end = self.consselect_end
-                if (self.chl_start < self.chl_end) and (start < end):
-                    highlight = True
-                elif (self.chl_end < self.chl_start) and (end < start):
-                    highlight = True
-                else:
-                    highlight = False
-                self.chl_end = self.consselect_end
-
-        cons = self.cons.getConsensus()
-
-        if start < end:
-            for cnt in range(start, end):
-                self.drawConsensusBase(cons[cnt], cnt*self.fwidth, alend+self.padding, cr, highlight)
-        else:
-            for cnt in range(end, start):
-                self.drawConsensusBase(cons[cnt], cnt*self.fwidth, alend+self.padding, cr, highlight)
 
     def setFontSize(self, size):
         """
@@ -432,8 +508,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         self.redrawConsensus(start, end)
 
     def onConfigure(self, widget, event):
-        print 'CONFIGURING!', self.get_allocated_width(), self.get_allocated_height()
-
         # Note that the Python cairo bindings do not expose
         # cairo_surface_destroy() because this functionality is handled
         # automatically by the Python library.
@@ -456,8 +530,8 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         return True
 
     def onDraw(self, da, cr):
-        print 'DRAW EVENT!'
-
+        # Drawing is simple: we just copy the region that needs to be painted
+        # from the off-screen buffer.
         cr.set_source_surface(self.surface, 0, 0)
         cr.paint()
 
