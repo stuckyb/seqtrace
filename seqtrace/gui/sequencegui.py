@@ -25,26 +25,8 @@ from gi.repository import Pango
 from gi.repository import PangoCairo
 import cairo
 
-
-def parseHTMLColorStr(html_color):
-    """
-    Returns a Gdk.RGBA instance that represents the given HTML color string.
-    """
-    color = Gdk.RGBA()
-    color.parse(html_color)
-
-    return color
-
-def getInverseColor(color):
-    """
-    Returns a Gdk.RGBA that is the inverse of the provided color.
-    """
-    invcolor = Gdk.RGBA()
-    invcolor.red = 1.0 - color.red
-    invcolor.green = 1.0 - color.green
-    invcolor.blue = 1.0 - color.blue
-
-    return invcolor
+# Get the Gdk.RGBA convenience functions.
+from colorfuncs import parseHTMLColorStr, getInverseColor
 
 
 class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
@@ -65,41 +47,43 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         # Initialize drawing settings.
         self.basecolors = {
-                'A': parseHTMLColorStr('#009000'),    # green
-                'C': parseHTMLColorStr('#0000ff'),    # blue
-                'G': parseHTMLColorStr('#000000'),    # black
-                'T': parseHTMLColorStr('#ff0000'),    # red
-                'W': parseHTMLColorStr('#804800'),    # mix of A and T
-                'S': parseHTMLColorStr('#000080'),    # mix of C and G
-                'M': parseHTMLColorStr('#004880'),    # mix of A and C
-                'K': parseHTMLColorStr('#800000'),    # mix of G and T
-                'R': parseHTMLColorStr('#004800'),    # mix of A and G
-                'Y': parseHTMLColorStr('#800080'),    # mix of C and T
-                'B': parseHTMLColorStr('#550055'),    # mix of C, G, and T
-                'D': parseHTMLColorStr('#553000'),    # mix of A, G, and T
-                'H': parseHTMLColorStr('#553055'),    # mix of A, C, and T
-                'V': parseHTMLColorStr('#003055'),    # mix of A, C, and G
-                'N': parseHTMLColorStr('#999'),       # gray
-                '-': parseHTMLColorStr('#000'),       # black
-                ' ': parseHTMLColorStr('#999')}
+            'A': parseHTMLColorStr('#009000'),    # green
+            'C': parseHTMLColorStr('#0000ff'),    # blue
+            'G': parseHTMLColorStr('#000000'),    # black
+            'T': parseHTMLColorStr('#ff0000'),    # red
+            'W': parseHTMLColorStr('#804800'),    # mix of A and T
+            'S': parseHTMLColorStr('#000080'),    # mix of C and G
+            'M': parseHTMLColorStr('#004880'),    # mix of A and C
+            'K': parseHTMLColorStr('#800000'),    # mix of G and T
+            'R': parseHTMLColorStr('#004800'),    # mix of A and G
+            'Y': parseHTMLColorStr('#800080'),    # mix of C and T
+            'B': parseHTMLColorStr('#550055'),    # mix of C, G, and T
+            'D': parseHTMLColorStr('#553000'),    # mix of A, G, and T
+            'H': parseHTMLColorStr('#553055'),    # mix of A, C, and T
+            'V': parseHTMLColorStr('#003055'),    # mix of A, C, and G
+            'N': parseHTMLColorStr('#999'),       # gray
+            '-': parseHTMLColorStr('#000'),       # black
+            ' ': parseHTMLColorStr('#999')
+        }
         self.bgcolors = {
-                # These are mostly lighter versions of the foreground colors above.
-                'A': parseHTMLColorStr('#cfc'),
-                'C': parseHTMLColorStr('#ccf'),
-                'G': parseHTMLColorStr('#ccc'),
-                'T': parseHTMLColorStr('#fcc'),
-                'W': parseHTMLColorStr('#DFD1BF'),    # mix of A and T
-                'S': parseHTMLColorStr('#BFBFDF'),    # mix of C and G
-                'M': parseHTMLColorStr('#BFD1DF'),    # mix of A and C
-                'K': parseHTMLColorStr('#DFBFBF'),    # mix of G and T
-                'R': parseHTMLColorStr('#BFD1BF'),    # mix of A and G
-                'Y': parseHTMLColorStr('#DFBFDF'),    # mix of C and T
-                'B': parseHTMLColorStr('#D5BFD5'),    # mix of C, G, and T
-                'D': parseHTMLColorStr('#D5CBBF'),    # mix of A, G, and T
-                'H': parseHTMLColorStr('#D5CBD5'),    # mix of A, C, and T
-                'V': parseHTMLColorStr('#BFCBD5'),    # mix of A, C, and G
-                'N': parseHTMLColorStr('#fff'),
-                '-': parseHTMLColorStr('#ff9')}
+            # These are mostly lighter versions of the foreground colors above.
+            'A': parseHTMLColorStr('#cfc'),
+            'C': parseHTMLColorStr('#ccf'),
+            'G': parseHTMLColorStr('#ccc'),
+            'T': parseHTMLColorStr('#fcc'),
+            'W': parseHTMLColorStr('#DFD1BF'),    # mix of A and T
+            'S': parseHTMLColorStr('#BFBFDF'),    # mix of C and G
+            'M': parseHTMLColorStr('#BFD1DF'),    # mix of A and C
+            'K': parseHTMLColorStr('#DFBFBF'),    # mix of G and T
+            'R': parseHTMLColorStr('#BFD1BF'),    # mix of A and G
+            'Y': parseHTMLColorStr('#DFBFDF'),    # mix of C and T
+            'B': parseHTMLColorStr('#D5BFD5'),    # mix of C, G, and T
+            'D': parseHTMLColorStr('#D5CBBF'),    # mix of A, G, and T
+            'H': parseHTMLColorStr('#D5CBD5'),    # mix of A, C, and T
+            'V': parseHTMLColorStr('#BFCBD5'),    # mix of A, C, and G
+            'N': parseHTMLColorStr('#fff'),
+            '-': parseHTMLColorStr('#ff9')
+        }
 
         # Calculate inverses of the main colors for drawing
         # selected/highlighted bases.
@@ -182,6 +166,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         return self.cons
 
     def getSelection(self):
+        """
+        Returns the start and end indexes of the currently active consensus
+        sequence selection.  Both indexes are included in the selection.
+        """
         start = self.consselect_start
         end = self.consselect_end
         if end < start:
@@ -652,18 +640,20 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         cr.fill()
 
         cons = self.cons.getConsensus()
+        cons_sel = self.getSelection()
 
         # Draw the consensus sequence.
         for index in range(startindex, endindex+1):
             x = index * self.fwidth
 
-            # draw the base from the consensus sequence
-            base = cons[index]
-            self.drawConsensusBase(base, x, y, cr, False)
+            # Draw the base from the consensus sequence, highlighting it if it
+            # is part of an active selection.
+            highlight = False
+            if (index >= cons_sel[0]) and (index <= cons_sel[1]):
+                highlight = True
 
-        # Restore the consensus sequence selection, if any.
-        self.chl_start = self.chl_end = -1
-        self.updateConsensusHighlight(cr)
+            base = cons[index]
+            self.drawConsensusBase(base, x, y, cr, highlight)
 
     def drawConsensusBase(self, base, x, y, cr, invert=False):
         if invert:
