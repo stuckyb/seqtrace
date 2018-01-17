@@ -31,13 +31,13 @@ import xml.sax.saxutils
 import os
 import re
 
-import pygtk
-pygtk.require('2.0')
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk
 
 
 
-class TraceFileInfoWin(gtk.Window):
+class TraceFileInfoWin(Gtk.Window):
     keydesc = {
             'NAME': 'Sample name',
             'LANE': 'Lane',
@@ -56,33 +56,33 @@ class TraceFileInfoWin(gtk.Window):
     disp_order = ['MACH', 'MODL', 'VER1', 'BCAL', 'VER2', 'DYEP', 'RUND', 'DATE', 'NAME', 'LANE', 'SIGN', 'SPAC']
 
     def __init__(self, seqtraces):
-        gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
+        Gtk.Window.__init__(self, Gtk.WindowType.TOPLEVEL)
 
         self.seqtraces = seqtraces
 
         self.set_title('File Information')
 
-        self.vbox = gtk.VBox(False, 6)
+        self.vbox = Gtk.VBox(False, 6)
         self.vbox.set_border_width(6)
         self.add(self.vbox)
 
         # set up the tabs ("notebook") object
-        nb = gtk.Notebook()
-        nb.set_tab_pos(gtk.POS_TOP)
+        nb = Gtk.Notebook()
+        nb.set_tab_pos(Gtk.PositionType.TOP)
 
         for seqtr in seqtraces:
             label = self.makeInfoLabel(seqtr)
-            nb.append_page(label, gtk.Label(seqtr.getFileName()))
+            nb.append_page(label, Gtk.Label(label=seqtr.getFileName()))
 
-        self.vbox.pack_start(nb)
+        self.vbox.pack_start(nb, True, True, 0)
 
         # create the 'Close' button
-        bbox = gtk.HButtonBox()
-        bbox.set_layout(gtk.BUTTONBOX_END)
-        button = gtk.Button('Close', gtk.STOCK_CLOSE)
+        bbox = Gtk.HButtonBox()
+        bbox.set_layout(Gtk.ButtonBoxStyle.END)
+        button = Gtk.Button('Close', Gtk.STOCK_CLOSE)
         button.connect('clicked', self.closeWindow)
         bbox.add(button)
-        self.vbox.pack_start(bbox)
+        self.vbox.pack_start(bbox, True, True, 0)
 
         self.vbox.show_all()
         self.show()
@@ -106,7 +106,7 @@ class TraceFileInfoWin(gtk.Window):
         # remove the extra '\n' at the end of the label string
         labelstr = labelstr[:-1]
             
-        label = gtk.Label()
+        label = Gtk.Label()
         label.set_alignment(0, 0)
         label.set_padding(12, 8)
         label.set_selectable(True)
@@ -124,9 +124,9 @@ class TraceFileInfoWin(gtk.Window):
         self.destroy()
 
 
-class TraceWindow(gtk.Window, CommonDialogs, Observable):
+class TraceWindow(Gtk.Window, CommonDialogs, Observable):
     def __init__(self, mod_consseq_builder, is_mainwindow=False, id_num=-1):
-        gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
+        Gtk.Window.__init__(self, Gtk.WindowType.TOPLEVEL)
 
         self.is_mainwindow = is_mainwindow
         self.id_num = id_num
@@ -139,7 +139,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         # initialize the window GUI elements and event handlers
         self.connect('destroy', self.destroyWindow)
 
-        self.vbox = gtk.VBox(False, 0)
+        self.vbox = Gtk.VBox(False, 0)
         self.add(self.vbox)
 
         # create the menus and toolbar
@@ -190,53 +190,53 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         </toolbar>'''
 
         # These actions are (usually) always enabled.
-        self.main_ag = gtk.ActionGroup('main_actions')
+        self.main_ag = Gtk.ActionGroup('main_actions')
         self.main_ag.add_actions([
             ('File', None, '_File'),
-            ('Save_Consens', gtk.STOCK_SAVE, '_Save working sequence to project', None, 'Save the working sequence to the project', self.saveConsensus),
+            ('Save_Consens', Gtk.STOCK_SAVE, '_Save working sequence to project', None, 'Save the working sequence to the project', self.saveConsensus),
             ('Export_Consensus', None, 'Export w_orking sequence...', None, 'Export the working sequence to a file', self.exportConsensus),
             ('Export_Raw', None, 'Export _raw sequence(s)...', None, 'Export the un-edited sequence(s) to a file', self.exportRawSequence),
-            ('File_Info', gtk.STOCK_INFO, '_Information...', None, 'View detailed information about the file(s)', self.fileInfo),
-            ('Close', gtk.STOCK_CLOSE, '_Close', None, 'Close this window', self.closeWindow),
+            ('File_Info', Gtk.STOCK_INFO, '_Information...', None, 'View detailed information about the file(s)', self.fileInfo),
+            ('Close', Gtk.STOCK_CLOSE, '_Close', None, 'Close this window', self.closeWindow),
             ('Edit', None, '_Edit'),
             ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
             ('View', None, '_View')])
 
         # These actions are enabled only when there are two sequencing traces in the window.
-        self.twotrace_ag = gtk.ActionGroup('twotrace_actions')
+        self.twotrace_ag = Gtk.ActionGroup('twotrace_actions')
         self.twotrace_ag.add_actions([
             ('Export_Alignment', None, 'Export _alignment...', None, 'Export the aligned forward and reverse sequences', self.exportAlignment)])
         self.twotrace_ag.add_toggle_actions([
             ('Scroll_Lock', None, '_Synchronize trace scrolling', None, 'Synchronizes the scrolling of the forward and reverse traces', self.lockScrolling, True)])
 
         # these actions are for common edit commands
-        self.edit_ag = gtk.ActionGroup('edite_actions')
+        self.edit_ag = Gtk.ActionGroup('edite_actions')
         self.edit_ag.add_actions([
-            ('Undo', gtk.STOCK_UNDO, '_Undo', '<ctl>z', 'Undo the last change to the working sequence', self.undoConsChange),
-            ('Redo', gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the working sequence', self.redoConsChange)])
+            ('Undo', Gtk.STOCK_UNDO, '_Undo', '<ctl>z', 'Undo the last change to the working sequence', self.undoConsChange),
+            ('Redo', Gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the working sequence', self.redoConsChange)])
 
         # these actions are only enabled when there is an active selection
-        self.sel_edit_ag = gtk.ActionGroup('selected_edit_actions')
+        self.sel_edit_ag = Gtk.ActionGroup('selected_edit_actions')
         self.sel_edit_ag.add_actions([
-            ('Copy', gtk.STOCK_COPY, '_Copy selected base(s) to clipboard', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
-            ('Delete', gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the working sequence', self.deleteConsBases),
-            ('Modify', gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)])
+            ('Copy', Gtk.STOCK_COPY, '_Copy selected base(s) to clipboard', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
+            ('Delete', Gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the working sequence', self.deleteConsBases),
+            ('Modify', Gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)])
 
-        self.uim = gtk.UIManager()
+        self.uim = Gtk.UIManager()
         self.add_accel_group(self.uim.get_accel_group())
         self.uim.insert_action_group(self.main_ag, 0)
         self.uim.insert_action_group(self.twotrace_ag, 0)
         self.uim.insert_action_group(self.edit_ag, 0)
         self.uim.insert_action_group(self.sel_edit_ag, 0)
         self.uim.add_ui_from_string(menuxml)
-        self.vbox.pack_start(self.uim.get_widget('/menubar'), expand=False, fill=False)
+        self.vbox.pack_start(self.uim.get_widget('/menubar'), False, False, 0)
 
-        toolbar_hbox = gtk.HBox()
+        toolbar_hbox = Gtk.HBox()
         self.uim.get_widget('/toolbar').set_show_arrow(False)
-        self.uim.get_widget('/toolbar').set_icon_size(gtk.ICON_SIZE_LARGE_TOOLBAR)
-        self.uim.get_widget('/toolbar').set_style(gtk.TOOLBAR_ICONS)
-        toolbar_hbox.pack_start(self.uim.get_widget('/toolbar'), expand=False, fill=False)
-        self.vbox.pack_start(toolbar_hbox, expand=False, fill=False)
+        self.uim.get_widget('/toolbar').set_icon_size(Gtk.IconSize.LARGE_TOOLBAR)
+        self.uim.get_widget('/toolbar').set_style(Gtk.ToolbarStyle.ICONS)
+        toolbar_hbox.pack_start(self.uim.get_widget('/toolbar'), False, False, 0)
+        self.vbox.pack_start(toolbar_hbox, False, False, 0)
 
         # disable some menus/toolbar buttons by default
         self.edit_ag.get_action('Undo').set_sensitive(False)
@@ -252,15 +252,15 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         # get the trace file(s) toolbar
         trace_tb = self.stlayout.getTraceToolBar()
         for cnt in range(0, 2):
-            blank = gtk.SeparatorToolItem()
+            blank = Gtk.SeparatorToolItem()
             blank.set_draw(False)
             #self.uim.get_widget('/toolbar').insert(blank, 0)
             trace_tb.insert(blank, 0)
-        toolbar_hbox.pack_start(trace_tb, True, True)
+        toolbar_hbox.pack_start(trace_tb, True, True, 0)
 
         # add a consensus sequence status bar at the bottom of the window
         sbar = ConsensSeqStatusBar(self.cons)
-        self.vbox.pack_start(sbar, False)
+        self.vbox.pack_start(sbar, False, True, 0)
 
         self.vbox.show_all()
         self.vbox.show()
@@ -291,7 +291,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
 
         #print new_width, new_height
         self.set_default_size(new_width, new_height)
-        self.set_position(gtk.WIN_POS_CENTER)
+        self.set_position(Gtk.WindowPosition.CENTER)
 
     def setSaveEnabled(self, state):
         self.main_ag.get_action('Save_Consens').set_sensitive(state)
@@ -334,7 +334,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
 
         # add the sequence trace layout to the window
         self.stlayout = SequenceTraceLayout(self.consview, self.viewers)
-        self.vbox.pack_start(self.stlayout, expand=True, fill=True)
+        self.vbox.pack_start(self.stlayout, True, True, 0)
 
         # Register callbacks for the consensus sequence viewer.
         self.consview.getConsensusSequenceViewer().registerObserver('consensus_clicked', self.consensusSeqClicked)
@@ -360,7 +360,9 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
 
     def consensusSeqClicked(self, select_start, select_end, event):
         if event.button == 3:
-            self.uim.get_widget('/editpopup').popup(None, None, None, event.button, event.time)
+            self.uim.get_widget('/editpopup').popup(
+                None, None, None, None, event.button, event.time
+            )
 
     def selectStateChange(self, selection_exists):
         if selection_exists:
@@ -393,7 +395,8 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         sel = csv.getSelection()
         seq = self.cons.getConsensus(sel[0], sel[1])
 
-        pyperclip.copy(seq)
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(seq, -1)
 
     def deleteConsBases(self, widget):
         csv = self.consview.getConsensusSequenceViewer()
@@ -420,7 +423,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         stringok = False
         while not(stringok):
             response = diag.run()
-            if (response == gtk.RESPONSE_CANCEL) or (response == gtk.RESPONSE_DELETE_EVENT):
+            if (response == Gtk.ResponseType.CANCEL) or (response == Gtk.ResponseType.DELETE_EVENT):
                 break
 
             newseq = diag.get_text().upper()
@@ -435,14 +438,14 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
                 stringok = True
 
         diag.destroy()
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             self.cons.modifyBases(sel[0], sel[1], newseq)
 
         self.setSaveEnabled(True)
 
     def recalcConsensus(self, widget):
         response = self.showYesNoDialog('Are you sure you want to recalculate the working sequence?  This will overwrite any edits you have made.')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         self.cons.recalcConsensusSequence()
@@ -473,7 +476,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         fname = fc.get_filename()
         fformat = fc.getFileFormat()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # write out the sequence
@@ -501,7 +504,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         fname = fc.get_filename()
         fformat = fc.getFileFormat()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # write out the sequence
@@ -530,7 +533,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         fname = fc.get_filename()
         fformat = fc.getFileFormat()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # write out the sequences
@@ -568,7 +571,7 @@ class TraceWindow(gtk.Window, CommonDialogs, Observable):
         self.cons.unregisterObserver('redo_state_changed', self.redoStateChanged)
 
         if self.is_mainwindow:
-            gtk.main_quit()
+            Gtk.main_quit()
             
 
 
@@ -593,4 +596,4 @@ if __name__ == '__main__':
     #cons = ModifiableConsensSeqBuilder((seqt1, seqt2))
 
     mainwin = TraceWindow(cons, is_mainwindow=True)
-    gtk.main()
+    Gtk.main()
