@@ -159,6 +159,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             <menuitem action="Undo" />
             <menuitem action="Redo" />
             <separator />
+            <menuitem action="Copy_Consens" />
             <menuitem action="Copy" />
             <menuitem action="Delete" />
             <menuitem action="Modify" />
@@ -170,6 +171,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         </menu>
         </menubar>
         <popup name="editpopup">
+            <menuitem action="Copy_Consens" />
             <menuitem action="Copy" />
             <menuitem action="Delete" />
             <menuitem action="Modify" />
@@ -199,6 +201,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             ('File_Info', Gtk.STOCK_INFO, '_Information...', None, 'View detailed information about the file(s)', self.fileInfo),
             ('Close', Gtk.STOCK_CLOSE, '_Close', None, 'Close this window', self.closeWindow),
             ('Edit', None, '_Edit'),
+            ('Copy_Consens', None, 'C_opy working seq. to clipboard', None, 'Copy the working sequence to the clipboard', self.copyFullConsensus),
             ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
             ('View', None, '_View')])
 
@@ -389,6 +392,12 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
     def redoConsChange(self, widget):
         self.cons.redo()
         self.setSaveEnabled(True)
+
+    def copyFullConsensus(self, widget):
+        seq = self.cons.getConsensus()
+
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(seq, -1)
 
     def copyConsBases(self, widget):
         csv = self.consview.getConsensusSequenceViewer()
