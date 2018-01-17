@@ -89,7 +89,7 @@ class SequenceTraceViewer:
         self.bcfontdesc = self.bclayout.get_context().get_font_description().copy()
         self.setFontSize(10)
 
-        self.drawingarea.connect('draw', self.updatedisplay)
+        self.drawingarea.connect('draw', self.doDraw)
 
         self.highlighted = self.seqt.getNumBaseCalls()
 
@@ -140,46 +140,63 @@ class SequenceTraceViewer:
         self.bclayout.set_text('A', 1)
         self.bcheight = self.bclayout.get_pixel_size()[1] + (self.bcpadding*2)
 
-    def updatedisplay(self, da, cr):
-        dwin = self.drawingarea.get_window()
-
-        #print '(', event.area.x, ',', event.area.y
-        #startx = event.area.x
-        #dwidth = event.area.width
-        startx = 0
+    def doDraw(self, da, cr):
+        clipr = cr.clip_extents()
+        #print clipr
+        startx = clipr[0]
+        dwidth = clipr[2] - clipr[0]
         height = self.drawingarea.get_allocated_height()
-        dwidth = self.drawingarea.get_allocated_width()
+        #print 'startx: {0}, dwidth: {1}, height: {2}'.format(startx, dwidth, height)
         if startx > 0:
             # Becase the Cairo coordinates are shifted by +0.5 for the trace
             # drawing, make sure that we have sufficient overlap with previous
-            # drawing operations so that we don't get breaks in the antialiasing.
+            # drawing operations so that we don't get breaks in the
+            # antialiasing.
             startx -= 1
             dwidth += 1
-        #print startx, dwidth
 
-        # Create the Cairo context.
-        #cr = dwin.cairo_create()
         cr.set_antialias(cairo.ANTIALIAS_DEFAULT)
         cr.set_line_join(cairo.LINE_JOIN_ROUND)
 
-        self.eraseda(height, startx, dwidth, cr)
-        self.drawBaseCalls(dwidth, height, startx, dwidth, cr)
-        self.drawTrace(dwin, cr, startx=startx, dwidth=dwidth)
+        drawhighlight = False
+        rect = None
+        # Check if a highlight is active.
         if self.highlighted != self.seqt.getNumBaseCalls():
-            self.highlightBaseInternal(self.highlighted);
+            # Check if the highlight is within the clip region.
+            rect = self.getHighlightRectangle(self.highlighted)
+            if not(
+                (rect[0] > startx + dwidth) or (rect[0] + rect[2] < startx)
+            ):
+                drawhighlight = True
 
-    def eraseda(self, height, startx, dwidth, cr):
+        self.drawBackground(startx, dwidth, cr)
+
+        if drawhighlight:
+            # Draw the "under" highlight as a solid color.
+            self.drawHighlight(rect, 1.0, cr);
+
+        self.drawBaseCalls(startx, dwidth, cr)
+        self.drawTrace(startx, dwidth, cr)
+
+        if drawhighlight:
+            # Draw the "over" highlight with transparency.
+            self.drawHighlight(rect, 0.4, cr);
+
+    def drawBackground(self, startx, dwidth, cr):
         cr.set_source_rgba(1.0, 1.0, 1.0)
-        cr.rectangle(startx, 0, dwidth, height)
-        cr.fill()
+        cr.paint()
 
-    def drawTrace(self, dwin, cr, startx=0, dwidth=0):
+    def drawTrace(self, startx, dwidth, cr):
         """
         Draw the trace lines using Cairo.  Note that because we are drawing
         1-pixel width lines, 0.5 is added to the x and y coordinates, which
         guarantees that the lines are drawn in the same position as with
         the regular GTK drawing routines and also ensures that vertical and
         horizontal lines are exactly 1 pixel wide.
+
+        startx: The x position at which to start drawing.
+        dwidth: The width (in pixels) to draw.  If dwidth is 0, the entire
+            surface will be drawn.
         """
         width = self.drawingarea.get_allocated_width()
         height = self.drawingarea.get_allocated_height()
@@ -191,7 +208,7 @@ class SequenceTraceViewer:
         cr.set_line_width(1)
 
         samps = self.seqt.getTraceLength()
-        startsamp = (startx * samps) / width
+        startsamp = int(startx * samps) / width
         endsamp = int((float(startx+dwidth) * samps) / width + 0.5)
         if endsamp < (samps-1):
             endsamp += 2
@@ -214,11 +231,17 @@ class SequenceTraceViewer:
                 oldy = y
             cr.stroke()
 
-    def drawBaseCalls(self, width, height, startx, dwidth, cr):
+    def drawBaseCalls(self, startx, dwidth, cr):
         """
         Draws the base calls, confidence scores and bars, and lines from
         the base calls to the trace peaks.
+
+        startx: The x position at which to start drawing.
+        dwidth: The width (in pixels) to draw.  If dwidth is 0, the entire
+            surface will be drawn.
         """
+        width = self.drawingarea.get_allocated_width()
+        height = self.drawingarea.get_allocated_height()
         if dwidth == 0:
             dwidth = width
 
@@ -233,7 +256,7 @@ class SequenceTraceViewer:
         conf_hue_worst = 1.0
 
         samps = self.seqt.getTraceLength()
-        startsamp = (startx * samps) / width
+        startsamp = int(startx * samps) / width
         endsamp = int((float(startx+dwidth) * samps) / width + 0.5)
         if endsamp < (samps-1):
             endsamp += 2
@@ -304,25 +327,31 @@ class SequenceTraceViewer:
         cr.restore()
 
     def highlightBase(self, bindex):
-        # draw the highlight, if needed
+        """
+        Highlights a base call position or gap on the trace, and erases the old
+        highlight (if there is one).
+        """
+        # Draw the highlight, if needed.
         if bindex != self.highlighted:
-            if self.highlighted != self.seqt.getNumBaseCalls():
-                self.highlightBaseInternal(self.highlighted)
-            self.highlightBaseInternal(bindex)
-            self.highlighted = bindex  
-        #dwin.draw_rectangle(gc, True, x - 6, y, 12, self.bcheight)
+            oldhighlight = self.highlighted
+            self.highlighted = bindex
 
-    def highlightBaseInternal(self, bindex):
-        dwin = self.drawingarea.window
-        #gc = dwin.new_gc(function=Gdk.INVERT)
-        gc = dwin.new_gc(function=Gdk.XOR)
-        
-        # yellow
-        gc.set_rgb_fg_color(Gdk.color_parse('#00f'))
-        # light blue
-        #gc.set_rgb_fg_color(Gdk.color_parse('#f00'))
+            if oldhighlight != self.seqt.getNumBaseCalls():
+                # Erase the old highlight.
+                rect = self.getHighlightRectangle(oldhighlight)
+                self.drawingarea.queue_draw_area(*rect)
 
-        width, height = dwin.get_size()
+            # Draw the new highlight.
+            rect = self.getHighlightRectangle(bindex)
+            self.drawingarea.queue_draw_area(*rect)
+
+    def getHighlightRectangle(self, bindex):
+        """
+        Given an alignment index, returns the location and size of the
+        corresponding highlight rectangle as (x, y, width, height).
+        """
+        width = self.drawingarea.get_allocated_width()
+        height = self.drawingarea.get_allocated_height()
         drawheight = height - self.bottom_margin - self.bcheight
 
         samps = self.seqt.getTraceLength()
@@ -330,7 +359,7 @@ class SequenceTraceViewer:
         yscale = float(drawheight) / self.sigmax
         y = drawheight + self.bcpadding
 
-        # check if we got a gap location
+        # Check if we got a gap location.
         if bindex < 0:
             if bindex == -1:
                 pos = 0
@@ -344,13 +373,18 @@ class SequenceTraceViewer:
             pos = self.seqt.getBaseCallPos(bindex)
         x = int(pos * xscale)
 
-        # draw the highlight
         if bindex < 0:
-            dwin.draw_rectangle(gc, True, x - 2, 0, 5, height)
+            # Highlight size for a gap.
+            return (x - 2, 0, 5, height)
         else:
-            dwin.draw_rectangle(gc, True, x - 6, 0, 12, height)
-        
-        #dwin.draw_rectangle(gc, True, x - 6, y, 12, self.bcheight)
+            # Highlight size for a base call.
+            return (x - 6, 0, 12, height)
+
+    def drawHighlight(self, rect, alpha, cr):
+        cr.set_source_rgba(1.0, 1.0, 0, alpha)
+
+        cr.rectangle(*rect)
+        cr.fill()
 
 
 class SequenceTraceViewerDecorator:
@@ -449,7 +483,8 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         adj = self.scrolledwin.get_hadjustment()
         seqt = self.viewer.getSequenceTrace()
 
-        scend = adj.upper - adj.page_size
+        page_size = adj.get_page_size()
+        scend = adj.get_upper() - page_size
         # check if we got a gap position
         if basenum < 0:
             if basenum == -1:
@@ -464,8 +499,8 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
             bpos = seqt.getBaseCallPos(basenum)
         tlen = seqt.getTraceLength()
         x = bpos * scend / tlen
-        offset = x * adj.page_size / scend
-        x = x + offset - adj.page_size/2
+        offset = x * page_size / scend
+        x = x + offset - page_size/2
         if x < 0:
             x = 0
         elif x > scend:
