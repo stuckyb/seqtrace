@@ -18,14 +18,16 @@
 from seqtrace.core import sequencetrace
 from seqtrace.core import seqwriter
 
-import pygtk
-pygtk.require('2.0')
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+from gi.repository import Gdk
 import cairo
-import pango
-
+from gi.repository import Pango, PangoCairo
 import os.path
 
+# Get the Gdk.RGBA convenience functions.
+from colorfuncs import parseHTMLColorStr, colorFromHSV
 
 
 class SequenceTraceViewer:
@@ -33,36 +35,48 @@ class SequenceTraceViewer:
         self.min_height = 100
         self.preferred_height = 200
 
-        self.drawingarea = gtk.DrawingArea()
+        self.drawingarea = Gtk.DrawingArea()
         self.drawingarea.set_size_request(-1, self.min_height)
 
         self.seqt = sequencetrace
 
         # Initialize drawing settings.
         self.tracecolors = {
-                'A': gtk.gdk.color_parse('#009000'),    # green
-                'C': gtk.gdk.color_parse('#0000ff'),    # blue
-                'G': gtk.gdk.color_parse('#000000'),    # black
-                'T': gtk.gdk.color_parse('#ff0000'),    # red
-                'W': gtk.gdk.color_parse('#804800'),    # mix of A and T
-                'S': gtk.gdk.color_parse('#000080'),    # mix of C and G
-                'M': gtk.gdk.color_parse('#004880'),    # mix of A and C
-                'K': gtk.gdk.color_parse('#800000'),    # mix of G and T
-                'R': gtk.gdk.color_parse('#004800'),    # mix of A and G
-                'Y': gtk.gdk.color_parse('#800080'),    # mix of C and T
-                'B': gtk.gdk.color_parse('#550055'),    # mix of C, G, and T
-                'D': gtk.gdk.color_parse('#553000'),    # mix of A, G, and T
-                'H': gtk.gdk.color_parse('#553055'),    # mix of A, C, and T
-                'V': gtk.gdk.color_parse('#003055'),    # mix of A, C, and G
-                'N': gtk.gdk.color_parse('#999')        # gray
-                }
+            'A': parseHTMLColorStr('#009000'),    # green
+            'C': parseHTMLColorStr('#0000ff'),    # blue
+            'G': parseHTMLColorStr('#000000'),    # black
+            'T': parseHTMLColorStr('#ff0000'),    # red
+            'W': parseHTMLColorStr('#804800'),    # mix of A and T
+            'S': parseHTMLColorStr('#000080'),    # mix of C and G
+            'M': parseHTMLColorStr('#004880'),    # mix of A and C
+            'K': parseHTMLColorStr('#800000'),    # mix of G and T
+            'R': parseHTMLColorStr('#004800'),    # mix of A and G
+            'Y': parseHTMLColorStr('#800080'),    # mix of C and T
+            'B': parseHTMLColorStr('#550055'),    # mix of C, G, and T
+            'D': parseHTMLColorStr('#553000'),    # mix of A, G, and T
+            'H': parseHTMLColorStr('#553055'),    # mix of A, C, and T
+            'V': parseHTMLColorStr('#003055'),    # mix of A, C, and G
+            'N': parseHTMLColorStr('#999')        # gray
+        }
         # Set up colors with an alpha channel to use for the lines from
         # the base calls to the trace peaks.
         self.pklinecolors = {}
-        self.pklinecolors['A'] = (self.tracecolors['A'].red, self.tracecolors['A'].green, self.tracecolors['A'].blue, 0.84)
-        self.pklinecolors['C'] = (self.tracecolors['C'].red, self.tracecolors['C'].green, self.tracecolors['C'].blue, 0.6)
-        self.pklinecolors['G'] = (self.tracecolors['G'].red, self.tracecolors['G'].green, self.tracecolors['G'].blue, 0.6)
-        self.pklinecolors['T'] = (self.tracecolors['T'].red, self.tracecolors['T'].green, self.tracecolors['T'].blue, 0.68)
+        self.pklinecolors['A'] = (
+            self.tracecolors['A'].red, self.tracecolors['A'].green,
+            self.tracecolors['A'].blue, 0.84
+        )
+        self.pklinecolors['C'] = (
+            self.tracecolors['C'].red, self.tracecolors['C'].green,
+            self.tracecolors['C'].blue, 0.6
+        )
+        self.pklinecolors['G'] = (
+            self.tracecolors['G'].red, self.tracecolors['G'].green,
+            self.tracecolors['G'].blue, 0.6
+        )
+        self.pklinecolors['T'] = (
+            self.tracecolors['T'].red, self.tracecolors['T'].green,
+            self.tracecolors['T'].blue, 0.68
+        )
 
         self.bottom_margin = 2
         self.bcpadding = 4
@@ -71,11 +85,11 @@ class SequenceTraceViewer:
 
         self.sigmax = sequencetrace.getMaxTraceVal() + (sequencetrace.getMaxTraceVal() / 12)
 
-        self.bclayout = pango.Layout(self.drawingarea.create_pango_context())
+        self.bclayout = Pango.Layout(self.drawingarea.create_pango_context())
         self.bcfontdesc = self.bclayout.get_context().get_font_description().copy()
         self.setFontSize(10)
 
-        self.drawingarea.connect('expose-event', self.updatedisplay)
+        self.drawingarea.connect('draw', self.updatedisplay)
 
         self.highlighted = self.seqt.getNumBaseCalls()
 
@@ -109,7 +123,7 @@ class SequenceTraceViewer:
         # clip the update region to only the visible portion of the widget
         width, height = self.drawingarea.window.get_size()
         #print width, height
-        self.drawingarea.window.invalidate_rect(gtk.gdk.Rectangle(0, 0, width, height), False)
+        self.drawingarea.window.invalidate_rect((0, 0, width, height), False)
         #self.queue_draw_area(0, 0, width, height)
 
     def setShowConfidence(self, newval):
@@ -117,22 +131,24 @@ class SequenceTraceViewer:
 
         # queue a redraw of the window
         width, height = self.drawingarea.window.get_size()
-        self.drawingarea.window.invalidate_rect(gtk.gdk.Rectangle(0, 0, width, height), False)
+        self.drawingarea.window.invalidate_rect((0, 0, width, height), False)
 
     def setFontSize(self, size):
         # set up base call font properties
-        self.bcfontdesc.set_size(size*pango.SCALE)
+        self.bcfontdesc.set_size(size*Pango.SCALE)
         self.bclayout.set_font_description(self.bcfontdesc)
-        self.bclayout.set_text('A')
+        self.bclayout.set_text('A', 1)
         self.bcheight = self.bclayout.get_pixel_size()[1] + (self.bcpadding*2)
 
-    def updatedisplay(self, da, event):
-        dwin = self.drawingarea.window
-        gc = dwin.new_gc(function=gtk.gdk.COPY)
+    def updatedisplay(self, da, cr):
+        dwin = self.drawingarea.get_window()
 
         #print '(', event.area.x, ',', event.area.y
-        startx = event.area.x
-        dwidth = event.area.width
+        #startx = event.area.x
+        #dwidth = event.area.width
+        startx = 0
+        height = self.drawingarea.get_allocated_height()
+        dwidth = self.drawingarea.get_allocated_width()
         if startx > 0:
             # Becase the Cairo coordinates are shifted by +0.5 for the trace
             # drawing, make sure that we have sufficient overlap with previous
@@ -142,22 +158,18 @@ class SequenceTraceViewer:
         #print startx, dwidth
 
         # Create the Cairo context.
-        cr = dwin.cairo_create()
+        #cr = dwin.cairo_create()
         cr.set_antialias(cairo.ANTIALIAS_DEFAULT)
         cr.set_line_join(cairo.LINE_JOIN_ROUND)
 
-        self.eraseda(dwin, cr, startx=startx, dwidth=dwidth)
-        self.drawBaseCalls(dwin, cr, startx=startx, dwidth=dwidth)
+        self.eraseda(height, startx, dwidth, cr)
+        self.drawBaseCalls(dwidth, height, startx, dwidth, cr)
         self.drawTrace(dwin, cr, startx=startx, dwidth=dwidth)
         if self.highlighted != self.seqt.getNumBaseCalls():
             self.highlightBaseInternal(self.highlighted);
 
-    def eraseda(self, dwin, cr, startx=0, dwidth=0):
-        width, height = dwin.get_size()
-        if dwidth == 0:
-            dwidth = width
-
-        cr.set_source_color(gtk.gdk.color_parse('#ffffff'))
+    def eraseda(self, height, startx, dwidth, cr):
+        cr.set_source_rgba(1.0, 1.0, 1.0)
         cr.rectangle(startx, 0, dwidth, height)
         cr.fill()
 
@@ -169,7 +181,8 @@ class SequenceTraceViewer:
         the regular GTK drawing routines and also ensures that vertical and
         horizontal lines are exactly 1 pixel wide.
         """
-        width, height = dwin.get_size()
+        width = self.drawingarea.get_allocated_width()
+        height = self.drawingarea.get_allocated_height()
         if dwidth == 0:
             dwidth = width
 
@@ -187,8 +200,7 @@ class SequenceTraceViewer:
         xscale = float(width) / samps
 
         for base in ('A','C','G','T'):
-            #gc.set_rgb_fg_color(self.tracecolors[base])
-            cr.set_source_color(self.tracecolors[base])
+            cr.set_source_rgba(*self.tracecolors[base])
             data = self.seqt.getTraceSamples(base)
 
             oldx = int(startsamp * xscale)
@@ -202,12 +214,11 @@ class SequenceTraceViewer:
                 oldy = y
             cr.stroke()
 
-    def drawBaseCalls(self, dwin, cr, startx=0, dwidth=0):
+    def drawBaseCalls(self, width, height, startx, dwidth, cr):
         """
         Draws the base calls, confidence scores and bars, and lines from
         the base calls to the trace peaks.
         """
-        width, height = dwin.get_size()
         if dwidth == 0:
             dwidth = width
 
@@ -238,7 +249,8 @@ class SequenceTraceViewer:
         yscale = float(drawheight) / self.sigmax
         y = drawheight + self.bcpadding
 
-        confbarcolor = gtk.gdk.color_parse('#c8c8c8')
+        confbarcolor = Gdk.RGBA()
+        confbarcolor.parse('#c8c8c8')
 
         for index in range(startbcindex, endbcindex):
             # Get the base and position.
@@ -250,27 +262,27 @@ class SequenceTraceViewer:
             if self.show_confidence:
                 # Draw the confidence bar.
                 bcconf = self.seqt.getBaseCallConf(index)
-                cr.set_source_color(confbarcolor)
+                cr.set_source_rgba(*confbarcolor)
                 #hue = float(bcconf) * (conf_hue_best - conf_hue_worst) / 61 + conf_hue_worst
-                #gc.set_rgb_fg_color(gtk.gdk.color_from_hsv(hue, 0.34, 1.0))
+                #cr.set_source_rgba(*colorFromHSV(hue, 0.34, 1.0))
                 cr.rectangle(x-6, 6, 12, (confbarmax*bcconf)/61)
                 cr.fill()
 
                 # Draw the confidence score.
                 hue = float(bcconf) * (conf_hue_best - conf_hue_worst) / 61 + conf_hue_worst
-                cr.set_source_color(gtk.gdk.color_from_hsv(hue, 1.0, 0.9))
-                self.bclayout.set_text(str(bcconf))
+                cr.set_source_rgba(*colorFromHSV(hue, 1.0, 0.9))
+                self.bclayout.set_text(str(bcconf), -1)
                 txtwidth = self.bclayout.get_pixel_size()[0]
                 cr.move_to(x - (txtwidth/2), 6)
-                cr.layout_path(self.bclayout)
+                PangoCairo.layout_path(cr, self.bclayout)
                 cr.fill()
 
             # Draw the base.
-            cr.set_source_color(self.tracecolors[base])
-            self.bclayout.set_text(base)
+            cr.set_source_rgba(*self.tracecolors[base])
+            self.bclayout.set_text(base, 1)
             txtwidth = self.bclayout.get_pixel_size()[0]
             cr.move_to(x - (txtwidth/2), y)
-            cr.layout_path(self.bclayout)
+            PangoCairo.layout_path(cr, self.bclayout)
             cr.fill()
 
             # Calculate the y coordinate of the trace location for this base and draw a line to
@@ -302,13 +314,13 @@ class SequenceTraceViewer:
 
     def highlightBaseInternal(self, bindex):
         dwin = self.drawingarea.window
-        #gc = dwin.new_gc(function=gtk.gdk.INVERT)
-        gc = dwin.new_gc(function=gtk.gdk.XOR)
+        #gc = dwin.new_gc(function=Gdk.INVERT)
+        gc = dwin.new_gc(function=Gdk.XOR)
         
         # yellow
-        gc.set_rgb_fg_color(gtk.gdk.color_parse('#00f'))
+        gc.set_rgb_fg_color(Gdk.color_parse('#00f'))
         # light blue
-        #gc.set_rgb_fg_color(gtk.gdk.color_parse('#f00'))
+        #gc.set_rgb_fg_color(Gdk.color_parse('#f00'))
 
         width, height = dwin.get_size()
         drawheight = height - self.bottom_margin - self.bcheight
@@ -360,9 +372,9 @@ class FwdRevSTVDecorator(SequenceTraceViewerDecorator):
     def __init__(self, sequencetraceviewer):
         SequenceTraceViewerDecorator.__init__(self, sequencetraceviewer)
 
-        self.hbox = gtk.HBox()
+        self.hbox = Gtk.HBox()
 
-        label = gtk.Label()
+        label = Gtk.Label()
         label.set_angle(90)
 
         if (sequencetraceviewer.getSequenceTrace().isReverseComplemented()):
@@ -372,12 +384,12 @@ class FwdRevSTVDecorator(SequenceTraceViewerDecorator):
 
         label.set_markup(labeltxt)
 
-        frame = gtk.Frame()
-        frame.set_shadow_type(gtk.SHADOW_IN)
+        frame = Gtk.Frame()
+        frame.set_shadow_type(Gtk.ShadowType.IN)
         #frame.add(label)
 
         self.hbox.pack_start(label, False)
-        self.hbox.pack_start(self.viewer.getWidget())
+        self.hbox.pack_start(self.viewer.getWidget(), True, True, 0)
 
         self.hbox.show_all()
 
@@ -389,7 +401,7 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
     def __init__(self, sequencetraceviewer):
         SequenceTraceViewerDecorator.__init__(self, sequencetraceviewer)
 
-        self.scrolledwin = gtk.ScrolledWindow()
+        self.scrolledwin = Gtk.ScrolledWindow()
 
         seqt = self.viewer.getSequenceTrace()
 
@@ -398,9 +410,9 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         oldwidth, oldheight = self.viewer.getWidget().get_size_request()
         #oldheight = 200
         self.viewer.getWidget().set_size_request(int(seqt.getTraceLength() * self.zoom_100), oldheight)
-        innerhbox = gtk.HBox(False)
-        innerhbox.pack_start(self.viewer.getWidget(), expand=False, fill=False)
-        self.scrolledwin.set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_NEVER)
+        innerhbox = Gtk.HBox(False)
+        innerhbox.pack_start(self.viewer.getWidget(), False, False, 0)
+        self.scrolledwin.set_policy(Gtk.PolicyType.ALWAYS, Gtk.PolicyType.NEVER)
         self.scrolledwin.add_with_viewport(innerhbox)
 
     def getWidget(self):
@@ -429,8 +441,8 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         self.viewer.getWidget().set_size_request(new_width, oldheight)
 
         # allow the resize to complete before repositioning the scrollbar
-        while gtk.events_pending():
-           gtk.main_iteration(False)
+        while Gtk.events_pending():
+           Gtk.main_iteration(False)
         adj.set_value(new_adjval)
 
     def scrollTo(self, basenum):
@@ -462,7 +474,7 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         adj.set_value(x)
 
 
-class SequenceTraceLayout(gtk.VBox):
+class SequenceTraceLayout(Gtk.VBox):
     """
     Manages the layout of one or two scrollable sequence trace viewers and a
     scrollable consensus sequence viewer.  Handles communication among these
@@ -471,7 +483,7 @@ class SequenceTraceLayout(gtk.VBox):
     Also provides a toolbar to manage the appearance of the trace viewers.
     """
     def __init__(self, scrolled_cons_viewer, seqt_viewers):
-        gtk.VBox.__init__(self)
+        Gtk.VBox.__init__(self)
         self.consv = scrolled_cons_viewer
 
         self.seqt_viewers = seqt_viewers
@@ -489,8 +501,8 @@ class SequenceTraceLayout(gtk.VBox):
         #self.pack_start(toolbar, False, False)
 
         for viewer in self.seqt_viewers:
-            self.pack_start(viewer.getWidget(), expand=True, fill=True)
-        self.pack_start(self.consv, expand=False, fill=True)
+            self.pack_start(viewer.getWidget(), True, True, 0)
+        self.pack_start(self.consv, False, True, 0)
 
         # If there are two trace viewers, initialize synchronized scrolling.
         if len(self.seqt_viewers) == 2:
@@ -629,76 +641,80 @@ class SequenceTraceLayout(gtk.VBox):
         return self.toolbar
 
     def createTraceToolBar(self):
-        toolbar = gtk.Toolbar()
-        #toolbar.set_orientation(gtk.ORIENTATION_VERTICAL)
-        #toolbar.set_icon_size(gtk.ICON_SIZE_MENU)
-        toolbar.set_icon_size(gtk.ICON_SIZE_LARGE_TOOLBAR)
-        toolbar.set_style(gtk.TOOLBAR_ICONS)
+        toolbar = Gtk.Toolbar()
+        #toolbar.set_orientation(Gtk.Orientation.VERTICAL)
+        #toolbar.set_icon_size(Gtk.IconSize.MENU)
+        toolbar.set_icon_size(Gtk.IconSize.LARGE_TOOLBAR)
+        toolbar.set_style(Gtk.ToolbarStyle.ICONS)
         toolbar.set_show_arrow(False)
 
         # build the zoom controls
-        self.zoomin_button = gtk.ToolButton(gtk.STOCK_ZOOM_IN)
+        self.zoomin_button = Gtk.ToolButton(Gtk.STOCK_ZOOM_IN)
         self.zoomin_button.set_homogeneous(False)
         self.zoomin_button.set_tooltip_text('Zoom in')
         self.zoomin_button.connect('clicked', self.zoomButtons, 1)
         toolbar.insert(self.zoomin_button, -1)
 
-        self.zoomout_button = gtk.ToolButton(gtk.STOCK_ZOOM_OUT)
+        self.zoomout_button = Gtk.ToolButton(Gtk.STOCK_ZOOM_OUT)
         self.zoomout_button.set_homogeneous(False)
         self.zoomout_button.set_tooltip_text('Zoom out')
         self.zoomout_button.connect('clicked', self.zoomButtons, -1)
         toolbar.insert(self.zoomout_button, -1)
 
-        self.zoom_combo = gtk.combo_box_new_text()
+        self.zoom_combo = Gtk.ComboBoxText()
         for zoom in self.zoom_levels:
             self.zoom_combo.append_text(str(zoom) + '%')
         self.zoom_combo.set_active(self.curr_zoom)
         self.zoom_combo.connect('changed', self.zoomComboBox)
 
         # place the combo box in a VButtonBox to prevent it from expanding vertically
-        vbox = gtk.VButtonBox()
-        vbox.pack_start(self.zoom_combo, False)
-        t_item = gtk.ToolItem()
+        vbox = Gtk.VButtonBox()
+        vbox.pack_start(self.zoom_combo, False, True, 0)
+        t_item = Gtk.ToolItem()
         t_item.add(vbox)
         t_item.set_tooltip_text('Adjust the zoom level')
         t_item.set_expand(False)
         toolbar.insert(t_item, -1)
 
-        toolbar.insert(gtk.SeparatorToolItem(), -1)
+        toolbar.insert(Gtk.SeparatorToolItem(), -1)
 
         # build the y scale adjustment slider
-        t_item = gtk.ToolItem()
-        t_item.add(gtk.Label('Y:'))
+        t_item = Gtk.ToolItem()
+        t_item.add(Gtk.Label(label='Y:'))
         toolbar.insert(t_item, -1)
 
-        self.vscale_adj = gtk.Adjustment(0, 0, 0)
-        hslider = gtk.HScale(self.vscale_adj)
+        self.vscale_adj = Gtk.Adjustment(0, 0, 0)
+        # It appears that there is currently no Python-style constructor
+        # available for Gtk.Scale(), so instead of the commented-out line
+        # below, we have to explicitly use the C constructor.
+        hslider = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=self.vscale_adj)
+        #hslider = Gtk.Scale.new(Gtk.Orientation.HORIZONTAL, self.vscale_adj)
         hslider.set_draw_value(False)
         self.initYScaleSlider(self.selected_seqtv)
 
-        sizereq = hslider.size_request()
+        #sizereq = hslider.size_request()
         #hslider.set_size_request(sizereq[0], 100)
-        hslider.set_size_request(60, sizereq[1])
+        #hslider.set_size_request(60, sizereq[1])
 
-        self.y_slider = gtk.ToolItem()
+        self.y_slider = Gtk.ToolItem()
         self.y_slider.add(hslider)
         self.y_slider.set_tooltip_text('Adjust the Y scale of the trace view')
         toolbar.insert(self.y_slider, -1)
 
         self.vscale_adj.connect('value_changed', self.yScaleChanged)
 
-        toolbar.insert(gtk.SeparatorToolItem(), -1)
+        toolbar.insert(Gtk.SeparatorToolItem(), -1)
 
         # build the toggle button for phred scores
-        toggle = gtk.CheckButton()
+        toggle = Gtk.CheckButton()
         toggle.set_label('conf. scores')
         toggle.set_active(True)
         toggle.connect('toggled', self.showConfToggled)
 
         # place the toggle button in a VButtonBox to prevent it from expanding vertically
-        vbox = gtk.VButtonBox()
-        vbox.pack_start(toggle, False)
-        t_item = gtk.ToolItem()
+        vbox = Gtk.VButtonBox()
+        vbox.pack_start(toggle, False, True, 0)
+        t_item = Gtk.ToolItem()
         t_item.add(vbox)
         t_item.set_tooltip_text('Turn the display of phred scores on or off')
         t_item.set_expand(False)
@@ -706,7 +722,7 @@ class SequenceTraceLayout(gtk.VBox):
 
         # if we got two sequences, build a combo box to choose between them
         if len(self.seqt_viewers) == 2:
-            trace_combo = gtk.combo_box_new_text()
+            trace_combo = Gtk.ComboBoxText()
 
             # see if the forward trace is first or second
             if self.seqt_viewers[0].getSequenceTrace().isReverseComplemented():
@@ -720,9 +736,9 @@ class SequenceTraceLayout(gtk.VBox):
             trace_combo.connect('changed', self.traceComboBox)
 
             # place the combo box in a VButtonBox to prevent it from expanding vertically
-            vbox = gtk.VButtonBox()
+            vbox = Gtk.VButtonBox()
             vbox.pack_start(trace_combo, False)
-            t_item = gtk.ToolItem()
+            t_item = Gtk.ToolItem()
             t_item.add(vbox)
             #t_item.set_tooltip_text('Adjust the zoom level')
             toolbar.insert(t_item, 0)
