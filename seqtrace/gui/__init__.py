@@ -14,7 +14,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+from gi.repository import GdkPixbuf
 import os
 import sys
 
@@ -26,10 +29,11 @@ if hasattr(sys, 'frozen'):
 else:
     images_folder = os.path.dirname(__file__) + '/images'
 
-# set up the icons for use by all application windows
-gtk.window_set_default_icon_list(
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/16.png'),
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/32.png'),
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/48.png'),
-        gtk.gdk.pixbuf_new_from_file(images_folder + '/icons/64.png'))
+# Set up the icons for use by all application windows.
+Gtk.Window.set_default_icon_list((
+    GdkPixbuf.Pixbuf.new_from_file(images_folder + '/icons/16.png'),
+    GdkPixbuf.Pixbuf.new_from_file(images_folder + '/icons/32.png'),
+    GdkPixbuf.Pixbuf.new_from_file(images_folder + '/icons/48.png'),
+    GdkPixbuf.Pixbuf.new_from_file(images_folder + '/icons/64.png')
+))
 
