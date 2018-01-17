@@ -114,24 +114,15 @@ class SequenceTraceViewer:
 
         self.sigmax = new_yscalemax
 
-        # queue a redraw of the visible part of the drawing area
-        #vis_region = self.window.get_visible_region()
-        #print vis_region.get_clipbox()
-        #self.window.invalidate_region(vis_region, False)
-
-        # the following methods also work, and it appears that GTK is able to automatically
-        # clip the update region to only the visible portion of the widget
-        width, height = self.drawingarea.window.get_size()
-        #print width, height
-        self.drawingarea.window.invalidate_rect((0, 0, width, height), False)
-        #self.queue_draw_area(0, 0, width, height)
+        self.drawingarea.queue_draw()
 
     def setShowConfidence(self, newval):
+        """
+        Toggles the display of the confidence bars and scores.
+        """
         self.show_confidence = newval
 
-        # queue a redraw of the window
-        width, height = self.drawingarea.window.get_size()
-        self.drawingarea.window.invalidate_rect((0, 0, width, height), False)
+        self.drawingarea.queue_draw()
 
     def setFontSize(self, size):
         # set up base call font properties
@@ -422,7 +413,7 @@ class FwdRevSTVDecorator(SequenceTraceViewerDecorator):
         frame.set_shadow_type(Gtk.ShadowType.IN)
         #frame.add(label)
 
-        self.hbox.pack_start(label, False)
+        self.hbox.pack_start(label, False, True, 0)
         self.hbox.pack_start(self.viewer.getWidget(), True, True, 0)
 
         self.hbox.show_all()
@@ -461,22 +452,23 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         # calculate the new position for the scrollbar to keep the view centered
         # around its current location
         adj = self.scrolledwin.get_hadjustment()
-        center = adj.get_value() + (adj.page_size / 2)
-        pos = float(center) / adj.upper
+        page_size = adj.get_page_size()
+        center = adj.get_value() + (page_size / 2)
+        pos = float(center) / adj.get_upper()
         newpos = new_width * pos
-        new_adjval = int(newpos - (adj.page_size / 2))
+        new_adjval = int(newpos - (page_size / 2))
         if new_adjval < 0:
             new_adjval = 0
-        elif new_adjval > (new_width - adj.page_size):
-            new_adjval = new_width - adj.page_size
+        elif new_adjval > (new_width - page_size):
+            new_adjval = new_width - page_size
 
         # resize the sequence trace viewer
         oldwidth, oldheight = self.viewer.getWidget().get_size_request()
         self.viewer.getWidget().set_size_request(new_width, oldheight)
 
-        # allow the resize to complete before repositioning the scrollbar
+        # Allow the resize to complete before repositioning the scrollbar.
         while Gtk.events_pending():
-           Gtk.main_iteration(False)
+           Gtk.main_iteration()
         adj.set_value(new_adjval)
 
     def scrollTo(self, basenum):
@@ -596,8 +588,8 @@ class SequenceTraceLayout(Gtk.VBox):
         seq0 = csb.getAlignedSequence(0)
         seq1 = csb.getAlignedSequence(1)
 
-        # Get the positions of the first overlapping bases in the alignment (i.e., the start
-        # of the left end gap).
+        # Get the positions of the first overlapping bases in the alignment
+        # (i.e., the start of the left end gap).
         lgindex = csb.getLeftEndGapStart()
 
         # Verify that there is actually a left end gap and overlapping bases.
@@ -614,8 +606,14 @@ class SequenceTraceLayout(Gtk.VBox):
             seqt1 = self.seqt_viewers[1].getSequenceTrace()
 
             # Get the locations of the bases in each trace.
-            bpos0 = float(seqt0.getBaseCallPos(seq0index)) / seqt0.getTraceLength() * self.adjs[0].upper
-            bpos1 = float(seqt1.getBaseCallPos(seq1index)) / seqt1.getTraceLength() * self.adjs[1].upper
+            bpos0 = (
+                float(seqt0.getBaseCallPos(seq0index)) /
+                seqt0.getTraceLength() * self.adjs[0].get_upper()
+            )
+            bpos1 = (
+                float(seqt1.getBaseCallPos(seq1index)) /
+                seqt1.getTraceLength() * self.adjs[1].get_upper()
+            )
         else:
             # Either there is no left end gap or no overlapping bases, so just
             # set the offsets to 0.
@@ -727,9 +725,8 @@ class SequenceTraceLayout(Gtk.VBox):
         hslider.set_draw_value(False)
         self.initYScaleSlider(self.selected_seqtv)
 
-        #sizereq = hslider.size_request()
-        #hslider.set_size_request(sizereq[0], 100)
-        #hslider.set_size_request(60, sizereq[1])
+        sizereq = hslider.size_request()
+        hslider.set_size_request(60, sizereq.height)
 
         self.y_slider = Gtk.ToolItem()
         self.y_slider.add(hslider)
@@ -772,7 +769,7 @@ class SequenceTraceLayout(Gtk.VBox):
 
             # place the combo box in a VButtonBox to prevent it from expanding vertically
             vbox = Gtk.VButtonBox()
-            vbox.pack_start(trace_combo, False)
+            vbox.pack_start(trace_combo, False, True, 0)
             t_item = Gtk.ToolItem()
             t_item.add(vbox)
             #t_item.set_tooltip_text('Adjust the zoom level')

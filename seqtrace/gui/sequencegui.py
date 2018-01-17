@@ -38,6 +38,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
     def __init__(self, mod_consensseq_builder):
         Gtk.DrawingArea.__init__(self)
 
+        # Since we do all drawing to an off-screen buffer, we don't need GTK's
+        # automatic double buffering.
+        self.set_double_buffered(False)
+
         self.cons = mod_consensseq_builder
         self.numseqs = self.cons.getNumSeqs()
         settings = self.cons.getSettings()
@@ -429,8 +433,18 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         # Update the alignment on the off-screen buffer, then invalidate the
         # corresponding region on the DrawingArea window.
+
         self.drawAlignmentBase(base, x, self.al_top, cr, highlight)
-        self.queue_draw_area(x, self.al_top, self.fwidth, self.fheight)
+
+        if self.numseqs == 2:
+            align2 = self.cons.getAlignedSequence(1)
+            self.drawAlignmentBase(
+                align2[index], x, self.al_top + self.fheight, cr, highlight
+            )
+
+        self.queue_draw_area(
+            x, self.al_top, self.fwidth, self.fheight * self.numseqs
+        )
 
     def setFontSize(self, size):
         """
@@ -452,9 +466,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
     def getSizeRequirements(self):
         """
-        Calculates the total size requirements in pixels in order view the consensus
-        sequence object, including the alignment and primers, if they are provided,
-        given the set current font metrics.  The size is returned as (width, height).
+        Calculates the total size requirements in pixels in order to view the
+        consensus sequence object, including the alignment and primers, if they
+        are provided, given the current font metrics.  The size is returned as
+        (width, height).
         """
         settings = self.cons.getSettings()
         haveprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
@@ -493,7 +508,13 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         if oldwidth != newwidth or oldheight != newheight:
             self.setDrawingSize()
 
-        self.redrawConsensus(start, end)
+        cr = cairo.Context(self.surface)
+        self.drawConsensus(start, end, cr)
+
+        alend = self.fheight*self.numseqs + self.al_top
+        x = start*self.fwidth
+        dwidth = (end - start + 1) * self.fwidth
+        self.queue_draw_area(x, alend+self.padding, dwidth, self.fheight)        
 
     def onConfigure(self, widget, event):
         # Note that the Python cairo bindings do not expose
@@ -593,7 +614,9 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
             # Draw the base from the second aligned sequence, if present.
             if self.numseqs == 2:
-                self.drawAlignmentBase(dwin, gc, align2[index], x, self.al_top + self.fheight)
+                self.drawAlignmentBase(
+                    align2[index], x, self.al_top + self.fheight, cr
+                )
 
         # Restore the alignment selection, if any.
         if (self.highlighted >= startindex) and (self.highlighted <= endindex):
