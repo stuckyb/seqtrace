@@ -15,36 +15,39 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import pygtk
-pygtk.require('2.0')
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 
 
 
-class GenericStatusBar(gtk.Frame):
-    """ Implements the appearance and layout of a generic status bar.  Not intended for direct instantiation;
-    this class should be subclassed to actually display messages. Unlike the status bar provided by GTK, this
-    status bar has the ability to include multiple message areas. """
+class GenericStatusBar(Gtk.Frame):
+    """
+    Implements the appearance and layout of a generic status bar.  Not intended
+    for direct instantiation; this class should be subclassed to actually
+    display messages. Unlike the status bar provided by GTK, this status bar
+    has the ability to include multiple message areas.
+    """
     def __init__(self):
-        gtk.Frame.__init__(self)
+        Gtk.Frame.__init__(self)
 
-        self.set_shadow_type(gtk.SHADOW_OUT)
+        self.set_shadow_type(Gtk.ShadowType.OUT)
 
-        self.hbox = gtk.HBox(False, 0)
+        self.hbox = Gtk.HBox(False, 0)
 
         self.add(self.hbox)
 
     def addStatusArea(self, expand=False):
         """ Adds an independent message area to the status bar.  Returns a reference to a label for managing the
         text displayed by the message area. """
-        frame = gtk.Frame()
-        frame.set_shadow_type(gtk.SHADOW_IN)
+        frame = Gtk.Frame()
+        frame.set_shadow_type(Gtk.ShadowType.IN)
         frame.set_border_width(1)
-        label = gtk.Label()
+        label = Gtk.Label()
         label.set_padding(4, 1)
         label.set_alignment(0, 0)
         frame.add(label)
-        self.hbox.pack_start(frame, expand)
+        self.hbox.pack_start(frame, expand, True, 0)
 
         return label
 
