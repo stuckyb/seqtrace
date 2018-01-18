@@ -556,7 +556,8 @@ class MainWindow(Gtk.Window, CommonDialogs):
         # if the project isn't empty, ask the user what to do with existing sequences
         if not(self.project.isProjectEmpty()):
             diag = Gtk.MessageDialog(
-                None, 0, Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK, 'The settings for calculating consensus sequences have changed.  You might not want to use any previously saved consensus sequences.'
+                self, Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK, 'The settings for calculating consensus sequences have changed.  You might not want to use any previously saved consensus sequences.'
             )
             rb1 = Gtk.RadioButton(label='Mark all saved sequences as unused.')
             rb1.set_active(True)
@@ -591,7 +592,7 @@ class MainWindow(Gtk.Window, CommonDialogs):
             diag.destroy()
 
     def projectSettings(self, widget):
-        sdiag = ProjectSettingsDialog(self.project)
+        sdiag = ProjectSettingsDialog(self, self.project)
         response = Gtk.ResponseType.OK
         settings_valid = False
 
@@ -686,8 +687,10 @@ class MainWindow(Gtk.Window, CommonDialogs):
 
     def openProjectAction(self, widget):
         # create a file chooser dialog to get a file name from the user
-        fc = Gtk.FileChooserDialog('Open Project', None, Gtk.FileChooserAction.OPEN,
-                (Gtk.STOCK_OPEN, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+        fc = Gtk.FileChooserDialog(
+            'Open Project', self, Gtk.FileChooserAction.OPEN,
+            (Gtk.STOCK_OPEN, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
         fc.set_current_folder(os.getcwd())
 
         f1 = Gtk.FileFilter()
@@ -732,8 +735,10 @@ class MainWindow(Gtk.Window, CommonDialogs):
 
     def actionOpenTraceFile(self, widget):
         # create a file chooser dialog to get a file name from the user
-        fc = Gtk.FileChooserDialog('Open Trace File', None, Gtk.FileChooserAction.OPEN,
-                (Gtk.STOCK_OPEN, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+        fc = Gtk.FileChooserDialog(
+            'Open Trace File', self, Gtk.FileChooserAction.OPEN,
+            (Gtk.STOCK_OPEN, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
         fc.set_current_folder(self.project.getTraceFileDir())
         f1 = Gtk.FileFilter()
         f1.set_name('trace files (*.ab1;*.scf;*.ztr)')
@@ -831,8 +836,10 @@ class MainWindow(Gtk.Window, CommonDialogs):
         # if the current project does not have a file name, prompt for one
         if self.project.getProjectFileName() == '':
             # create a file chooser dialog to get a file name from the user
-            fc = Gtk.FileChooserDialog('Save Project', None, Gtk.FileChooserAction.SAVE,
-                    (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+            fc = Gtk.FileChooserDialog(
+                'Save Project', self, Gtk.FileChooserAction.SAVE,
+                (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+            )
             fc.set_current_folder(os.getcwd())
             fc.set_do_overwrite_confirmation(True)
 
@@ -866,8 +873,10 @@ class MainWindow(Gtk.Window, CommonDialogs):
 
     def saveProjectAs(self, widget):
         # create a file chooser dialog to get a file name from the user
-        fc = Gtk.FileChooserDialog('Save Project As', None, Gtk.FileChooserAction.SAVE,
-                (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+        fc = Gtk.FileChooserDialog(
+            'Save Project As', self, Gtk.FileChooserAction.SAVE,
+            (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
         fc.set_current_folder(os.getcwd())
         fc.set_do_overwrite_confirmation(True)
 
@@ -1079,8 +1088,10 @@ class MainWindow(Gtk.Window, CommonDialogs):
 
     def projectAddFiles(self, widget):
         # create a file chooser dialog to get a file name (or names) from the user
-        fc = Gtk.FileChooserDialog('Add Files to Project', None, Gtk.FileChooserAction.OPEN,
-                (Gtk.STOCK_ADD, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+        fc = Gtk.FileChooserDialog(
+            'Add Files to Project', self, Gtk.FileChooserAction.OPEN,
+            (Gtk.STOCK_ADD, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
         fc.set_local_only(True)
         fc.set_select_multiple(True)
         fc.set_current_folder(self.project.getAbsTraceFileDir())

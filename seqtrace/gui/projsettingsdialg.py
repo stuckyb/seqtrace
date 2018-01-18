@@ -27,9 +27,12 @@ import re
 
 
 class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
-    def __init__(self, project):
-        Gtk.Dialog.__init__(self, 'Project Settings', None, Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                (Gtk.STOCK_OK, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+    def __init__(self, parent, project):
+        Gtk.Dialog.__init__(
+            self, title='Project Settings', parent=parent,
+            flags=(Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT),
+            buttons=(Gtk.STOCK_OK, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
         self.set_default_response(Gtk.ResponseType.OK)
 
         self.project = project
@@ -357,8 +360,10 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
 
     def chooseDirectory(self, widget, entry):
         # create a file chooser dialog to get a directory name from the user
-        fc = Gtk.FileChooserDialog('Choose Trace Files Location', None, Gtk.FileChooserAction.SELECT_FOLDER,
-                (Gtk.STOCK_OK, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+        fc = Gtk.FileChooserDialog(
+            'Choose Trace Files Location', self, Gtk.FileChooserAction.SELECT_FOLDER,
+            (Gtk.STOCK_OK, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
         fc.set_current_folder(self.project.getAbsTraceFileDir())
         response = fc.run()
         fname = fc.get_filename()
