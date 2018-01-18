@@ -532,6 +532,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         cr = cairo.Context(self.surface)
 
+        # Draw the gray background for the widget.
+        cr.set_source_rgba(*parseHTMLColorStr('#d2d2d2'))
+        cr.paint()
+
         if self.drawprimers:
             self.drawPrimers(startindex, endindex, cr)
         self.drawAlignment(startindex, endindex, cr)
@@ -548,35 +552,29 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         return False
 
     def drawPrimers(self, startindex, endindex, cr):
-        dwin = self.window
-        gc = dwin.new_gc(function=Gdk.COPY)
-
-        self.erasePrimers(dwin, gc, startindex, endindex)
-        self.drawPrimers(dwin, gc, startindex, endindex)
-
-    def erasePrimers(self, dwin, gc, startindex, endindex):
         startx = startindex*self.fwidth
         rwidth = (endindex-startindex+1)*self.fwidth
 
         # Draw the background for the primer sequences.
-        gc.set_rgb_fg_color(Gdk.color_parse('#d8d8bb'))
-        gc.set_rgb_fg_color(Gdk.color_parse('#dbdbdb'))
-        dwin.draw_rectangle(gc, True, startx, self.margins, rwidth, self.fheight)
+        cr.set_source_rgba(*parseHTMLColorStr('#e8e8e8'))
+        cr.rectangle(startx, self.margins, rwidth, self.fheight)
+        cr.fill()
 
-    def drawPrimers(self, dwin, gc, startindex, endindex):
         palign = self.cons.getAlignedPrimers()
 
-        y = self.al_top + self.fheight*self.numseqs
-        gc.set_rgb_fg_color(Gdk.color_parse('#888'))
-        dwin.draw_line(gc, startindex*self.fwidth, self.margins-1, (endindex+1)*self.fwidth, self.margins-1)
+        cr.set_source_rgba(*parseHTMLColorStr('#888'))
+        cr.set_line_width(1)
+        cr.move_to(startindex*self.fwidth, self.margins-1+0.5)
+        cr.line_to((endindex+1)*self.fwidth, self.margins-1+0.5)
+        cr.stroke()
+
+        y = self.margins
 
         for index in range(startindex, endindex+1):
-            x = index * self.fwidth
-            y = self.margins
-
             # Draw the primer base, if there is one.
             if palign[index] != ' ':
-                self.drawAlignmentBase(dwin, gc, palign[index], x, y)
+                x = index * self.fwidth
+                self.drawAlignmentBase(palign[index], x, y, cr)
 
     def drawAlignment(self, startindex, endindex, cr):
         """
@@ -586,21 +584,16 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         x = startindex * self.fwidth
         rwidth = (endindex-startindex+1)*self.fwidth
 
-        # Draw the gray background for the alignment.
-        cr.set_source_rgba(*parseHTMLColorStr('#d2d2d2'))
-        cr.rectangle(x, 0, rwidth, self.margins + self.fheight*self.numseqs + self.padding/2+1)
-        cr.fill()
-
         align1 = self.cons.getAlignedSequence(0)
         if self.numseqs == 2:
             align2 = self.cons.getAlignedSequence(1)
 
         # Draw the border lines for the alignment.
-        y = self.al_top + self.fheight*self.numseqs
         cr.set_source_rgba(0, 0, 0)
         cr.set_line_width(1)
         cr.move_to(startindex*self.fwidth, self.al_top-0.5)
         cr.line_to((endindex+1)*self.fwidth, self.al_top-0.5)
+        y = self.al_top + self.fheight*self.numseqs
         cr.move_to(startindex*self.fwidth, y+0.5)
         cr.line_to((endindex+1)*self.fwidth, y+0.5)
         cr.stroke()
