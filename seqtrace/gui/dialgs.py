@@ -24,7 +24,7 @@ from gi.repository import Gtk
 YES_TO_ALL = 1
 
 
-class CommonDialogs:
+class CommonDialogs(object):
     """
     A mixin class to add common message dialog functionality to classes that
     inherit from Gtk.Window.  The methods essentially act as facades to the GTK

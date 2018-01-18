@@ -27,7 +27,7 @@ class UnrecognizedEventError(ObservableError):
                 '" is not a recognized observable event supported by this class.')
 
 
-class Observable:
+class Observable(object):
     """
     A mixin class to provide basic observable functionality to child classes.
     Implements the ability to define event types and register/unregister clients
