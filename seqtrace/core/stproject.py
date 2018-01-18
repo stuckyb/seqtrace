@@ -17,9 +17,9 @@
 import pickle
 from collections import deque
 
-import pygtk
-pygtk.require('2.0')
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 
 import os.path
 
@@ -458,7 +458,7 @@ class ProjectIter:
         self.ts = project.getTreeStore()
         self.length = self.ts.iter_n_children(None)
         
-        self.tsiter = self.ts.get_iter_root()
+        self.tsiter = self.ts.get_iter_first()
 
     def __iter__(self):
         return self
@@ -496,11 +496,11 @@ IS_REVERSE = 8
 
 class SequenceTraceProject(Observable):
     def __init__(self):
-        self.ts = gtk.TreeStore(str, str, int, bool, str, str, bool, str, bool)
+        self.ts = Gtk.TreeStore(str, str, int, bool, str, str, bool, str, bool)
 
         # Make sure the TreeStore supports persistant iterators
         # since a few of the project methods require this feature.
-        if (self.ts.get_flags() & gtk.TREE_MODEL_ITERS_PERSIST) == 0:
+        if (self.ts.get_flags() & Gtk.TreeModelFlags.ITERS_PERSIST) == 0:
             raise Exception
 
         self.numcols = 9
@@ -512,7 +512,7 @@ class SequenceTraceProject(Observable):
         self.clearProject(False)
 
         # sort by file names by default
-        self.setSortBy(FILE_NAME, gtk.SORT_ASCENDING)
+        self.setSortBy(FILE_NAME, Gtk.SortType.ASCENDING)
 
         # initialize observable events
         self.defineObservableEvents(['save_state_change', 'project_filename_change', 'files_added', 'files_removed',
@@ -654,7 +654,7 @@ class SequenceTraceProject(Observable):
            self.notifyObservers('project_cleared', ())
 
     def isProjectEmpty(self):
-        return self.ts.get_iter_root() == None
+        return self.ts.get_iter_first() == None
 
     def loadProjectFile(self, filename):
         reader = SeqTraceProjReader()
