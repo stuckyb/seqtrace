@@ -24,8 +24,8 @@ from argparse import ArgumentParser
 
 
 argp = ArgumentParser(
-    description='User-friendly software for viewing and processing Sanger DNA '
-    'sequencing trace files.'
+    prog='seqtrace', description='User-friendly software for viewing and '
+    'processing Sanger DNA sequencing trace files.'
 )
 argp.add_argument(
     'filename', type=str, nargs='?', default='', help='If [filename] is '
