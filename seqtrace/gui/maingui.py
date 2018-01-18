@@ -1303,8 +1303,8 @@ class MainWindow(Gtk.Window, CommonDialogs):
             self.showMessage('No matching forward and reverse sequencing trace files were found.', Gtk.MessageType.INFO)
 
     def showAbout(self, widget):
-        diag = Gtk.AboutDialog()
-        diag.set_name('SeqTrace')
+        diag = Gtk.AboutDialog(parent=self)
+        diag.set_program_name('SeqTrace')
         diag.set_version('0.9.1')
         diag.set_copyright('Copyright \xC2\xA9 2018 Brian J. Stucky')
         #diag.set_authors(['Brian Stucky'])
