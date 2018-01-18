@@ -31,10 +31,11 @@ from seqtrace.gui.projsettingsdialg import ProjectSettingsDialog
 # get the location of the GUI image files
 from seqtrace.gui import images_folder
 
-import pygtk
-pygtk.require('2.0')
-import gtk
-import pango
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+from gi.repository import GdkPixbuf
+from gi.repository import Pango
 
 import sys
 import os.path
@@ -95,32 +96,32 @@ class TraceWindowManager:
 # Another way to detect if the forward/reverse arrow in the treeview is clicked.  I'm not sure which
 # approach is better, or "more correct".  For now, the method of testing the x/y coords of clicks on
 # the treeview itself is used, because it was simpler to integrate with already-existing code.
-#class CellRendererPixbufClickable(gtk.CellRendererPixbuf):
+#class CellRendererPixbufClickable(Gtk.CellRendererPixbuf):
 #    def __init__(self):
-#        gtk.CellRendererPixbuf.__init__(self)
-#        self.set_property('mode', gtk.CELL_RENDERER_MODE_ACTIVATABLE)
+#        GObject.GObject.__init__(self)
+#        self.set_property('mode', Gtk.CellRendererMode.ACTIVATABLE)
 #
 #    def do_activate(self, event, widget, path, background_area, cell_area, flags):
 #        if (event.x > cell_area.x) and (event.x < (cell_area.x + cell_area.width)):
 #            print 'clicked'
-#import gobject
-#gobject.type_register(CellRendererPixbufClickable)
+#from gi.repository import GObject
+#GObject.type_register(CellRendererPixbufClickable)
 
 
-class ProjectViewer(gtk.ScrolledWindow, Observable):
+class ProjectViewer(Gtk.ScrolledWindow, Observable):
     def __init__(self, project):
-        gtk.ScrolledWindow.__init__(self)
+        Gtk.ScrolledWindow.__init__(self)
 
         self.project = project
 
         # initialize the TreeView
-        self.treeview = gtk.TreeView(self.project.getTreeStore())
+        self.treeview = Gtk.TreeView(self.project.getTreeStore())
         self.treeview.set_enable_tree_lines(True)
-        self.treeview.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_NONE)
+        self.treeview.set_grid_lines(Gtk.TreeViewGridLines.NONE)
         self.treeview.set_rules_hint(True)
 
         # first column: for item name and forward/reverse icons
-        self.col1 = gtk.TreeViewColumn('Trace Files')
+        self.col1 = Gtk.TreeViewColumn('Trace Files')
         self.col1.set_expand(True)
         self.col1.set_resizable(True)
         #self.col1.set_clickable(True)
@@ -128,53 +129,53 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
         self.col1.set_sort_column_id(stproject.FILE_NAME)
 
         # set up cell renderer for forward/reverse icons
-        self.isfwdrev_both = gtk.gdk.pixbuf_new_from_file(images_folder + '/isfwdrev_both.png')
-        self.isfwdrev_fwd = gtk.gdk.pixbuf_new_from_file(images_folder + '/isfwdrev_fwd.png')
-        self.isfwdrev_rev = gtk.gdk.pixbuf_new_from_file(images_folder + '/isfwdrev_rev.png')
-        self.isrev_ren = gtk.CellRendererPixbuf()
+        self.isfwdrev_both = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/isfwdrev_both.png')
+        self.isfwdrev_fwd = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/isfwdrev_fwd.png')
+        self.isfwdrev_rev = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/isfwdrev_rev.png')
+        self.isrev_ren = Gtk.CellRendererPixbuf()
         self.col1.pack_start(self.isrev_ren, False)
         self.col1.set_cell_data_func(self.isrev_ren, self.showFrwdRev)
 
         # set up cell renderer for item name
-        nameren = gtk.CellRendererText()
+        nameren = Gtk.CellRendererText()
         nameren.connect('edited', self.nameEdited)
-        self.col1.pack_start(nameren)
+        self.col1.pack_start(nameren, True)
         self.col1.add_attribute(nameren, 'text', stproject.FILE_NAME)
         self.col1.set_cell_data_func(nameren, self.isRowFile)
         self.treeview.append_column(self.col1)
 
         # second column: for description/notes
-        notesren = gtk.CellRendererText()
+        notesren = Gtk.CellRendererText()
         notesren.connect('edited', self.notesEdited)
         notesren.set_property('editable', True)
-        self.col2 = gtk.TreeViewColumn('Notes/Description', notesren, text=stproject.NOTES)
+        self.col2 = Gtk.TreeViewColumn('Notes/Description', notesren, text=stproject.NOTES)
         self.col2.set_expand(True)
         self.col2.set_resizable(True)
         self.col2.set_sort_column_id(stproject.NOTES)
         self.treeview.append_column(self.col2)
 
         # third column: for has sequence icons
-        hasseqren = gtk.CellRendererPixbuf()
-        self.hasseq_no = gtk.gdk.pixbuf_new_from_file(images_folder + '/hasseq_no.png')
-        self.hasseq_yes = gtk.gdk.pixbuf_new_from_file(images_folder + '/hasseq_yes.png')
-        col3 = gtk.TreeViewColumn('Seq. Saved', hasseqren)
+        hasseqren = Gtk.CellRendererPixbuf()
+        self.hasseq_no = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/hasseq_no.png')
+        self.hasseq_yes = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/hasseq_yes.png')
+        col3 = Gtk.TreeViewColumn('Seq. Saved', hasseqren)
         col3.set_cell_data_func(hasseqren, self.renderHasSeq)
         col3.set_sort_column_id(stproject.HAS_CONS)
         self.treeview.append_column(col3)
 
         # fourth column: for use sequence checkbox
-        useseqren = gtk.CellRendererToggle()
+        useseqren = Gtk.CellRendererToggle()
         useseqren.set_property('activatable', True)
         useseqren.connect('toggled', self.useseqToggled)
-        col4 = gtk.TreeViewColumn('Use Seq.', useseqren, active=stproject.USE_CONS)
+        col4 = Gtk.TreeViewColumn('Use Seq.', useseqren, active=stproject.USE_CONS)
         col4.set_cell_data_func(useseqren, self.renderUseSeq)
         col4.set_sort_column_id(stproject.USE_CONS)
         self.treeview.append_column(col4)
 
-        self.treeview.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        self.treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
 
         # add the treeview to the scrolled window
-        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.add(self.treeview)
 
         # connect to treeview signals
@@ -189,7 +190,7 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
         item = self.project.getItemByPath(path)
         self.notifyObservers('useseq_changed', (item,))
 
-    def showFrwdRev(self, col, renderer, model, node):
+    def showFrwdRev(self, col, renderer, model, node, data):
         item = self.project.getItemByTsiter(node)
 
         if item.isFile():
@@ -202,7 +203,7 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
             renderer.set_property('pixbuf', self.isfwdrev_both)
             #renderer.set_property('visible', False)
 
-    def isRowFile(self, col, renderer, model, node):
+    def isRowFile(self, col, renderer, model, node, data):
         item = self.project.getItemByTsiter(node)
 
         if item.isFile():
@@ -210,7 +211,7 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
         else:
             renderer.set_property('editable', True)
 
-    def renderHasSeq(self, col, renderer, model, node):
+    def renderHasSeq(self, col, renderer, model, node, data):
         item = self.project.getItemByTsiter(node)
         self.setSeqRendererVisible(renderer, item)
 
@@ -219,7 +220,7 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
         else:
             renderer.set_property('pixbuf', self.hasseq_no)
 
-    def renderUseSeq(self, col, renderer, model, node):
+    def renderUseSeq(self, col, renderer, model, node, data):
         item = self.project.getItemByTsiter(node)
         self.setSeqRendererVisible(renderer, item)
 
@@ -299,9 +300,9 @@ class ProjectViewer(gtk.ScrolledWindow, Observable):
         self.notifyObservers('selection_changed', (sel_cnt,))
 
 
-class MainWindow(gtk.Window, CommonDialogs):
+class MainWindow(Gtk.Window, CommonDialogs):
     def __init__(self):
-        gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
+        Gtk.Window.__init__(self, Gtk.WindowType.TOPLEVEL)
 
         self.project = SequenceTraceProject()
         self.project_open = False
@@ -316,7 +317,7 @@ class MainWindow(gtk.Window, CommonDialogs):
 
         # initialize the window GUI elements
         self.connect('delete-event', self.deleteEvent)
-        self.vbox = gtk.VBox(False, 0)
+        self.vbox = Gtk.VBox(False, 0)
         self.add(self.vbox)
 
         # create the menus and toolbar
@@ -397,34 +398,34 @@ class MainWindow(gtk.Window, CommonDialogs):
             <toolitem action="Export_All" />
         </toolbar>'''
         # these actions are always enabled
-        self.main_ag = gtk.ActionGroup('main_actions')
+        self.main_ag = Gtk.ActionGroup('main_actions')
         self.main_ag.add_actions([
             ('File', None, '_File'),
-            ('Open', gtk.STOCK_OPEN, '_Open project...', None, 'Open a project file', self.openProjectAction),
-            ('New', gtk.STOCK_NEW, '_New project...', None, 'Create a new project', self.newProject),
+            ('Open', Gtk.STOCK_OPEN, '_Open project...', None, 'Open a project file', self.openProjectAction),
+            ('New', Gtk.STOCK_NEW, '_New project...', None, 'Create a new project', self.newProject),
             ('Open_Trace', None, 'Open _trace file...', None, 'Open a trace file without adding it to the current project',
                 self.actionOpenTraceFile),
-            ('Exit', gtk.STOCK_QUIT, 'E_xit', None, 'Exit the program', self.deleteEvent),
+            ('Exit', Gtk.STOCK_QUIT, 'E_xit', None, 'Exit the program', self.deleteEvent),
             ('Sequences', None, '_Sequences'),
             ('Trace_Files', None, '_Traces'),
             ('Help', None, '_Help'),
-            ('About', gtk.STOCK_ABOUT, '_About...', None, 'Display information about this program', self.showAbout)])
+            ('About', Gtk.STOCK_ABOUT, '_About...', None, 'Display information about this program', self.showAbout)])
 
         # these actions are generally only enabled when a project is open
-        self.main_proj_ag = gtk.ActionGroup('project_actions')
+        self.main_proj_ag = Gtk.ActionGroup('project_actions')
         self.main_proj_ag.add_actions([
-            ('Close', gtk.STOCK_CLOSE, '_Close project', None, 'Close the current project', self.closeProject),
-            ('Save', gtk.STOCK_SAVE, '_Save project', None, 'Save the current project', self.saveProject),
-            ('Save_As', gtk.STOCK_SAVE_AS, '_Save project as...', None, 'Save as a new project', self.saveProjectAs),
-            ('Revert_To_Saved', gtk.STOCK_REVERT_TO_SAVED, '_Reload project', None,
+            ('Close', Gtk.STOCK_CLOSE, '_Close project', None, 'Close the current project', self.closeProject),
+            ('Save', Gtk.STOCK_SAVE, '_Save project', None, 'Save the current project', self.saveProject),
+            ('Save_As', Gtk.STOCK_SAVE_AS, '_Save project as...', None, 'Save as a new project', self.saveProjectAs),
+            ('Revert_To_Saved', Gtk.STOCK_REVERT_TO_SAVED, '_Reload project', None,
                 'Reload the project from the last saved version', self.revertToSaved),
-            ('Export', gtk.STOCK_CONVERT, '_Export sequences', None, 'Export sequences to a file'),
-            ('Export_All', gtk.STOCK_CONVERT, 'From _all trace files...', None, 'Export all in-use sequences', self.exportAll),
+            ('Export', Gtk.STOCK_CONVERT, '_Export sequences', None, 'Export sequences to a file'),
+            ('Export_All', Gtk.STOCK_CONVERT, 'From _all trace files...', None, 'Export all in-use sequences', self.exportAll),
             ('Delete', None, '_Delete saved sequences', None),
             ('Delete_All_Seqs', None, 'For _all trace files', None, 'Deleted all saved sequences', self.deleteAllSeqs),
-            ('Project_Settings', gtk.STOCK_PREFERENCES, '_Project Settings...', None,
+            ('Project_Settings', Gtk.STOCK_PREFERENCES, '_Project Settings...', None,
                 'View and change the settings for the current project', self.projectSettings),
-            ('Add_File', gtk.STOCK_ADD, '_Add trace file(s)...', None, 'Add trace files to the project', self.projectAddFiles),
+            ('Add_File', Gtk.STOCK_ADD, '_Add trace file(s)...', None, 'Add trace files to the project', self.projectAddFiles),
             ('Auto_Associate', None, '_Auto-group trace files'),
             ('Auto_Associate_All', None, 'Auto-group all trace files', None,
                 'Automatically recognize and group forward/reverse trace files', self.projectAssociateAllFiles),
@@ -438,15 +439,15 @@ class MainWindow(gtk.Window, CommonDialogs):
             ])
 
         # these actions are only enabled when one or more trace files in the project are selected
-        self.sel_proj_ag = gtk.ActionGroup('project_actions_selected')
+        self.sel_proj_ag = Gtk.ActionGroup('project_actions_selected')
         self.sel_proj_ag.add_actions([
             ('Export_Selected', None, 'From _selected trace files...', None, 'Export all selected in-use sequences',
                 self.exportSelected),
             ('Delete_Sel_Seqs', None, 'For _selected trace files', None, 'Deleted all saved sequences in selection',
                 self.deleteSelSeqs),
-            ('View_File', gtk.STOCK_FIND, '_View selected trace file(s)...', None, 'View the selected trace file(s)',
+            ('View_File', Gtk.STOCK_FIND, '_View selected trace file(s)...', None, 'View the selected trace file(s)',
                 self.projectViewFiles),
-            ('Remove_File', gtk.STOCK_DELETE, '_Remove selected trace file(s)', None,
+            ('Remove_File', Gtk.STOCK_DELETE, '_Remove selected trace file(s)', None,
                 'Remove the selected trace file(s) from the project', self.projectRemoveFiles),
             ('Find_FwdRev', None, '_Find and mark forward/reverse', None,
                 'Identify the selected trace files as forward or reverse reads, if possible', self.findFwdRev),
@@ -461,17 +462,17 @@ class MainWindow(gtk.Window, CommonDialogs):
             ])
 
         # these actions are specific to the project viewer context popup menu
-        self.popup_proj_ag = gtk.ActionGroup('project_actions_popup')
+        self.popup_proj_ag = Gtk.ActionGroup('project_actions_popup')
         self.popup_proj_ag.add_actions([
-            ('Popup_Remove_File', gtk.STOCK_REMOVE, '_Remove trace file', None, 'Remove the selected trace file from the project',
+            ('Popup_Remove_File', Gtk.STOCK_REMOVE, '_Remove trace file', None, 'Remove the selected trace file from the project',
                 self.projectRemoveFiles),
             ('Popup_Delete_Sel_Seqs', None, 'Delete saved sequence', None, 'Deleted the saved consensus sequence', self.deleteSelSeqs),
             ('Popup_Rename_Row', None, 'Rename', None, 'Rename the forward/reverse group', self.popupRenameRow),
-            ('Popup_Edit_Notes', gtk.STOCK_EDIT, 'Edit notes', None, 'Edit the notes/description for this item', self.popupEditNotes)
+            ('Popup_Edit_Notes', Gtk.STOCK_EDIT, 'Edit notes', None, 'Edit the notes/description for this item', self.popupEditNotes)
             ])
 
         # build the UIManager
-        self.uim = gtk.UIManager()
+        self.uim = Gtk.UIManager()
         self.add_accel_group(self.uim.get_accel_group())
         self.uim.insert_action_group(self.main_ag)
         self.uim.insert_action_group(self.main_proj_ag)
@@ -480,12 +481,12 @@ class MainWindow(gtk.Window, CommonDialogs):
         self.uim.add_ui_from_string(menuxml)
 
         # add the menu bar to the window
-        self.vbox.pack_start(self.uim.get_widget('/menubar'), expand=False, fill=False)
+        self.vbox.pack_start(self.uim.get_widget('/menubar'), False, False, 0)
 
         # set the toolbar appearance and add it to the window
-        self.uim.get_widget('/toolbar').set_icon_size(gtk.ICON_SIZE_LARGE_TOOLBAR)
-        self.uim.get_widget('/toolbar').set_style(gtk.TOOLBAR_ICONS)
-        self.vbox.pack_start(self.uim.get_widget('/toolbar'), expand=False, fill=False)
+        self.uim.get_widget('/toolbar').set_icon_size(Gtk.IconSize.LARGE_TOOLBAR)
+        self.uim.get_widget('/toolbar').set_style(Gtk.ToolbarStyle.ICONS)
+        self.vbox.pack_start(self.uim.get_widget('/toolbar'), False, False, 0)
 
         # disable the project-specific menus/toolbar buttons by default
         self.main_proj_ag.set_sensitive(False)
@@ -500,11 +501,11 @@ class MainWindow(gtk.Window, CommonDialogs):
         self.projview.registerObserver('notes_edited', self.projViewNotesEdited)
         self.projview.registerObserver('useseq_changed', self.projViewUseseqChanged)
         self.view_has_selection = False
-        self.vbox.pack_start(self.projview)
+        self.vbox.pack_start(self.projview, True, True, 0)
 
         # add a status bar for the project
         self.statusbar = ProjectStatusBar(self.project)
-        self.vbox.pack_start(self.statusbar, False)
+        self.vbox.pack_start(self.statusbar, False, True, 0)
 
         self.vbox.show_all()
         self.vbox.show()
@@ -540,7 +541,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         #self.resize(580, 520)
         self.set_default_size(new_width, new_height)
 
-        #self.set_position(gtk.WIN_POS_CENTER)
+        #self.set_position(Gtk.WindowPosition.CENTER)
 
     def projSaveStateChanged(self, save_state):
         if save_state:
@@ -554,11 +555,11 @@ class MainWindow(gtk.Window, CommonDialogs):
     def consSeqSettingsChanged(self):
         # if the project isn't empty, ask the user what to do with existing sequences
         if not(self.project.isProjectEmpty()):
-            diag = gtk.MessageDialog(None, 0, gtk.MESSAGE_QUESTION, gtk.BUTTONS_OK, 'The settings for calculating consensus sequences have changed.  You might not want to use any previously-saved consensus sequences.')
-            rb1 = gtk.RadioButton(None, 'Mark all saved sequences as unused.')
+            diag = Gtk.MessageDialog(None, 0, Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK, 'The settings for calculating consensus sequences have changed.  You might not want to use any previously-saved consensus sequences.')
+            rb1 = Gtk.RadioButton(None, 'Mark all saved sequences as unused.')
             rb1.set_active(True)
-            rb2 = gtk.RadioButton(rb1, 'Delete all saved sequences.')
-            rb3 = gtk.RadioButton(rb1, 'Do not make any changes to the project.')
+            rb2 = Gtk.RadioButton(rb1, 'Delete all saved sequences.')
+            rb3 = Gtk.RadioButton(rb1, 'Do not make any changes to the project.')
             diag.vbox.pack_start(rb1, False, False)
             diag.vbox.pack_start(rb2, False, False)
             diag.vbox.pack_start(rb3, False, False)
@@ -581,19 +582,19 @@ class MainWindow(gtk.Window, CommonDialogs):
 
     def projectSettings(self, widget):
         sdiag = ProjectSettingsDialog(self.project)
-        response = gtk.RESPONSE_OK
+        response = Gtk.ResponseType.OK
         settings_valid = False
 
-        while (response == gtk.RESPONSE_OK) and not(settings_valid):
+        while (response == Gtk.ResponseType.OK) and not(settings_valid):
             response = sdiag.run()
-            if response != gtk.RESPONSE_OK:
+            if response != Gtk.ResponseType.OK:
                 break
 
             settings_valid = sdiag.checkSettingsValues()
 
         sdiag.hide()
 
-        if response == gtk.RESPONSE_OK:
+        if response == Gtk.ResponseType.OK:
             sdiag.updateProjectSettings()
 
         sdiag.destroy()
@@ -631,7 +632,9 @@ class MainWindow(gtk.Window, CommonDialogs):
         else:
             self.uim.get_widget('/projview_popup/Popup_Delete_Sel_Seqs').set_visible(False)
             
-        self.uim.get_widget('/projview_popup').popup(None, None, None, event.button, event.time)
+        self.uim.get_widget('/projview_popup').popup(
+            None, None, None, None, event.button, event.time
+        )
 
     def projViewIsfwdrevClicked(self, item, event):
         if item.isFile():
@@ -673,14 +676,14 @@ class MainWindow(gtk.Window, CommonDialogs):
 
     def openProjectAction(self, widget):
         # create a file chooser dialog to get a file name from the user
-        fc = gtk.FileChooserDialog('Open Project', None, gtk.FILE_CHOOSER_ACTION_OPEN,
-                (gtk.STOCK_OPEN, gtk.RESPONSE_OK, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+        fc = Gtk.FileChooserDialog('Open Project', None, Gtk.FileChooserAction.OPEN,
+                (Gtk.STOCK_OPEN, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
         fc.set_current_folder(os.getcwd())
 
-        f1 = gtk.FileFilter()
+        f1 = Gtk.FileFilter()
         f1.set_name('project files')
         f1.add_pattern('*' + self.fextension)
-        f2 = gtk.FileFilter()
+        f2 = Gtk.FileFilter()
         f2.set_name('all files')
         f2.add_pattern('*')
         fc.add_filter(f1)
@@ -688,7 +691,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         response = fc.run()
         fname = fc.get_filename()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # if a project is already open, try to close it first
@@ -719,15 +722,15 @@ class MainWindow(gtk.Window, CommonDialogs):
 
     def actionOpenTraceFile(self, widget):
         # create a file chooser dialog to get a file name from the user
-        fc = gtk.FileChooserDialog('Open Trace File', None, gtk.FILE_CHOOSER_ACTION_OPEN,
-                (gtk.STOCK_OPEN, gtk.RESPONSE_OK, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+        fc = Gtk.FileChooserDialog('Open Trace File', None, Gtk.FileChooserAction.OPEN,
+                (Gtk.STOCK_OPEN, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
         fc.set_current_folder(self.project.getTraceFileDir())
-        f1 = gtk.FileFilter()
+        f1 = Gtk.FileFilter()
         f1.set_name('trace files (*.ab1;*.scf;*.ztr)')
         f1.add_pattern('*.ztr')
         f1.add_pattern('*.ab1')
         f1.add_pattern('*.scf')
-        f2 = gtk.FileFilter()
+        f2 = Gtk.FileFilter()
         f2.set_name('all files (*)')
         f2.add_pattern('*')
         fc.add_filter(f1)
@@ -735,7 +738,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         response = fc.run()
         fname = fc.get_filename()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         self.openTraceFile(fname)
@@ -777,11 +780,11 @@ class MainWindow(gtk.Window, CommonDialogs):
             # see if the user wants to save the project before closing it
             msg = 'Do you want to save the current project before closing it?  All unsaved changes will be lost.'
             response = self.showYesNoCancelDialog(msg)
-            if response == gtk.RESPONSE_YES:
+            if response == Gtk.ResponseType.YES:
                 saved = self.saveProject(None)
                 if not(saved):
                     return False
-            elif response != gtk.RESPONSE_NO:
+            elif response != Gtk.ResponseType.NO:
                 return False
 
         # close any project trace windows that are still open
@@ -803,7 +806,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         if not(self.project.getSaveState()):
             # make sure this is what the user actually wants to do
             response = self.showYesNoDialog('Are you sure you want to reload the current project?  All unsaved changes will be lost.')
-            if response != gtk.RESPONSE_YES:
+            if response != Gtk.ResponseType.YES:
                 return
 
         fname = self.project_file
@@ -818,15 +821,15 @@ class MainWindow(gtk.Window, CommonDialogs):
         # if the current project does not have a file name, prompt for one
         if self.project.getProjectFileName() == '':
             # create a file chooser dialog to get a file name from the user
-            fc = gtk.FileChooserDialog('Save Project', None, gtk.FILE_CHOOSER_ACTION_SAVE,
-                    (gtk.STOCK_SAVE, gtk.RESPONSE_OK, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+            fc = Gtk.FileChooserDialog('Save Project', None, Gtk.FileChooserAction.SAVE,
+                    (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
             fc.set_current_folder(os.getcwd())
             fc.set_do_overwrite_confirmation(True)
 
-            f1 = gtk.FileFilter()
+            f1 = Gtk.FileFilter()
             f1.set_name('project files (*' + self.fextension + ')')
             f1.add_pattern('*' + self.fextension)
-            f2 = gtk.FileFilter()
+            f2 = Gtk.FileFilter()
             f2.set_name('all files (*)')
             f2.add_pattern('*')
             fc.add_filter(f1)
@@ -834,7 +837,7 @@ class MainWindow(gtk.Window, CommonDialogs):
             response = fc.run()
             fname = fc.get_filename()
             fc.destroy()
-            if response != gtk.RESPONSE_OK:
+            if response != Gtk.ResponseType.OK:
                 return False
 
             # make sure the file name has the correct extension
@@ -853,15 +856,15 @@ class MainWindow(gtk.Window, CommonDialogs):
 
     def saveProjectAs(self, widget):
         # create a file chooser dialog to get a file name from the user
-        fc = gtk.FileChooserDialog('Save Project As', None, gtk.FILE_CHOOSER_ACTION_SAVE,
-                (gtk.STOCK_SAVE, gtk.RESPONSE_OK, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+        fc = Gtk.FileChooserDialog('Save Project As', None, Gtk.FileChooserAction.SAVE,
+                (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
         fc.set_current_folder(os.getcwd())
         fc.set_do_overwrite_confirmation(True)
 
-        f1 = gtk.FileFilter()
+        f1 = Gtk.FileFilter()
         f1.set_name('project files (*' + self.fextension + ')')
         f1.add_pattern('*' + self.fextension)
-        f2 = gtk.FileFilter()
+        f2 = Gtk.FileFilter()
         f2.set_name('all files (*)')
         f2.add_pattern('*')
         fc.add_filter(f1)
@@ -869,7 +872,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         response = fc.run()
         fname = fc.get_filename()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # make sure the file name has the correct extension
@@ -895,7 +898,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         fformat = fc.getFileFormat()
         include_fnames = fc.getIncludeFileNames()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # write out the sequences
@@ -937,7 +940,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         fformat = fc.getFileFormat()
         include_fnames = fc.getIncludeFileNames()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         # write out the sequences
@@ -979,7 +982,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         # if there are a lot of items selected, make sure the user wants to proceed
         if len(items) > 4:
             response = self.showYesNoDialog('This will open ' + str(len(items)) + ' trace file windows.  Do you want to continue?')
-            if response != gtk.RESPONSE_YES:
+            if response != Gtk.ResponseType.YES:
                 return
 
         for item in items:
@@ -1066,17 +1069,17 @@ class MainWindow(gtk.Window, CommonDialogs):
 
     def projectAddFiles(self, widget):
         # create a file chooser dialog to get a file name (or names) from the user
-        fc = gtk.FileChooserDialog('Add Files to Project', None, gtk.FILE_CHOOSER_ACTION_OPEN,
-                (gtk.STOCK_ADD, gtk.RESPONSE_OK, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+        fc = Gtk.FileChooserDialog('Add Files to Project', None, Gtk.FileChooserAction.OPEN,
+                (Gtk.STOCK_ADD, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
         fc.set_local_only(True)
         fc.set_select_multiple(True)
         fc.set_current_folder(self.project.getAbsTraceFileDir())
-        f1 = gtk.FileFilter()
+        f1 = Gtk.FileFilter()
         f1.set_name('trace files (*.ab1;*.scf;*.ztr)')
         f1.add_pattern('*.ztr')
         f1.add_pattern('*.ab1')
         f1.add_pattern('*.scf')
-        f2 = gtk.FileFilter()
+        f2 = Gtk.FileFilter()
         f2.set_name('all files (*)')
         f2.add_pattern('*')
         fc.add_filter(f1)
@@ -1084,7 +1087,7 @@ class MainWindow(gtk.Window, CommonDialogs):
         response = fc.run()
         filenames = fc.get_filenames()
         fc.destroy()
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         for filepath in filenames:
@@ -1092,7 +1095,7 @@ class MainWindow(gtk.Window, CommonDialogs):
             if self.project.isFileInProject(filepath):
                 response = self.showYesNoDialog('The file "' + filepath
                         + '" has already been added to this project.  Do you want to add it anyway?')
-                if response != gtk.RESPONSE_YES:
+                if response != Gtk.ResponseType.YES:
                     continue
 
             self.project.addFiles((filepath,))
@@ -1100,7 +1103,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def projectRemoveFiles(self, widget):
         # confirm this is what the user actually wants to do
         response = self.showYesNoDialog('Are you sure you want to remove the selected file(s) from the project?  This operation cannot be undone.')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return False
 
         items = self.projview.getSelection()
@@ -1118,7 +1121,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def deleteAllSeqs(self, widget):
         # confirm this is what the user actually wants to do
         response = self.showYesNoDialog('Are you sure you want to delete all saved consensus sequences?  This operation cannot be undone.')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         for item in self.project:
@@ -1129,7 +1132,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def deleteSelSeqs(self, widget):
         # confirm this is what the user actually wants to do
         response = self.showYesNoDialog('Are you sure you want to delete the selected consensus sequences?  This operation cannot be undone.')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         items = self.projview.getSelection()
@@ -1140,7 +1143,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def generateAllSequences(self, widget):
         # confirm this is what the user actually wants to do
         response = self.showYesNoDialog('Are you sure you want to generate finished sequences for all trace files?  This will overwrite any sequences that have already been saved.')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         self.generateSequencesInternal(iter(self.project), 'Generating sequences for all trace files...')
@@ -1148,7 +1151,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def generateSelectedSequences(self, widget):
         # confirm this is what the user actually wants to do
         response = self.showYesNoDialog('Are you sure you want to generate finished sequences for the selected trace files?  This will overwrite any sequences that have already been saved.')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         items = self.projview.getSelection()
@@ -1188,13 +1191,13 @@ class MainWindow(gtk.Window, CommonDialogs):
         diag = EntryDialog(self, 'Group Name', 'Name for new forward/reverse group:', 'new_group', 40)
         response = diag.run()
         name = diag.get_text()
-        while (name == '') and (response == gtk.RESPONSE_OK):
+        while (name == '') and (response == Gtk.ResponseType.OK):
             response = diag.run()
             name = diag.get_text()
 
         diag.destroy()
 
-        if response != gtk.RESPONSE_OK:
+        if response != Gtk.ResponseType.OK:
             return
 
         items = self.projview.getSelection()
@@ -1203,7 +1206,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def projectDissociateFiles(self, widget):
         # confirm this is what the user actually wants to do
         response = self.showYesNoDialog('Are you sure you want to remove the selected forward/reverse groupings?')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         items = self.projview.getSelection()
@@ -1223,7 +1226,7 @@ class MainWindow(gtk.Window, CommonDialogs):
     def findFwdRev(self, widget):
         # confirm this is what the user wants to do
         response = self.showYesNoDialog('Attempt to identify selected files as forward or reverse reads?')
-        if response != gtk.RESPONSE_YES:
+        if response != Gtk.ResponseType.YES:
             return
 
         items = self.projview.getSelection()
@@ -1260,11 +1263,11 @@ class MainWindow(gtk.Window, CommonDialogs):
                 msgtxt += '\n\nDo you want to group these files as matching forward and reverse sequencing traces?'
                 response = self.showYesToAllDialog(msgtxt)
 
-                if (response == gtk.RESPONSE_YES) or (response == dialgs.YES_TO_ALL):
+                if (response == Gtk.ResponseType.YES) or (response == dialgs.YES_TO_ALL):
                     if response == dialgs.YES_TO_ALL:
                         show_confirm = False
                     do_associate = True
-                elif response == gtk.RESPONSE_NO:
+                elif response == Gtk.ResponseType.NO:
                     do_associate = False
                 else:
                     break
@@ -1276,10 +1279,10 @@ class MainWindow(gtk.Window, CommonDialogs):
                 self.project.associateItems(pair[0:2], pair[2])
 
         if pair_cnt == 0:
-            self.showMessage('No matching forward and reverse sequencing trace files were found.', gtk.MESSAGE_INFO)
+            self.showMessage('No matching forward and reverse sequencing trace files were found.', Gtk.MessageType.INFO)
 
     def showAbout(self, widget):
-        diag = gtk.AboutDialog()
+        diag = Gtk.AboutDialog()
         diag.set_name('SeqTrace')
         diag.set_version('0.9.1')
         diag.set_copyright('Copyright \xC2\xA9 2018 Brian J. Stucky')
@@ -1300,7 +1303,7 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.''')
-        diag.set_logo(gtk.gdk.pixbuf_new_from_file(images_folder + '/about.png'))
+        diag.set_logo(GdkPixbuf.Pixbuf.new_from_file(images_folder + '/about.png'))
         diag.run()
         diag.destroy()
 
@@ -1312,5 +1315,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.''')
         # close any remaining trace windows that are still open
         self.tw_manager.closeAllTraceWindows()
 
-        gtk.main_quit()
+        Gtk.main_quit()
 
