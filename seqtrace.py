@@ -15,7 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 from seqtrace.gui.maingui import MainWindow
 
 from argparse import ArgumentParser
@@ -47,5 +49,5 @@ if filein != '':
         # not a project file, so attempt to open it as a sequence trace file
         mainwin.openTraceFile(filein)
 
-gtk.main()
+Gtk.main()
 
