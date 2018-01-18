@@ -555,14 +555,24 @@ class MainWindow(Gtk.Window, CommonDialogs):
     def consSeqSettingsChanged(self):
         # if the project isn't empty, ask the user what to do with existing sequences
         if not(self.project.isProjectEmpty()):
-            diag = Gtk.MessageDialog(None, 0, Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK, 'The settings for calculating consensus sequences have changed.  You might not want to use any previously-saved consensus sequences.')
-            rb1 = Gtk.RadioButton(None, 'Mark all saved sequences as unused.')
+            diag = Gtk.MessageDialog(
+                None, 0, Gtk.MessageType.QUESTION, Gtk.ButtonsType.OK, 'The settings for calculating consensus sequences have changed.  You might not want to use any previously saved consensus sequences.'
+            )
+            rb1 = Gtk.RadioButton(label='Mark all saved sequences as unused.')
             rb1.set_active(True)
-            rb2 = Gtk.RadioButton(rb1, 'Delete all saved sequences.')
-            rb3 = Gtk.RadioButton(rb1, 'Do not make any changes to the project.')
-            diag.vbox.pack_start(rb1, False, False)
-            diag.vbox.pack_start(rb2, False, False)
-            diag.vbox.pack_start(rb3, False, False)
+            rb2 = Gtk.RadioButton(
+                group=rb1, label='Delete all saved sequences.'
+            )
+            rb3 = Gtk.RadioButton(
+                group=rb1, label='Do not make any changes to the project.'
+            )
+
+            rbbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            rbbox.set_margin_left(12)
+            rbbox.pack_start(rb1, False, False, 0)
+            rbbox.pack_start(rb2, False, False, 0)
+            rbbox.pack_start(rb3, False, False, 0)
+            diag.vbox.pack_start(rbbox, True, True, 0)
 
             diag.show_all()
             diag.run()
