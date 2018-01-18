@@ -15,9 +15,9 @@
 
 
 from datetime import datetime
-import pygtk
-pygtk.require('2.0')
-import gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 
 
 
@@ -235,7 +235,7 @@ class NEXUSSeqWriter(SequenceWriter):
 # A file save/save as dialog that is aware of the various sequence formats
 # supported by this module.  It can also display additional options to the user.
 # Finally, it can ensure that all file names returned have an appropriate extension.
-class SeqWriterFileDialog(gtk.FileChooserDialog):
+class SeqWriterFileDialog(Gtk.FileChooserDialog):
     formats = {
             'FASTA (*.fasta)': [FORMAT_FASTA, '.fasta'],
             'NEXUS (*.nex)': [FORMAT_NEXUS, '.nex'],
@@ -243,8 +243,8 @@ class SeqWriterFileDialog(gtk.FileChooserDialog):
             }
 
     def __init__(self, parent=None, title=None):
-        gtk.FileChooserDialog.__init__(self, title, parent, gtk.FILE_CHOOSER_ACTION_SAVE,
-                (gtk.STOCK_SAVE, gtk.RESPONSE_OK, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+        Gtk.FileChooserDialog.__init__(self, title, parent, Gtk.FileChooserAction.SAVE,
+                (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
 
         self.set_do_overwrite_confirmation(True)
 
@@ -253,13 +253,13 @@ class SeqWriterFileDialog(gtk.FileChooserDialog):
 
         # add file filters for the supported sequence formats
         for name, details in self.formats.items():
-            ff = gtk.FileFilter()
+            ff = Gtk.FileFilter()
             ff.set_name(name)
             ff.add_pattern('*' + details[1])
             self.add_filter(ff)
 
         # add a checkbox to allow the user to choose whether or not to include file names
-        self.fnames_toggle = gtk.CheckButton("include trace file names in exported file")
+        self.fnames_toggle = Gtk.CheckButton("include trace file names in exported file")
         self.fnames_toggle.set_active(True)
         self.set_extra_widget(self.fnames_toggle)
         self.fnames_toggle.set_visible(self.show_options)
@@ -280,7 +280,7 @@ class SeqWriterFileDialog(gtk.FileChooserDialog):
         return self.fnames_toggle.get_active()
 
     def get_filename(self):
-        name = gtk.FileChooserDialog.get_filename(self)
+        name = Gtk.FileChooserDialog.get_filename(self)
 
         if name and self.check_extension:
             ff = self.get_filter()
