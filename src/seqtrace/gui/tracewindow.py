@@ -148,8 +148,8 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             <menuitem action="Save_Consens" />
             <separator />
             <menuitem action="Export_Alignment" />
-            <menuitem action="Export_Consensus" />
             <menuitem action="Export_Raw" />
+            <menuitem action="Export_Consensus" />
             <separator />
             <menuitem action="File_Info" />
             <separator />
@@ -159,7 +159,10 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             <menuitem action="Undo" />
             <menuitem action="Redo" />
             <separator />
+            <menuitem action="Copy_Alignment" />
+            <menuitem action="Copy_Raw" />
             <menuitem action="Copy_Consens" />
+            <separator />
             <menuitem action="Copy" />
             <menuitem action="Delete" />
             <menuitem action="Modify" />
@@ -201,29 +204,37 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             ('File_Info', Gtk.STOCK_INFO, '_Information...', None, 'View detailed information about the file(s)', self.fileInfo),
             ('Close', Gtk.STOCK_CLOSE, '_Close', None, 'Close this window', self.closeWindow),
             ('Edit', None, '_Edit'),
-            ('Copy_Consens', None, 'C_opy working seq. to clipboard', None, 'Copy the working sequence to the clipboard', self.copyFullConsensus),
+            ('Copy_Consens', None, 'C_opy working sequence', None, 'Copy the working sequence to the clipboard', self.copyFullConsensus),
+            ('Copy_Raw', None, 'Co_py raw sequence(s)', None, 'Copy the raw sequence(s) to the clipboard', self.copyRawSequences),
             ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
-            ('View', None, '_View')])
+            ('View', None, '_View')
+        ])
 
-        # These actions are enabled only when there are two sequencing traces in the window.
+        # These actions are enabled only when there are two sequencing traces
+        # in the window.
         self.twotrace_ag = Gtk.ActionGroup('twotrace_actions')
         self.twotrace_ag.add_actions([
-            ('Export_Alignment', None, 'Export _alignment...', None, 'Export the aligned forward and reverse sequences', self.exportAlignment)])
+            ('Export_Alignment', None, 'Export _alignment...', None, 'Export the aligned forward and reverse sequences', self.exportAlignment),
+            ('Copy_Alignment', None, 'Cop_y alignment', None, 'Copy the forward/reverse alignment to the clipboard', self.copyAlignment)
+        ])
         self.twotrace_ag.add_toggle_actions([
-            ('Scroll_Lock', None, '_Synchronize trace scrolling', None, 'Synchronizes the scrolling of the forward and reverse traces', self.lockScrolling, True)])
+            ('Scroll_Lock', None, '_Synchronize trace scrolling', None, 'Synchronizes the scrolling of the forward and reverse traces', self.lockScrolling, True)
+        ])
 
-        # these actions are for common edit commands
+        # These actions are for common edit commands.
         self.edit_ag = Gtk.ActionGroup('edite_actions')
         self.edit_ag.add_actions([
             ('Undo', Gtk.STOCK_UNDO, '_Undo', '<ctl>z', 'Undo the last change to the working sequence', self.undoConsChange),
-            ('Redo', Gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the working sequence', self.redoConsChange)])
+            ('Redo', Gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the working sequence', self.redoConsChange)
+        ])
 
-        # these actions are only enabled when there is an active selection
+        # These actions are only enabled when there is an active selection.
         self.sel_edit_ag = Gtk.ActionGroup('selected_edit_actions')
         self.sel_edit_ag.add_actions([
-            ('Copy', Gtk.STOCK_COPY, '_Copy selected base(s) to clipboard', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
+            ('Copy', Gtk.STOCK_COPY, '_Copy selected base(s)', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
             ('Delete', Gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the working sequence', self.deleteConsBases),
-            ('Modify', Gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)])
+            ('Modify', Gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)
+        ])
 
         self.uim = Gtk.UIManager()
         self.add_accel_group(self.uim.get_accel_group())
@@ -393,13 +404,58 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         self.cons.redo()
         self.setSaveEnabled(True)
 
+    def copyAlignment(self, widget):
+        """
+        Copies the aligned raw sequences to the clipboard in basic FASTA
+        format.
+        """
+        copy_text = ''
+        for cnt in range(0, self.numseqs):
+            if cnt > 0:
+                copy_text += '\n'
+
+            copy_text += '>' + self.cons.getSequenceTrace(cnt).getFileName()
+            if self.cons.getSequenceTrace(cnt).isReverseComplemented():
+                copy_text += ' (reverse complemented)'
+
+            copy_text += '\n' + self.cons.getAlignedSequence(cnt)
+
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(copy_text, -1)
+
     def copyFullConsensus(self, widget):
+        """
+        Copies the consensus sequence to the clipboard.
+        """
         seq = self.cons.getConsensus()
 
         clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         clipboard.set_text(seq, -1)
 
+    def copyRawSequences(self, widget):
+        """
+        Copies the raw base calls from the source trace file(s) to the
+        clipboard in basic FASTA format.
+        """
+        copy_text = ''
+        for cnt in range(0, self.numseqs):
+            if cnt > 0:
+                copy_text += '\n'
+
+            copy_text += '>' + self.cons.getSequenceTrace(cnt).getFileName()
+            if self.cons.getSequenceTrace(cnt).isReverseComplemented():
+                copy_text += ' (reverse complemented)'
+
+            copy_text += '\n' + self.cons.getSequenceTrace(cnt).getBaseCalls()
+
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(copy_text, -1)
+
     def copyConsBases(self, widget):
+        """
+        Copies bases from the consensus sequence that are part of an active
+        selection to the clipboard.
+        """
         csv = self.consview.getConsensusSequenceViewer()
         sel = csv.getSelection()
         seq = self.cons.getConsensus(sel[0], sel[1])
