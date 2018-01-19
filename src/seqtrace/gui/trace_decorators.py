@@ -17,12 +17,19 @@
 
 import gi
 gi.require_version('Gtk', '3.0')
-gi.require_version('PangoCairo', '1.0')
 from gi.repository import Gtk
 
 
-class SequenceTraceViewerDecorator:
+class SequenceTraceViewerDecorator(object):
+    """
+    Base class for all SequenceTraceViewer decorators.  This class is not
+    abstract, but it does not add any functionality to a SequenceTraceViewer.
+    """
     def __init__(self, sequencetraceviewer):
+        """
+        sequencetraceviewer: An instance of SequenceTraceViewer or
+            SequenceTraceViewerDecorator.
+        """
         self.viewer = sequencetraceviewer
 
     def getViewer(self):
@@ -37,7 +44,17 @@ class SequenceTraceViewerDecorator:
 
 
 class FwdRevSTVDecorator(SequenceTraceViewerDecorator):
+    """
+    Adds a label to the left of a SequenceTraceViewer or a
+    SequenceTraceViewerDecorator (i.e., a decorated SequenceTraceViewer) that
+    indicates whether it is a forward or reverse sequencing trace.
+    """
     def __init__(self, sequencetraceviewer):
+        """
+        sequencetraceviewer: An instance of SequenceTraceViewer or
+            SequenceTraceViewerDecorator (i.e., a decorated
+            SequenceTraceViewer).
+        """
         SequenceTraceViewerDecorator.__init__(self, sequencetraceviewer)
 
         self.hbox = Gtk.HBox()
@@ -66,7 +83,13 @@ class FwdRevSTVDecorator(SequenceTraceViewerDecorator):
 
 
 class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
+    """
+    Adds scroll and zoom functionality to a SequenceTraceViewer.
+    """
     def __init__(self, sequencetraceviewer):
+        """
+        sequencetraceviewer: An instance of SequenceTraceViewer.
+        """
         SequenceTraceViewerDecorator.__init__(self, sequencetraceviewer)
 
         self.scrolledwin = Gtk.ScrolledWindow()
