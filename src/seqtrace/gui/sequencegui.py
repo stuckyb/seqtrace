@@ -110,9 +110,13 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         self.al_top = self.margins
 
         self.txtlayout = Pango.Layout(self.create_pango_context())
-        self.fontdesc = self.txtlayout.get_context().get_font_description().copy()
 
-        self.setFontSize(10)
+        # Get the default font used by Gtk+ and use it as the default for the
+        # sequence display.
+        fontstr = Gtk.Settings.get_default().props.gtk_font_name
+        default_font = Pango.FontDescription.from_string(fontstr)
+        #print default_font.to_string()
+        self.setFontDescription(default_font)
 
         # The index of the currently highlighted position in the alignment.
         self.lastx = -1
@@ -447,7 +451,7 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
             x, self.al_top, self.fwidth, self.fheight * self.numseqs
         )
 
-    def setFontSize(self, size):
+    def setFontDescription(self, fontdesc):
         """
         Sets the font size to use for drawing sequences, calculates the character
         size in pixels, and resizes the DrawingArea to fit the sequence(s).  Note
@@ -456,8 +460,9 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         in trace data, and sizing the character to fit "W"s makes the other characters
         too far apart (in my opinion!).
         """
-        # set up sequence font properties
-        self.fontdesc.set_size(size*Pango.SCALE)
+        # Set up sequence display font properties.
+        #self.fontdesc.set_size(size*Pango.SCALE)
+        self.fontdesc = fontdesc.copy()
         self.txtlayout.set_font_description(self.fontdesc)
         self.txtlayout.set_text('G', 1)
         self.fheight = self.txtlayout.get_pixel_size()[1]

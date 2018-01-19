@@ -87,8 +87,12 @@ class SequenceTraceViewer:
         self.sigmax = sequencetrace.getMaxTraceVal() + (sequencetrace.getMaxTraceVal() / 12)
 
         self.bclayout = Pango.Layout(self.drawingarea.create_pango_context())
-        self.bcfontdesc = self.bclayout.get_context().get_font_description().copy()
-        self.setFontSize(10)
+
+        # Get the default font used by Gtk+ and use it as the default for the
+        # trace display.
+        fontstr = Gtk.Settings.get_default().props.gtk_font_name
+        default_font = Pango.FontDescription.from_string(fontstr)
+        self.setFontDescription(default_font)
 
         self.drawingarea.connect('draw', self.doDraw)
 
@@ -125,9 +129,9 @@ class SequenceTraceViewer:
 
         self.drawingarea.queue_draw()
 
-    def setFontSize(self, size):
-        # set up base call font properties
-        self.bcfontdesc.set_size(size*Pango.SCALE)
+    def setFontDescription(self, fontdesc):
+        # Set up the base call font properties.
+        self.bcfontdesc = fontdesc.copy()
         self.bclayout.set_font_description(self.bcfontdesc)
         self.bclayout.set_text('A', 1)
         self.bcheight = self.bclayout.get_pixel_size()[1] + (self.bcpadding*2)
