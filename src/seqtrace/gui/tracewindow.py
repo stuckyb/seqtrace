@@ -22,7 +22,8 @@ from seqtrace.core.observable import Observable
 
 from seqtrace.gui.dialgs import CommonDialogs, EntryDialog
 from seqtrace.gui.sequencegui import ScrolledConsensusSequenceViewer
-from seqtrace.gui.tracegui import SequenceTraceViewer, SequenceTraceLayout
+from seqtrace.gui.tracegui import SequenceTraceViewer
+from seqtrace.gui.tracelayout import SequenceTraceLayout
 from seqtrace.gui.trace_decorators import (
     ScrollAndZoomSTVDecorator, FwdRevSTVDecorator
 )
