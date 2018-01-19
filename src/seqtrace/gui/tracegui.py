@@ -132,6 +132,7 @@ class SequenceTraceViewer:
     def setFontDescription(self, fontdesc):
         # Set up the base call font properties.
         self.bcfontdesc = fontdesc.copy()
+        #self.bcfontdesc.set_size(20*Pango.SCALE)
         self.bclayout.set_font_description(self.bcfontdesc)
         self.bclayout.set_text('A', 1)
         self.bcheight = self.bclayout.get_pixel_size()[1] + (self.bcpadding*2)
@@ -246,8 +247,11 @@ class SequenceTraceViewer:
         cr.set_dash((1,1))
         cr.set_line_width(1)
 
+        # Calculate the confidence bar dimensions.
         drawheight = height - self.bottom_margin - self.bcheight
         confbarmax = drawheight / 4
+        self.bclayout.set_text('30', -1)
+        confbarwidth = self.bclayout.get_pixel_size()[0] * 0.8
         conf_hue_best = 0.68
         conf_hue_worst = 1.0
 
@@ -284,7 +288,7 @@ class SequenceTraceViewer:
                 cr.set_source_rgba(*confbarcolor)
                 #hue = float(bcconf) * (conf_hue_best - conf_hue_worst) / 61 + conf_hue_worst
                 #cr.set_source_rgba(*colorFromHSV(hue, 0.34, 1.0))
-                cr.rectangle(x-6, 6, 12, (confbarmax*bcconf)/61)
+                cr.rectangle(x-(confbarwidth / 2), 6, confbarwidth, (confbarmax*bcconf)/61)
                 cr.fill()
 
                 # Draw the confidence score.
