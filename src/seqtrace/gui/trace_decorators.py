@@ -18,6 +18,7 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
+from gi.repository import Pango
 
 
 class SequenceTraceViewerDecorator(object):
@@ -96,7 +97,22 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
 
         seqt = self.viewer.getSequenceTrace()
 
-        self.zoom_100 = 2.4
+        # Calculate the scale factor for 100% zoom.  This is based on a value
+        # of 2.6 for Droid Sans 11, for which the pixel width of the string
+        # '30' is 16 px and the width of a confidence bar is 12.8.  2.6 gives a
+        # visually appealing presentation at that font size.  It can be shown
+        # mathematically that, given a starting font size and drawing width,
+        # with a new font size it is impossible to find a new drawing width
+        # that preserves the original spaces between all base calls if they are
+        # not all evenly spaced.  (Any new drawing width can, at best, preserve
+        # a single spacing value.)  Thus, the best solution (that I have found,
+        # anyway), is to use simple proportional scaling according to the
+        # relative size of the new font and confidence bars, with a scaling
+        # factor of 2.6 with Droid Sans 11 as a reference.  This ensures that
+        # the relative spaces between base call confidence bars will remain the
+        # same across all font sizes.
+        cbarwidth = self.viewer.getConfBarWidth()
+        self.zoom_100 = 2.6 * (cbarwidth / 12.8)
 
         oldwidth, oldheight = self.viewer.getWidget().get_size_request()
         #oldheight = 200

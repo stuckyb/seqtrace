@@ -86,6 +86,7 @@ class SequenceTraceViewer:
 
         self.sigmax = sequencetrace.getMaxTraceVal() + (sequencetrace.getMaxTraceVal() / 12)
 
+        self.bcfontdesc = None
         self.bclayout = Pango.Layout(self.drawingarea.create_pango_context())
 
         # Get the default font used by Gtk+ and use it as the default for the
@@ -129,7 +130,19 @@ class SequenceTraceViewer:
 
         self.drawingarea.queue_draw()
 
+    def getFontDescription(self):
+        """
+        Returns the Pango.FontDescription for the font used to draw confidence
+        scores and base calls.
+        """
+        return self.bcfontdesc
+
     def setFontDescription(self, fontdesc):
+        """
+        Sets the font to use for drawing confidence scores and base calls.
+
+        fontdesc: A Pango.FontDescription.
+        """
         # Set up the base call font properties.
         self.bcfontdesc = fontdesc.copy()
         #self.bcfontdesc.set_size(20*Pango.SCALE)
@@ -228,6 +241,14 @@ class SequenceTraceViewer:
                 oldy = y
             cr.stroke()
 
+    def getConfBarWidth(self):
+        """
+        Returns the width, in pixels, of the confidence score bars.
+        """
+        self.bclayout.set_text('30', -1)
+
+        return self.bclayout.get_pixel_size()[0] * 0.8
+
     def drawBaseCalls(self, startx, dwidth, cr):
         """
         Draws the base calls, confidence scores and bars, and lines from
@@ -250,8 +271,7 @@ class SequenceTraceViewer:
         # Calculate the confidence bar dimensions.
         drawheight = height - self.bottom_margin - self.bcheight
         confbarmax = drawheight / 4
-        self.bclayout.set_text('30', -1)
-        confbarwidth = self.bclayout.get_pixel_size()[0] * 0.8
+        confbarwidth = self.getConfBarWidth()
         conf_hue_best = 0.68
         conf_hue_worst = 1.0
 
