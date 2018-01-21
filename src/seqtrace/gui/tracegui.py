@@ -359,10 +359,20 @@ class SequenceTraceViewer:
             if oldhighlight != self.seqt.getNumBaseCalls():
                 # Erase the old highlight.
                 rect = self.getHighlightRectangle(oldhighlight)
+                # Expand the redraw area by 2 px in both x directions to
+                # account for antialising and converting fractional cairo
+                # coordinates to screen pixels.
+                rect[0] -= 2
+                rect[2] += 4
                 self.drawingarea.queue_draw_area(*rect)
 
             # Draw the new highlight.
             rect = self.getHighlightRectangle(bindex)
+            # Expand the redraw area by 2 px in both x directions to account
+            # for antialising and converting fractional cairo coordinates to
+            # screen pixels.
+            rect[0] -= 2
+            rect[2] += 4
             self.drawingarea.queue_draw_area(*rect)
 
     def getHighlightRectangle(self, bindex):
@@ -379,6 +389,8 @@ class SequenceTraceViewer:
         yscale = float(drawheight) / self.sigmax
         y = drawheight + self.bcpadding
 
+        hlwidth = self.getConfBarWidth()
+
         # Check if we got a gap location.
         if bindex < 0:
             if bindex == -1:
@@ -394,11 +406,10 @@ class SequenceTraceViewer:
         x = int(pos * xscale)
 
         if bindex < 0:
-            # Highlight size for a gap.
-            return (x - 2, 0, 5, height)
-        else:
-            # Highlight size for a base call.
-            return (x - 6, 0, 12, height)
+            # This is a gap, so adjust the highlight width.
+            hlwidth = hlwidth * 0.4
+
+        return [x - (hlwidth / 2.0), 0, hlwidth, height]
 
     def drawHighlight(self, rect, alpha, cr):
         cr.set_source_rgba(1.0, 1.0, 0, alpha)
