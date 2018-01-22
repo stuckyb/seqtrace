@@ -39,10 +39,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
     def __init__(self, mod_consensseq_builder):
         Gtk.DrawingArea.__init__(self)
 
-        # Since we do all drawing to an off-screen buffer, we don't need GTK's
-        # automatic double buffering.
-        self.set_double_buffered(False)
-
         self.cons = mod_consensseq_builder
         self.numseqs = self.cons.getNumSeqs()
         settings = self.cons.getSettings()
@@ -130,16 +126,13 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         # higher value is 1 beyond the last selected position.
         self.consselect_start = -1
         self.consselect_end = -1
-        # keep track of where a selection highlight has been drawn on the consensus sequence
-        self.chl_start = -1
-        self.chl_end = -1
-        # indicates if the user is actively making a selection on the consensus sequence
+        # Indicates if the user is actively making a selection on the consensus
+        # sequence.
         self.selecting_active = False
 
         # Set up event handling.
         self.connect('destroy', self.onDestroy)
         self.connect('draw', self.onDraw)
-        self.connect('configure-event', self.onConfigure)
 
         self.set_events(
             Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK
@@ -151,10 +144,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         self.connect('button-release-event', self.mouseRelease)
         self.connect('motion-notify-event', self.mouseMove)
         self.connect('leave-notify-event', self.mouseLeave)
-
-        # A cairo surface to use as an off-screen buffer for all drawing
-        # operations.
-        self.surface = None
 
         self.clickable_cursor = Gdk.Cursor.new(Gdk.CursorType.HAND2)
         self.text_cursor = Gdk.Cursor.new(Gdk.CursorType.XTERM)
@@ -212,7 +201,7 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
     
                 if (self.highlighted != -1) and (self.highlighted != bindex):
                     # Unhighlight the previously selected alignment position.
-                    self.highlightAlignment(self.highlighted, False)
+                    self.redrawAlignmentPos(self.highlighted)
 
                 self.highlighted = bindex
                 self.notifyObservers('alignment_clicked', (seqnum, seq1index, seq2index))
@@ -245,7 +234,7 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
     def mouseLeave(self, da, event):
         # if we just left the window, make sure we erased the highlight
         if (self.lastx != -1) and (self.lastx != self.highlighted):
-            self.highlightAlignment(self.lastx, False)
+            self.redrawAlignmentPos(self.lastx)
             self.lastx = -1
             return
 
@@ -275,14 +264,14 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
             # draw the highlight and erase the old one, if necessary
             if self.lastx != index:
                 if (self.lastx != self.highlighted) or (self.highlighted == -1):
-                    self.highlightAlignment(self.lastx, False)
+                    self.redrawAlignmentPos(self.lastx)
                 self.lastx = index
                 if index != self.highlighted:
-                    self.highlightAlignment(index, True)
+                    self.redrawAlignmentPos(index)
         else:
             # not on the alignment, so just erase the old highlight, if necessary
             if (self.lastx != -1) and (self.lastx != self.highlighted):
-                self.highlightAlignment(self.lastx, False)
+                self.redrawAlignmentPos(self.lastx)
                 self.lastx = -1
 
             alend = self.fheight*self.numseqs + self.al_top
@@ -385,18 +374,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
             elif oldend < newend:
                 hl.append((oldend, newend))
 
-        cr = cairo.Context(self.surface)
-        cons = self.cons.getConsensus()
-
         # Draw the newly unhighlighted regions.
         for coords in unhl:
             start = coords[0]
             end = coords[1]
-            for index in range(start, end):
-                self.drawConsensusBase(
-                    cons[index], index*self.fwidth, alend+self.padding, cr, False
-                )
-
             self.queue_draw_area(
                 start*self.fwidth, alend+self.padding,
                 self.fwidth*(end-start), self.fheight
@@ -406,11 +387,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         for coords in hl:
             start = coords[0]
             end = coords[1]
-            for index in range(start, end):
-                self.drawConsensusBase(
-                    cons[index], index*self.fwidth, alend+self.padding, cr, True
-                )
-
             self.queue_draw_area(
                 start*self.fwidth, alend+self.padding,
                 self.fwidth*(end-start), self.fheight
@@ -421,31 +397,14 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
             self.get_window().set_cursor(cursor)
             self.curr_cursor = cursor
         
-    def highlightAlignment(self, index, highlight=True):
+    def redrawAlignmentPos(self, index):
         """
-        Highlights or unhighlights a position in the alignment display.
+        Redraws a position in the alignment display, typically for the purpose
+        of highlighting or unhighlighting a position.
 
         index: An index in the alignment.
-        highlight: If True, the position will be highlighted.  If False, the
-            position will be unhighlighted.
         """
-        align1 = self.cons.getAlignedSequence(0)
-        base = align1[index]
-
-        cr = cairo.Context(self.surface)
-
         x = index*self.fwidth
-
-        # Update the alignment on the off-screen buffer, then invalidate the
-        # corresponding region on the DrawingArea window.
-
-        self.drawAlignmentBase(base, x, self.al_top, cr, highlight)
-
-        if self.numseqs == 2:
-            align2 = self.cons.getAlignedSequence(1)
-            self.drawAlignmentBase(
-                align2[index], x, self.al_top + self.fheight, cr, highlight
-            )
 
         self.queue_draw_area(
             x, self.al_top, self.fwidth, self.fheight * self.numseqs
@@ -461,8 +420,8 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         too far apart (in my opinion!).
         """
         # Set up sequence display font properties.
-        #self.fontdesc.set_size(size*Pango.SCALE)
         self.fontdesc = fontdesc.copy()
+        #self.fontdesc.set_size(20*Pango.SCALE)
         self.txtlayout.set_font_description(self.fontdesc)
         self.txtlayout.set_text('G', 1)
         self.fheight = self.txtlayout.get_pixel_size()[1]
@@ -522,37 +481,40 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         dwidth = (end - start + 1) * self.fwidth
         self.queue_draw_area(x, alend+self.padding, dwidth, self.fheight)        
 
-    def onConfigure(self, widget, event):
-        # Note that the Python cairo bindings do not expose
-        # cairo_surface_destroy() because this functionality is handled
-        # automatically by the Python library.
-
-        self.surface = self.get_window().create_similar_surface(
-            cairo.CONTENT_COLOR, self.get_allocated_width(),
-            self.get_allocated_height()
-        )
-
-        startindex = 0
-        endindex = len(self.cons.getAlignedSequence(0)) - 1
-
-        cr = cairo.Context(self.surface)
+    def onDraw(self, da, cr):
+        clipr = cr.clip_extents()
+        #print clipr
+        startx = clipr[0]
+        dwidth = clipr[2] - clipr[0]
+        starty = clipr[1]
+        endy = clipr[3]
 
         # Draw the gray background for the widget.
         cr.set_source_rgba(*parseHTMLColorStr('#d2d2d2'))
         cr.paint()
 
+        startindex = int(startx / self.fwidth)
+        endindex = int((startx + dwidth) / self.fwidth)
+        if endindex >= len(self.cons.getAlignedSequence(0)):
+            endindex -= 1
+
         if self.drawprimers:
-            self.drawPrimers(startindex, endindex, cr)
-        self.drawAlignment(startindex, endindex, cr)
-        self.drawConsensus(startindex, endindex, cr)
+            # Only draw the primer display if the clip region includes it.
+            p_top = self.margins
+            p_bottom = self.fheight
+            if not((p_top > endy) or (p_bottom < starty)):
+                self.drawPrimers(startindex, endindex, cr)
 
-        return True
+        # Only draw the alignment if the clip region includes it.
+        al_bottom = self.fheight*self.numseqs + self.al_top
+        if not((self.al_top > endy) or (al_bottom < starty)):
+            self.drawAlignment(startindex, endindex, cr)
 
-    def onDraw(self, da, cr):
-        # Drawing is simple: we just copy the region that needs to be painted
-        # from the off-screen buffer.
-        cr.set_source_surface(self.surface, 0, 0)
-        cr.paint()
+        # Only draw the consensus sequence if the clip region includes it.
+        cons_top = self.al_top + self.fheight*self.numseqs + self.padding
+        cons_bottom = cons_top + self.fheight
+        if not((cons_top > endy) or (cons_bottom < starty)):
+            self.drawConsensus(startindex, endindex, cr)
 
         return False
 
@@ -587,7 +549,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         inclusive.
         """
         x = startindex * self.fwidth
-        rwidth = (endindex-startindex+1)*self.fwidth
 
         align1 = self.cons.getAlignedSequence(0)
         if self.numseqs == 2:
@@ -608,18 +569,19 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
             x = index * self.fwidth
             y = self.margins
 
+            # Check if this position should be drawn highlighted.
+            highlight = (index == self.highlighted) or (index == self.lastx)
+
             # Draw the base from the first aligned sequence.
-            self.drawAlignmentBase(align1[index], x, self.al_top, cr)
+            self.drawAlignmentBase(
+                align1[index], x, self.al_top, cr, highlight
+            )
 
             # Draw the base from the second aligned sequence, if present.
             if self.numseqs == 2:
                 self.drawAlignmentBase(
-                    align2[index], x, self.al_top + self.fheight, cr
+                    align2[index], x, self.al_top + self.fheight, cr, highlight
                 )
-
-        # Restore the alignment selection, if any.
-        if (self.highlighted >= startindex) and (self.highlighted <= endindex):
-            self.highlightAlignment(self.highlighted, True, cr)
 
     def drawAlignmentBase(self, base, x, y, cr, invert=False):
         if invert:
@@ -650,13 +612,7 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         # calculate the y-coordinate of the top of the working sequence ribbon
         y = self.al_top + self.fheight*self.numseqs + self.padding
 
-        # draw the gray background
-        cr.set_source_rgba(*parseHTMLColorStr('#d2d2d2'))
-        cr.rectangle(startx, y - self.padding/2, rwidth,
-                self.fheight + self.padding/2 + self.margins)
-        cr.fill()
-
-        # draw the white background for the sequence characters
+        # Draw the white background for the sequence characters.
         cr.set_source_rgba(1.0, 1.0, 1.0)
         cr.rectangle(startx, y, rwidth, self.fheight)
         cr.fill()
