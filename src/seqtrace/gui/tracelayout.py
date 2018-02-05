@@ -59,9 +59,28 @@ class SequenceTraceLayout(Gtk.VBox):
             self.scroll_locked = False
 
         # Register callbacks for the consensus sequence viewer.
-        self.consv.getConsensusSequenceViewer().registerObserver('alignment_clicked', self.alignmentClicked)
+        self.consv.getConsensusSequenceViewer().registerObserver(
+            'alignment_clicked', self.alignmentClicked
+        )
 
         self.connect('destroy', self.destroyed)
+
+    def getFontDescription(self):
+        """
+        Returns the font description used by the layout components.  (Actually,
+        returns only the font description used by the first
+        SequenceTraceViewer, which should be the same as for the other
+        components.)
+        """
+        return self.seqt_viewers[0].getFontDescription()
+
+    def setFontDescription(self, fontdesc):
+        """
+        Sets the font description to be used by the layout components
+        (SequenceTraceViewer(s) and the ScrolledConsensusSequenceViewer).
+        """
+        for viewer in self.seqt_viewers:
+            viewer.setFontDescriptionAndRescale(fontdesc)
 
     def alignmentClicked(self, seqnum, seq1index, seq2index):
         # If there are two trace viewers and their scrolling is synchronized,

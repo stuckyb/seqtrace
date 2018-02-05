@@ -173,6 +173,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             <menuitem action="Recalc_Consens" />
         </menu>
         <menu action="View">
+            <menuitem action="Select_Font" />
             <menuitem action="Scroll_Lock" />
         </menu>
         </menubar>
@@ -210,7 +211,8 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             ('Copy_Consens', None, 'C_opy working sequence', None, 'Copy the working sequence to the clipboard', self.copyFullConsensus),
             ('Copy_Raw', None, 'Co_py raw sequence(s)', None, 'Copy the raw sequence(s) to the clipboard', self.copyRawSequences),
             ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
-            ('View', None, '_View')
+            ('View', None, '_View'),
+            ('Select_Font', None, 'Select _font...', None, 'Select the font to use for the sequencing trace display', self.selectFont)
         ])
 
         # These actions are enabled only when there are two sequencing traces
@@ -354,8 +356,12 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         self.vbox.pack_start(self.stlayout, True, True, 0)
 
         # Register callbacks for the consensus sequence viewer.
-        self.consview.getConsensusSequenceViewer().registerObserver('consensus_clicked', self.consensusSeqClicked)
-        self.consview.getConsensusSequenceViewer().registerObserver('selection_state', self.selectStateChange)
+        self.consview.getConsensusSequenceViewer().registerObserver(
+            'consensus_clicked', self.consensusSeqClicked
+        )
+        self.consview.getConsensusSequenceViewer().registerObserver(
+            'selection_state', self.selectStateChange
+        )
 
         # register callbacks for the consensus sequence model
         self.cons.registerObserver('undo_state_changed', self.undoStateChanged)
@@ -365,6 +371,22 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         if self.numseqs == 2:
             title += ', ' + self.seqt2.getFileName()
         self.set_title(title)
+
+    def selectFont(self, widget):
+        """
+        Displays a font chooser dialog and sets the chosen font as the new font
+        for the trace display.
+        """
+        fdiag = Gtk.FontChooserDialog(title='Font Selection', parent=self)
+        fdiag.set_font_desc(self.stlayout.getFontDescription())
+        fdiag.set_preview_text('A T G C')
+
+        result = fdiag.run()
+        if result == Gtk.ResponseType.OK:
+            newfont = fdiag.get_font_desc()
+            self.stlayout.setFontDescription(newfont)
+
+        fdiag.destroy()
 
     def lockScrolling(self, widget):
         """
