@@ -28,7 +28,6 @@ from seqtrace.gui.trace_decorators import (
     ScrollAndZoomSTVDecorator, FwdRevSTVDecorator
 )
 from seqtrace.gui.statusbar import ConsensSeqStatusBar
-import seqtrace.gui.pyperclip as pyperclip
 
 import xml.sax.saxutils
 import os
