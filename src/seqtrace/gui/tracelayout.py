@@ -79,8 +79,18 @@ class SequenceTraceLayout(Gtk.VBox):
         Sets the font description to be used by the layout components
         (SequenceTraceViewer(s) and the ScrolledConsensusSequenceViewer).
         """
+        # If there are two trace viewers and their scrolling is synchronized,
+        # unlock them before changing the font.
+        relock = self.scroll_locked
+        if self.scroll_locked:
+            self.unlockScrolling()
+
         for viewer in self.seqt_viewers:
             viewer.setFontDescriptionAndRescale(fontdesc)
+
+        # Relock the scrollbars, if needed.
+        if relock:
+            self.lockScrolling()
 
     def alignmentClicked(self, seqnum, seq1index, seq2index):
         # If there are two trace viewers and their scrolling is synchronized,
