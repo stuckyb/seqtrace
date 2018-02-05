@@ -139,9 +139,17 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         should use and rescaled the view window to match the new font metrics.
         """
         self.viewer.setFontDescription(fontdesc)
-        self.zoom_100 = self.calcZoom100ScaleFactor()
 
-        self.zoom(self.zoom_level)
+        new_zoom_100 = self.calcZoom100ScaleFactor()
+        if new_zoom_100 != self.zoom_100:
+            # We need to rescale the window, so use the zoom() method to handle
+            # the rescale.
+            self.zoom_100 = new_zoom_100
+            self.zoom(self.zoom_level)
+        else:
+            # No need to rescale, so just force a repaint of the trace viewer's
+            # drawing area.
+            self.viewer.getWidget().queue_draw()
 
     def zoom(self, level):
         z_scale = float(level) / 100 * self.zoom_100
