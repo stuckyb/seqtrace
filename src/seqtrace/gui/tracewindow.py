@@ -173,6 +173,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         </menu>
         <menu action="View">
             <menuitem action="Select_Font" />
+            <separator />
             <menuitem action="Scroll_Lock" />
         </menu>
         </menubar>
