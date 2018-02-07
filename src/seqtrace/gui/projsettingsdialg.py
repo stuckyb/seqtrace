@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright (C) 2018 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
@@ -435,3 +434,4 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
             self.qualtrim_basecnt_adj.set_value(winsize)
 
         self.qualtrim_basecnt_adj.set_upper(winsize)
+
