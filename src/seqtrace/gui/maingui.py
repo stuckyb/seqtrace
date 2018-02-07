@@ -18,8 +18,10 @@
 from seqtrace.core import sequencetrace
 from seqtrace.core.consens import ConsensSeqBuilder, ModifiableConsensSeqBuilder
 from seqtrace.core import stproject
+from seqtrace.core.stproject import SequenceTraceProject
+from seqtrace.core import stproject_io
 from seqtrace.core import seqwriter
-from seqtrace.core.stproject import SequenceTraceProject, ConsensSeqSettings
+from seqtrace.core.consens import ConsensSeqSettings
 from seqtrace.core.observable import Observable
 
 from seqtrace.gui.tracewindow import TraceWindow
@@ -720,10 +722,10 @@ class MainWindow(Gtk.Window, CommonDialogs):
         except IOError:
             self.showMessage('The project file "' + fname + '" could not be opened.  Verify that the file exists and that you have permission to read it.')
             return
-        except stproject.FileDataError:
+        except stproject_io.FileDataError:
             self.showMessage('The project file "' + fname + '" is corrupt or in an unrecognized format.')
             return
-        except stproject.FileFormatVersionError:
+        except stproject_io.FileFormatVersionError:
             self.showMessage('The file format version of "' + fname + '" is not supported by this version of the software.')
             return
 
