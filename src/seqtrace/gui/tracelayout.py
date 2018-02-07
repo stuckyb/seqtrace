@@ -92,6 +92,8 @@ class SequenceTraceLayout(Gtk.VBox):
         if relock:
             self.lockScrolling()
 
+        self.consv.setFontDescription(fontdesc)
+
     def alignmentClicked(self, seqnum, seq1index, seq2index):
         # If there are two trace viewers and their scrolling is synchronized,
         # unlock them before jumping to the clicked position in the alignment.
