@@ -19,6 +19,7 @@ import os
 import gi
 gi.require_version('Pango', '1.0')
 from gi.repository import Pango
+import tempfile, shutil
 
 from seqtrace.core.stproject import *
 from seqtrace.gui import getDefaultFont
@@ -29,7 +30,7 @@ from seqtrace.gui import getDefaultFont
 # project files.
 class TestProject(unittest.TestCase):
     def setUp(self):
-        self.filename = 'test.tvp'
+        self.filename = 'test.str'
         self.tracefiles = ('fwd1.ztr', 'rev1.ztr', 'fwd2.ztr', 'rev2.ztr', 'fwd3.ztr')
 
         self.proj = SequenceTraceProject()
@@ -389,6 +390,11 @@ class TestProject(unittest.TestCase):
                 self.assertFalse(item.getIsReverse())
 
     def test_readWriteProject(self):
+        # Write the test project file in a temporary directory.
+        tmpdir = tempfile.mkdtemp()
+        tmpfpath = os.path.join(tmpdir, self.filename)
+        self.proj.setProjectFileName(tmpfpath)
+
         self.proj.addFiles(self.tracefiles)
         self.proj.setFwdTraceSearchStr('_F_')
         self.proj.setRevTraceSearchStr('_R_')
@@ -441,14 +447,16 @@ class TestProject(unittest.TestCase):
 
         self.proj.saveProjectFile()
         self.proj.clearProject()
-        self.proj.loadProjectFile(self.filename)
+        self.proj.loadProjectFile(tmpfpath)
         
         # Test if the project properties saved properly.
         self.assertFalse(self.proj.isProjectEmpty())
         self.assertEqual(self.proj.getFwdTraceSearchStr(), '_F_')
         self.assertEqual(self.proj.getRevTraceSearchStr(), '_R_')
         self.assertEqual(self.proj.getTraceFileDir(), 'tracedir')
-        self.assertEqual(self.proj.getAbsTraceFileDir(), os.path.join(os.getcwd(), 'tracedir'))
+        self.assertEqual(
+            self.proj.getAbsTraceFileDir(), os.path.join(tmpdir, 'tracedir')
+        )
         self.assertEqual(newfontstr, self.proj.getFont().to_string())
 
         # Test if the consensus settings saved properly.
@@ -465,13 +473,15 @@ class TestProject(unittest.TestCase):
         self.assertEqual(csettings.getQualityTrimParams(), (20, 18))
 
         self.proj.setTraceFileDir('.')
-        for file in self.tracefiles:
-            self.assertTrue(self.proj.isFileInProject(file))
+        for fname in self.tracefiles:
+            self.assertTrue(
+                self.proj.isFileInProject(os.path.join(tmpdir, fname))
+            )
 
         self._checkProjectItems(self.proj, child1name, child2name)
 
-        # remove the test project file
-        os.unlink(self.proj.getProjectFileName())
+        # Remove the temporary directory.
+        shutil.rmtree(tmpdir)
 
     def test_readVer9Project(self):
         """

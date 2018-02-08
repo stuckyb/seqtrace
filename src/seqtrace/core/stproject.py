@@ -446,13 +446,15 @@ class SequenceTraceProject(Observable):
         return self.project_file
 
     def setProjectFileName(self, fname):
-        # store the new file name as a full, normalized path
+        # Store the new file name as a full, normalized path.
         newpf = os.path.abspath(fname)
 
-        # if the current trace file folder is stored as a relative path, it needs to be updated
-        # for the new project path
+        # If the current trace file folder is stored as a relative path, it
+        # needs to be updated for the new project path.
         if not(os.path.isabs(self.getTraceFileDir())):
-            self.setTraceFileDir(os.path.relpath(self.getAbsTraceFileDir(), os.path.dirname(newpf)))
+            self.setTraceFileDir(
+                os.path.relpath(self.getAbsTraceFileDir(), os.path.dirname(newpf))
+            )
 
         self.project_file = newpf
         self.notifyObservers('project_filename_change', (self.project_file,))
