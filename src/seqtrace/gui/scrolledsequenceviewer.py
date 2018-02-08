@@ -93,7 +93,7 @@ class ScrolledConsensusSequenceViewer(Gtk.ScrolledWindow):
     def getConsensusSequenceViewer(self):
         return self.da
 
-    def setFontDescription(self, fontdesc, adjust_scroll=False):
+    def setFontDescription(self, fontdesc, adjust_scroll=True):
         """
         Sets a new font description for the consensus sequence display and
         tracks display size changes so that the scroll bar position can be
