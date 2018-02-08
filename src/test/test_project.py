@@ -24,8 +24,9 @@ from seqtrace.core.stproject import *
 from seqtrace.gui import getDefaultFont
 
 
-# This test fixture provides fairly complete coverage of project functionality, project iterators,
-# and project items, and good coverage of reading/writing project files.
+# This test fixture provides fairly complete coverage of project functionality,
+# project iterators, and project items, and good coverage of reading/writing
+# project files.
 class TestProject(unittest.TestCase):
     def setUp(self):
         self.filename = 'test.tvp'
@@ -344,6 +345,49 @@ class TestProject(unittest.TestCase):
             parent = child.getParent()
             self.assertEqual(parent.getName(), 'new_item')
 
+    def _checkProjectItems(self, project, child1name, child2name):
+        """
+        Common code used for testing a standard set of items read from a saved
+        project file.
+        """
+        for (cnt, item) in enumerate(project):
+            if not(item.isFile()):
+                # test the properties of the associative item and its child items
+                self.assertEqual(item.getName(), 'new item')
+                self.assertEqual(item.getNotes(), 'sample notes')
+                self.assertEqual(item.getCompactConsSequence(), 'AATTAATTGGCC')
+                self.assertEqual(item.getFullConsSequence(), 'AA TT AA TT GGCC')
+                self.assertTrue(item.hasSequence())
+                self.assertTrue(item.getUseSequence())
+
+                children = item.getChildren()
+                child1 = children[0]
+                child2 = children[1]
+                self.assertEqual(len(children), 2)
+                self.assertEqual(child1.getName(), child1name)
+                self.assertEqual(child2.getName(), child2name)
+                self.assertFalse(child1.getIsReverse())
+                self.assertTrue(child2.getIsReverse())
+                self.assertEqual(child1.getCompactConsSequence(), 'CATCATGATCATTAGTAC')
+                self.assertEqual(child1.getFullConsSequence(), 'CATCATGATCAT TAGTAC')
+                self.assertTrue(child1.hasSequence())
+                self.assertEqual(child2.getCompactConsSequence(), '')
+                self.assertEqual(child2.getFullConsSequence(), '')
+                self.assertFalse(child2.hasSequence())
+
+                for child in children:
+                    self.assertTrue(child.hasParent())
+                    self.assertEqual(child.getParent().getName(), 'new item')
+                    self.assertFalse(child.getUseSequence())
+            else:
+                # test the properties of the top-level file items
+                self.assertEqual(item.getNotes(), str(cnt))
+                self.assertEqual(item.getCompactConsSequence(), 'AT' * cnt)
+                self.assertEqual(item.getFullConsSequence(), 'AT' * cnt)
+                self.assertEqual(item.hasSequence(), cnt != 0)
+                self.assertFalse(item.getUseSequence())
+                self.assertFalse(item.getIsReverse())
+
     def test_readWriteProject(self):
         self.proj.addFiles(self.tracefiles)
         self.proj.setFwdTraceSearchStr('_F_')
@@ -424,44 +468,84 @@ class TestProject(unittest.TestCase):
         for file in self.tracefiles:
             self.assertTrue(self.proj.isFileInProject(file))
 
-        for (cnt, item) in enumerate(self.proj):
-            if not(item.isFile()):
-                # test the properties of the associative item and its child items
-                self.assertEqual(item.getName(), 'new item')
-                self.assertEqual(item.getNotes(), 'sample notes')
-                self.assertEqual(item.getCompactConsSequence(), 'AATTAATTGGCC')
-                self.assertEqual(item.getFullConsSequence(), 'AA TT AA TT GGCC')
-                self.assertTrue(item.hasSequence())
-                self.assertTrue(item.getUseSequence())
-
-                children = item.getChildren()
-                child1 = children[0]
-                child2 = children[1]
-                self.assertEqual(len(children), 2)
-                self.assertEqual(child1.getName(), child1name)
-                self.assertEqual(child2.getName(), child2name)
-                self.assertFalse(child1.getIsReverse())
-                self.assertTrue(child2.getIsReverse())
-                self.assertEqual(child1.getCompactConsSequence(), 'CATCATGATCATTAGTAC')
-                self.assertEqual(child1.getFullConsSequence(), 'CATCATGATCAT TAGTAC')
-                self.assertTrue(child1.hasSequence())
-                self.assertEqual(child2.getCompactConsSequence(), '')
-                self.assertEqual(child2.getFullConsSequence(), '')
-                self.assertFalse(child2.hasSequence())
-
-                for child in children:
-                    self.assertTrue(child.hasParent())
-                    self.assertEqual(child.getParent().getName(), 'new item')
-                    self.assertFalse(child.getUseSequence())
-            else:
-                # test the properties of the top-level file items
-                self.assertEqual(item.getNotes(), str(cnt))
-                self.assertEqual(item.getCompactConsSequence(), 'AT' * cnt)
-                self.assertEqual(item.getFullConsSequence(), 'AT' * cnt)
-                self.assertEqual(item.hasSequence(), cnt != 0)
-                self.assertFalse(item.getUseSequence())
-                self.assertFalse(item.getIsReverse())
+        self._checkProjectItems(self.proj, child1name, child2name)
 
         # remove the test project file
         os.unlink(self.proj.getProjectFileName())
+
+    def test_readVer9Project(self):
+        """
+        Tests reading a version 0.9 project file and conversion to 0.10 format.
+        """
+        self.proj.loadProjectFile('test_data/test_project-0.9.str')
+        
+        # Test if the project properties are correct.
+        self.assertFalse(self.proj.isProjectEmpty())
+        self.assertEqual(self.proj.getFwdTraceSearchStr(), '_F_')
+        self.assertEqual(self.proj.getRevTraceSearchStr(), '_R_')
+        self.assertEqual(self.proj.getTraceFileDir(), 'tracedir')
+        self.assertEqual(
+            self.proj.getAbsTraceFileDir(),
+            os.path.join(os.getcwd(), 'test_data/tracedir')
+        )
+        self.assertEqual(
+            getDefaultFont().to_string(), self.proj.getFont().to_string()
+        )
+
+        # Test if the consensus settings are correct.
+        csettings = self.proj.getConsensSeqSettings()
+        self.assertEqual(csettings.getMinConfScore(), 20)
+        self.assertEqual(csettings.getConsensusAlgorithm(), 'legacy')
+        self.assertFalse(csettings.getTrimConsensus())
+        self.assertTrue(csettings.getTrimPrimers())
+        self.assertEqual(csettings.getPrimerMatchThreshold(), 0.2)
+        self.assertEqual(csettings.getForwardPrimer(), 'AAAT')
+        self.assertEqual(csettings.getReversePrimer(), 'GGGC')
+        self.assertTrue(csettings.getTrimEndGaps())
+        self.assertFalse(csettings.getDoQualityTrim())
+        self.assertEqual(csettings.getQualityTrimParams(), (20, 18))
+
+        self.proj.setTraceFileDir('.')
+        for fname in self.tracefiles:
+            self.assertTrue(self.proj.isFileInProject('test_data/' + fname))
+
+        self._checkProjectItems(self.proj, 'fwd2.ztr', 'rev2.ztr')
+
+    def test_readVer8Project(self):
+        """
+        Tests reading a version 0.8 project file and conversion to 0.10 format.
+        """
+        self.proj.loadProjectFile('test_data/test_project-0.8.str')
+        
+        # Test if the project properties are correct.
+        self.assertFalse(self.proj.isProjectEmpty())
+        self.assertEqual(self.proj.getFwdTraceSearchStr(), '_F_')
+        self.assertEqual(self.proj.getRevTraceSearchStr(), '_R_')
+        self.assertEqual(self.proj.getTraceFileDir(), 'tracedir')
+        self.assertEqual(
+            self.proj.getAbsTraceFileDir(),
+            os.path.join(os.getcwd(), 'test_data/tracedir')
+        )
+        self.assertEqual(
+            getDefaultFont().to_string(), self.proj.getFont().to_string()
+        )
+
+        # Test if the consensus settings are correct.
+        csettings = self.proj.getConsensSeqSettings()
+        self.assertEqual(csettings.getMinConfScore(), 20)
+        self.assertEqual(csettings.getConsensusAlgorithm(), 'legacy')
+        self.assertFalse(csettings.getTrimConsensus())
+        self.assertFalse(csettings.getTrimPrimers())
+        self.assertEqual(csettings.getPrimerMatchThreshold(), 0.8)
+        self.assertEqual(csettings.getForwardPrimer(), '')
+        self.assertEqual(csettings.getReversePrimer(), '')
+        self.assertFalse(csettings.getTrimEndGaps())
+        self.assertFalse(csettings.getDoQualityTrim())
+        self.assertEqual(csettings.getQualityTrimParams(), (10, 6))
+
+        self.proj.setTraceFileDir('.')
+        for fname in self.tracefiles:
+            self.assertTrue(self.proj.isFileInProject('test_data/' + fname))
+
+        self._checkProjectItems(self.proj, 'fwd2.ztr', 'rev2.ztr')
 

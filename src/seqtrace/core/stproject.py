@@ -472,11 +472,15 @@ class SequenceTraceProject(Observable):
         return os.path.abspath(os.path.join(self.getProjectDir(), self.getTraceFileDir()))
 
     def isFileInProject(self, fpath):
+        """
+        Tests if a given file is already in the project.  Note that to avoid
+        unexpected results, fpath should be an absolute path.
+        """
         rel_fpath = os.path.relpath(fpath, self.getAbsTraceFileDir())
 
-        # search for the file name in the treestore
-        # this algorithm avoids recursive calls but assumes that the tree
-        # is no more than two levels deep
+        # Search for the file name in the treestore.  This algorithm avoids
+        # recursive calls but assumes that the tree is no more than two levels
+        # deep.
         for row in self.ts:
             if (row[NODE_TYPE] == 'file') and (row[FILE_NAME] == rel_fpath):
                 return True

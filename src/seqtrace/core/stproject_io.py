@@ -16,6 +16,12 @@
 
 import pickle
 from seqtrace.core.consens import ConsensSeqSettings
+from seqtrace.gui import getDefaultFont
+
+
+# Define the supported file format versions and the current version.
+SUPPORTED_VERSIONS = ('0.8', '0.9', '0.10')
+CURRENT_VERSION = '0.10'
 
 
 class SeqTraceProjWriter:
@@ -32,7 +38,7 @@ class SeqTraceProjWriter:
         self.proj_data['consseqsettings'] = {}
         self.proj_data['items'] = []
 
-        self.proj_data['formatversion'] = '0.10'
+        self.proj_data['formatversion'] = CURRENT_VERSION
 
     def addProperty(self, key, value):
         self.proj_data['properties'][key] = value
@@ -91,8 +97,11 @@ class SeqTraceProjReader:
             raise FileDataError
 
         # Check the project data file format version.
-        if self.proj_data['formatversion'] not in ('0.8', '0.9', '0.10'):
+        if self.proj_data['formatversion'] not in SUPPORTED_VERSIONS:
             raise FileFormatVersionError
+
+        if self.proj_data['formatversion'] != CURRENT_VERSION:
+            self.convertOldProjectFormat()
 
         # A simple check to make sure the required data are present.
         if (('properties' not in self.proj_data)
@@ -103,30 +112,18 @@ class SeqTraceProjReader:
     def getProperty(self, key):
         return self.proj_data['properties'][key]
 
-    def getConsensSeqSettings(self):
-        settings = ConsensSeqSettings()
-
-        # Check if we got an old file format, and convert it if needed.
+    def convertOldProjectFormat(self):
+        """
+        Converts an older project format to the current project format.
+        """
         if self.proj_data['formatversion'] == '0.8':
             self.convertSettings8To9()
+            self.proj_data['formatversion'] = '0.9'
 
-        settings.setMinConfScore(self.proj_data['consseqsettings']['min_confscore'])
-        settings.setConsensusAlgorithm(self.proj_data['consseqsettings']['consensus_algorithm'])
-
-        settings.setTrimConsensus(self.proj_data['consseqsettings']['trim_consensus'])
-        settings.setTrimEndGaps(self.proj_data['consseqsettings']['trim_endgaps'])
-
-        settings.setTrimPrimers(self.proj_data['consseqsettings']['trim_primers'])
-        settings.setPrimerMatchThreshold(self.proj_data['consseqsettings']['primermatch_threshold'])
-        settings.setForwardPrimer(self.proj_data['consseqsettings']['forward_primer'])
-        settings.setReversePrimer(self.proj_data['consseqsettings']['reverse_primer'])
-
-        settings.setDoQualityTrim(self.proj_data['consseqsettings']['do_qualitytrim'])
-        settings.setQualityTrimParams(
-            self.proj_data['consseqsettings']['qualitytrim_winsize'], self.proj_data['consseqsettings']['qualitytrim_basecnt']
-            )
-
-        return settings
+        if self.proj_data['formatversion'] == '0.9':
+            fontstr = getDefaultFont().to_string()
+            self.proj_data['properties']['default_font'] = fontstr
+            self.proj_data['formatversion'] = '0.10'
 
     def convertSettings8To9(self):
         """
@@ -147,6 +144,27 @@ class SeqTraceProjReader:
         self.proj_data['consseqsettings']['primermatch_threshold'] = 0.8
         self.proj_data['consseqsettings']['forward_primer'] = ''
         self.proj_data['consseqsettings']['reverse_primer'] = ''
+
+    def getConsensSeqSettings(self):
+        settings = ConsensSeqSettings()
+
+        settings.setMinConfScore(self.proj_data['consseqsettings']['min_confscore'])
+        settings.setConsensusAlgorithm(self.proj_data['consseqsettings']['consensus_algorithm'])
+
+        settings.setTrimConsensus(self.proj_data['consseqsettings']['trim_consensus'])
+        settings.setTrimEndGaps(self.proj_data['consseqsettings']['trim_endgaps'])
+
+        settings.setTrimPrimers(self.proj_data['consseqsettings']['trim_primers'])
+        settings.setPrimerMatchThreshold(self.proj_data['consseqsettings']['primermatch_threshold'])
+        settings.setForwardPrimer(self.proj_data['consseqsettings']['forward_primer'])
+        settings.setReversePrimer(self.proj_data['consseqsettings']['reverse_primer'])
+
+        settings.setDoQualityTrim(self.proj_data['consseqsettings']['do_qualitytrim'])
+        settings.setQualityTrimParams(
+            self.proj_data['consseqsettings']['qualitytrim_winsize'], self.proj_data['consseqsettings']['qualitytrim_basecnt']
+            )
+
+        return settings
 
     def __iter__(self):
         self.iter_index = 0
