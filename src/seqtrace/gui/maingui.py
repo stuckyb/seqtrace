@@ -407,28 +407,45 @@ class MainWindow(Gtk.Window, CommonDialogs):
 
     def projViewSelectChanged(self, sel_cnt):
         if sel_cnt == 0:
-            # disable the selection-dependent UI elements
+            # Disable the selection-dependent UI elements.
             self.sel_proj_ag.set_sensitive(False)
 
             self.view_has_selection = False
         else:
-            # enable the selection-dependent UI elements, if needed
+            # Enable the selection-dependent UI elements, if needed.
             if not(self.view_has_selection):
                 self.sel_proj_ag.set_sensitive(True)
                 self.view_has_selection = True
 
-            # handle a few UI elements with more specific selection requirements
+            # Handle a few UI elements with more specific selection
+            # requirements.
+
             assoc_files = self.sel_proj_ag.get_action('Associate_Files')
-            if (sel_cnt == 2) and not(assoc_files.get_sensitive()):
-                assoc_files.set_sensitive(True)
-            elif (sel_cnt != 2) and assoc_files.get_sensitive():
-                assoc_files.set_sensitive(False)
+            enabled = False
+            if sel_cnt == 2:
+                # Make sure the selected items are both files.
+                items = self.projview.getSelection()
+                if items[0].isFile() and items[1].isFile():
+                    enabled = True
+            if enabled != assoc_files.get_sensitive():
+                assoc_files.set_sensitive(enabled)
 
             auto_assoc = self.sel_proj_ag.get_action('Auto_Associate_Selected')
-            if (sel_cnt >= 2) and not(auto_assoc.get_sensitive()):
-                auto_assoc.set_sensitive(True)
-            elif (sel_cnt < 2) and auto_assoc.get_sensitive():
-                auto_assoc.set_sensitive(False)
+            enabled = False
+            if sel_cnt >= 2:
+                enabled = True
+            if enabled != auto_assoc.get_sensitive():
+                auto_assoc.set_sensitive(enabled)
+
+            dissoc_files = self.sel_proj_ag.get_action('Dissociate_Files')
+            enabled = False
+            # Make sure at least one selected item is a group.
+            items = self.projview.getSelection()
+            for item in items:
+                if not(item.isFile()):
+                    enabled = True
+            if enabled != dissoc_files.get_sensitive():
+                dissoc_files.set_sensitive(enabled)
 
     def getFileExtension(self):
         return self.fextension
