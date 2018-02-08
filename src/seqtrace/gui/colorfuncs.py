@@ -17,7 +17,6 @@
 # This module defines several functions for working with Gdk.RGBA colors.
 
 
-import gi
 from gi.repository import Gdk
 
 

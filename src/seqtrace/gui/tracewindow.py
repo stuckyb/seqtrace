@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from seqtrace.core import sequencetrace
 from seqtrace.core import seqwriter
 from seqtrace.core.consens import ConsensSeqBuilder
 from seqtrace.core.observable import Observable

@@ -21,10 +21,7 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 import cairo
 from gi.repository import Pango, PangoCairo
-import os.path
 
-from seqtrace.core import sequencetrace
-from seqtrace.core import seqwriter
 from colorfuncs import parseHTMLColorStr, colorFromHSV
 from seqtrace.gui import getDefaultFont
 
@@ -151,7 +148,7 @@ class SequenceTraceViewer:
         #print clipr
         startx = clipr[0]
         dwidth = clipr[2] - clipr[0]
-        height = self.drawingarea.get_allocated_height()
+        #height = self.drawingarea.get_allocated_height()
         #print 'startx: {0}, dwidth: {1}, height: {2}'.format(startx, dwidth, height)
         if startx > 0:
             # Becase the Cairo coordinates are shifted by +0.5 for the trace
@@ -378,12 +375,9 @@ class SequenceTraceViewer:
         """
         width = self.drawingarea.get_allocated_width()
         height = self.drawingarea.get_allocated_height()
-        drawheight = height - self.bottom_margin - self.bcheight
 
         samps = self.seqt.getTraceLength()
         xscale = float(width) / samps
-        yscale = float(drawheight) / self.sigmax
-        y = drawheight + self.bcpadding
 
         hlwidth = self.getConfBarWidth()
 
