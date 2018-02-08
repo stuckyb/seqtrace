@@ -18,7 +18,9 @@ from collections import deque
 
 import gi
 gi.require_version('Gtk', '3.0')
+gi.require_version('Pango', '1.0')
 from gi.repository import Gtk
+from gi.repository import Pango
 
 import os.path
 
@@ -286,19 +288,41 @@ class SequenceTraceProject(Observable):
         self.setFwdTraceSearchStr(reader.getProperty('fwd_trace_searchstr'))
         self.setRevTraceSearchStr(reader.getProperty('rev_trace_searchstr'))
 
+        # Load the font from the string description.  One might think that this
+        # could crash if a required font is not installed on a user's system,
+        # but it turns out that Pango handles these situations quite
+        # gracefully.  For example, if the font string is "fake font 12", Pango
+        # will use a default font face and still preserve the preferred size
+        # (12, in this case).
+        fontstr = reader.getProperty('default_font')
+        fontdesc = Pango.FontDescription.from_string(fontstr)
+        self.setFont(fontdesc)
+
         self.consseqsettings.copyFrom(reader.getConsensSeqSettings())
 
-        # load the data into the TreeStore
+        # Load the data into the TreeStore.
         for item in reader:
-            row = self.ts.append(None, (item.getName(), item.getItemType(), self.idnum, item.getUseSequence(), 
-                item.getCompactConsSequence(), item.getFullConsSequence(), item.hasSequence(), item.getNotes(), item.getIsReverse()))
+            row = self.ts.append(
+                None, (
+                    item.getName(), item.getItemType(), self.idnum,
+                    item.getUseSequence(), item.getCompactConsSequence(),
+                    item.getFullConsSequence(), item.hasSequence(),
+                    item.getNotes(), item.getIsReverse()
+                )
+            )
             self.idnum += 1
             if item.isFile():
                 self.num_files += 1
 
             for child in item.getChildren():
-                self.ts.append(row, (child.getName(), child.getItemType(), self.idnum, child.getUseSequence(), 
-                child.getCompactConsSequence(), child.getFullConsSequence(), child.hasSequence(), child.getNotes(), child.getIsReverse()))
+                self.ts.append(
+                    row, (
+                        child.getName(), child.getItemType(), self.idnum,
+                        child.getUseSequence(), child.getCompactConsSequence(),
+                        child.getFullConsSequence(), child.hasSequence(),
+                        child.getNotes(), child.getIsReverse()
+                    )
+                )
                 self.idnum += 1
                 self.num_files += 1
 
@@ -313,6 +337,7 @@ class SequenceTraceProject(Observable):
         writer.addProperty('trace_file_dir', self.trace_file_dir)
         writer.addProperty('fwd_trace_searchstr', self.fwd_trace_searchstr)
         writer.addProperty('rev_trace_searchstr', self.rev_trace_searchstr)
+        writer.addProperty('default_font', self.getFont().to_string())
         writer.setConsensSeqSettings(self.consseqsettings)
 
         # get each item from the project

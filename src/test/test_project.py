@@ -350,6 +350,13 @@ class TestProject(unittest.TestCase):
         self.proj.setRevTraceSearchStr('_R_')
         self.proj.setTraceFileDir('tracedir')
 
+        # Set a non-default font.
+        newfont = getDefaultFont()
+        newfont.set_size(newfont.get_size() + 1)
+        newfontstr = newfont.to_string()
+        self.assertNotEqual(newfontstr, self.proj.getFont().to_string())
+        self.proj.setFont(newfont)
+
         # Set all consensus settings.
         csettings = self.proj.getConsensSeqSettings()
         csettings.setMinConfScore(20)
@@ -364,7 +371,9 @@ class TestProject(unittest.TestCase):
         csettings.setQualityTrimParams(20, 18)
 
         # Create an associative item.
-        a_item = self.proj.associateItems((self.proj.getItemById(2), self.proj.getItemById(3)), 'new item')
+        a_item = self.proj.associateItems(
+            (self.proj.getItemById(2), self.proj.getItemById(3)), 'new item'
+        )
 
         # Set some properties of the associative item and its children.
         a_item.setNotes('sample notes')
@@ -396,6 +405,7 @@ class TestProject(unittest.TestCase):
         self.assertEqual(self.proj.getRevTraceSearchStr(), '_R_')
         self.assertEqual(self.proj.getTraceFileDir(), 'tracedir')
         self.assertEqual(self.proj.getAbsTraceFileDir(), os.path.join(os.getcwd(), 'tracedir'))
+        self.assertEqual(newfontstr, self.proj.getFont().to_string())
 
         # Test if the consensus settings saved properly.
         csettings = self.proj.getConsensSeqSettings()

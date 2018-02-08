@@ -32,7 +32,7 @@ class SeqTraceProjWriter:
         self.proj_data['consseqsettings'] = {}
         self.proj_data['items'] = []
 
-        self.proj_data['formatversion'] = '0.9'
+        self.proj_data['formatversion'] = '0.10'
 
     def addProperty(self, key, value):
         self.proj_data['properties'][key] = value
@@ -91,7 +91,7 @@ class SeqTraceProjReader:
             raise FileDataError
 
         # Check the project data file format version.
-        if self.proj_data['formatversion'] not in ('0.8', '0.9'):
+        if self.proj_data['formatversion'] not in ('0.8', '0.9', '0.10'):
             raise FileFormatVersionError
 
         # A simple check to make sure the required data are present.
@@ -163,6 +163,11 @@ class SeqTraceProjReader:
 
 
 class ProjectItemData:
+    """
+    This class has nearly the same interface as TreeStoreProjectItem, but it
+    does not depend on any of the Gtk tree store components and is therefore
+    more suitable for exporting and importing project items from data files.
+    """
     def __init__(self):
         self.parent = None
         self.children = ()
@@ -179,7 +184,9 @@ class ProjectItemData:
         self.setId(item.getId())
         self.setName(item.getName())
         self.setItemType(item.getItemType())
-        self.setConsensusSequence(item.getCompactConsSequence(), item.getFullConsSequence())
+        self.setConsensusSequence(
+            item.getCompactConsSequence(), item.getFullConsSequence()
+        )
         self.setHasSequence(item.hasSequence())
         self.setUseSequence(item.getUseSequence())
         self.setNotes(item.getNotes())
@@ -196,11 +203,12 @@ class ProjectItemData:
 
     def toDict(self):
         """
-        Convert the item's data, including any children, to a simple Python dictionary.
-        The result will be similar, but not identical, to the __dict__ builtin.  This method
-        is designed to be used for saving project data to an external file in a way that does
-        not depend on package and module names and structures.  This makes it more robust than
-        simply serializing a ProjectItemData instance directly.
+        Convert the item's data, including any children, to a simple Python
+        dictionary.  The result will be similar, but not identical, to the
+        __dict__ builtin.  This method is designed to be used for saving
+        project data to an external file in a way that does not depend on
+        package and module names and structures.  This makes it more robust
+        than simply serializing a ProjectItemData instance directly.
         """
         res = {}
         res['id'] = self.getId()
