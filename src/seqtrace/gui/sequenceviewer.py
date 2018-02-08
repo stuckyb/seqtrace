@@ -14,8 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from seqtrace.core.observable import Observable
-
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('PangoCairo', '1.0')
@@ -25,8 +23,9 @@ from gi.repository import Pango
 from gi.repository import PangoCairo
 import cairo
 
-# Get the Gdk.RGBA convenience functions.
+from seqtrace.core.observable import Observable
 from colorfuncs import parseHTMLColorStr, getInverseColor
+from seqtrace.gui import getDefaultFont
 
 
 class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
@@ -108,10 +107,7 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         # Get the default font used by Gtk+ and use it as the default for the
         # sequence display.
-        fontstr = Gtk.Settings.get_default().props.gtk_font_name
-        default_font = Pango.FontDescription.from_string(fontstr)
-        #print default_font.to_string()
-        self.setFontDescription(default_font)
+        self.setFontDescription(getDefaultFont())
 
         # The index of the currently highlighted position in the alignment.
         self.lastx = -1

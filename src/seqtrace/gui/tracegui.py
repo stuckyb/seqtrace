@@ -14,9 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from seqtrace.core import sequencetrace
-from seqtrace.core import seqwriter
-
 import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('PangoCairo', '1.0')
@@ -26,8 +23,10 @@ import cairo
 from gi.repository import Pango, PangoCairo
 import os.path
 
-# Get the Gdk.RGBA convenience functions.
+from seqtrace.core import sequencetrace
+from seqtrace.core import seqwriter
 from colorfuncs import parseHTMLColorStr, colorFromHSV
+from seqtrace.gui import getDefaultFont
 
 
 class SequenceTraceViewer:
@@ -90,9 +89,7 @@ class SequenceTraceViewer:
 
         # Get the default font used by Gtk+ and use it as the default for the
         # trace display.
-        fontstr = Gtk.Settings.get_default().props.gtk_font_name
-        default_font = Pango.FontDescription.from_string(fontstr)
-        self.setFontDescription(default_font)
+        self.setFontDescription(getDefaultFont())
 
         self.drawingarea.connect('draw', self.doDraw)
 

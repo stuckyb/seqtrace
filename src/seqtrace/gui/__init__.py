@@ -18,6 +18,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from gi.repository import GdkPixbuf
+from gi.repository import Pango
 import os
 import sys
 
@@ -36,4 +37,14 @@ Gtk.Window.set_default_icon_list((
     GdkPixbuf.Pixbuf.new_from_file(images_folder + '/icons/48.png'),
     GdkPixbuf.Pixbuf.new_from_file(images_folder + '/icons/64.png')
 ))
+
+
+def getDefaultFont():
+    """
+    Returns the default font used by Gtk+ as a Pango.FontDescription.
+    """
+    fontstr = Gtk.Settings.get_default().props.gtk_font_name
+    default_font = Pango.FontDescription.from_string(fontstr)
+
+    return default_font
 
