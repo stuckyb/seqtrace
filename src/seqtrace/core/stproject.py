@@ -432,7 +432,9 @@ class SequenceTraceProject(Observable):
         return self.default_font
 
     def setFont(self, fontdesc):
-        self.default_font = fontdesc
+        if self.default_font.to_string() != fontdesc.to_string():
+            self.default_font = fontdesc
+            self.setSaveState(False)
 
     def getSaveState(self):
         return self.save_state
