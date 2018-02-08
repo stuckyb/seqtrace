@@ -86,10 +86,14 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
 
         tracevb.pack_start(vb, True, True, 0)
 
-        # Set up UI components for the forward/reverse trace file search strings.
+        # Set up UI components for the forward/reverse trace file search
+        # strings.
         vb = Gtk.VBox()
         tfs_hb1 = Gtk.HBox()
-        tfs_hb1.pack_start(Gtk.Label('Search strings for identifying forward and reverse trace files:'), False, True, 0)
+        tfs_hb1.pack_start(
+            Gtk.Label('Search strings for identifying forward and reverse trace files:'),
+            False, True, 0
+        )
 
         # Create a layout table for the labels and text entries.
         table = Gtk.Table(2, 2)
@@ -253,6 +257,25 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
 
         nb.append_page(vbpad, Gtk.Label(label='Sequence processing'))
 
+        # Create the UI components for the appearance tab.
+        mainvb = Gtk.VBox(False, 16)
+
+        hb1 = Gtk.HBox()
+        hb1.pack_start(Gtk.Label('Default trace/sequence font:  '), False, True, 0)
+        self.fontbutton = Gtk.FontButton()
+        self.fontbutton.set_font_desc(self.project.getFont())
+        self.fontbutton.set_use_font(True)
+        hb1.pack_start(self.fontbutton, False, True, 0)
+
+        mainvb.pack_start(hb1, True, True, 0)
+
+        # Use another VBox to get extra padding on the sides.
+        vbpad = Gtk.VBox(False, 0)
+        vbpad.set_border_width(tabpadding_sides)
+        vbpad.pack_start(mainvb, False, True, tabpadding_tops - tabpadding_sides)
+
+        nb.append_page(vbpad, Gtk.Label(label='Appearance'))
+
         self.vbox.pack_start(nb, True, True, 0)
 
         self.vbox.show_all()
@@ -341,21 +364,23 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
         self.project.setFwdTraceSearchStr(self.getFwdTraceSearchStr())
         self.project.setRevTraceSearchStr(self.getRevTraceSearchStr())
 
+        self.project.setFont(self.fontbutton.get_font_desc())
+
         cssettings = self.project.getConsensSeqSettings()
 
         # set all consensus sequence settings at once to only trigger a single
         # update event for any listeners
         cssettings.setAll(
-                self.getMinConfScore(),
-                self.getConsensusAlgorithm(),
-                self.autotrim_checkbox.get_active(),
-                self.trimgaps_checkbox.get_active(),
-                self.trimprimers_checkbox.get_active(),
-                float(self.primermatch_th_adj.get_value()) / 100.0,
-                self.getForwardPrimerStr(), self.getReversePrimerStr(),
-                self.qualtrim_checkbox.get_active(),
-                (int(self.qualtrim_winsize_adj.get_value()), int(self.qualtrim_basecnt_adj.get_value())),
-                )
+            self.getMinConfScore(),
+            self.getConsensusAlgorithm(),
+            self.autotrim_checkbox.get_active(),
+            self.trimgaps_checkbox.get_active(),
+            self.trimprimers_checkbox.get_active(),
+            float(self.primermatch_th_adj.get_value()) / 100.0,
+            self.getForwardPrimerStr(), self.getReversePrimerStr(),
+            self.qualtrim_checkbox.get_active(),
+            (int(self.qualtrim_winsize_adj.get_value()), int(self.qualtrim_basecnt_adj.get_value()))
+        )
 
     def chooseDirectory(self, widget, entry):
         # create a file chooser dialog to get a directory name from the user

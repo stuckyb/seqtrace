@@ -25,6 +25,7 @@ import os.path
 from seqtrace.core.consens import ConsensSeqSettings
 from seqtrace.core.observable import Observable
 from seqtrace.core.stproject_io import SeqTraceProjReader, SeqTraceProjWriter
+from seqtrace.gui import getDefaultFont
 
 
 class TreeStoreProjectItem:
@@ -192,6 +193,9 @@ class ProjectIter:
             raise StopIteration
 
 
+# Constants that specify which values are held by each column in a project's
+# TreeStore.
+#
 # 0: file name/node name
 # 1: node type (either 'file' or 'frwdrev')
 # 2: node ID number
@@ -232,14 +236,146 @@ class SequenceTraceProject(Observable):
         self.setSortBy(FILE_NAME, Gtk.SortType.ASCENDING)
 
         # initialize observable events
-        self.defineObservableEvents(['save_state_change', 'project_filename_change', 'files_added', 'files_removed',
-                'file_loaded', 'project_cleared'])
+        self.defineObservableEvents([
+            'save_state_change', 'project_filename_change', 'files_added',
+            'files_removed', 'file_loaded', 'project_cleared'
+        ])
 
     def __iter__(self):
         return ProjectIter(self)
 
     def getTreeStore(self):
         return self.ts
+
+    def clearProject(self, notify=True):
+        # start numbering for node IDs at 0 by default
+        self.idnum = 0
+        self.project_file = ''
+        self.trace_file_dir = '.'
+
+        self.fwd_trace_searchstr = '_F'
+        self.rev_trace_searchstr = '_R'
+
+        self.default_font = getDefaultFont()
+
+        # Copy default consensus sequence settings rather than change
+        # references to a new settings object in case there are any active
+        # users of the existing settings object.
+        settings = ConsensSeqSettings()
+        self.consseqsettings.copyFrom(settings)
+
+        self.ts.clear()
+        self.num_files = 0
+
+        self.setSaveState(True)
+        if notify:
+           self.notifyObservers('project_cleared', ())
+
+    def isProjectEmpty(self):
+        return self.ts.get_iter_first() == None
+
+    def loadProjectFile(self, filename):
+        reader = SeqTraceProjReader()
+
+        try:
+            reader.readFile(filename)
+        except:
+            raise
+
+        self.setTraceFileDir(reader.getProperty('trace_file_dir'))
+        self.setFwdTraceSearchStr(reader.getProperty('fwd_trace_searchstr'))
+        self.setRevTraceSearchStr(reader.getProperty('rev_trace_searchstr'))
+
+        self.consseqsettings.copyFrom(reader.getConsensSeqSettings())
+
+        # load the data into the TreeStore
+        for item in reader:
+            row = self.ts.append(None, (item.getName(), item.getItemType(), self.idnum, item.getUseSequence(), 
+                item.getCompactConsSequence(), item.getFullConsSequence(), item.hasSequence(), item.getNotes(), item.getIsReverse()))
+            self.idnum += 1
+            if item.isFile():
+                self.num_files += 1
+
+            for child in item.getChildren():
+                self.ts.append(row, (child.getName(), child.getItemType(), self.idnum, child.getUseSequence(), 
+                child.getCompactConsSequence(), child.getFullConsSequence(), child.hasSequence(), child.getNotes(), child.getIsReverse()))
+                self.idnum += 1
+                self.num_files += 1
+
+        # store the full, normalized path for the project file
+        self.project_file = os.path.abspath(filename)
+        self.setSaveState(True)
+        self.notifyObservers('file_loaded', ())
+
+    def saveProjectFile(self, filename=''):
+        writer = SeqTraceProjWriter()
+
+        writer.addProperty('trace_file_dir', self.trace_file_dir)
+        writer.addProperty('fwd_trace_searchstr', self.fwd_trace_searchstr)
+        writer.addProperty('rev_trace_searchstr', self.rev_trace_searchstr)
+        writer.setConsensSeqSettings(self.consseqsettings)
+
+        # get each item from the project
+        for item in self:
+            writer.addProjectItem(item)
+
+        if filename == '':
+            filename = self.project_file
+
+        try:
+            writer.write(filename)
+        except:
+            raise
+
+        self.setSaveState(True)
+
+    def addFiles(self, filepaths):
+        for fpath in filepaths:
+            rel_fpath = os.path.relpath(fpath, self.getAbsTraceFileDir())
+
+            # Consider newly-added trace files to be forward reads by default...
+            is_rev = False
+            # unless they match the reverse search string.
+            if os.path.basename(rel_fpath).find(self.getRevTraceSearchStr()) != -1:
+                is_rev = True
+
+            # add the new trace file
+            self.ts.append(None, (rel_fpath, 'file', self.idnum, False, '', '', False, '', is_rev))
+            self.idnum += 1
+            self.num_files += 1
+
+        self.setSaveState(False)
+        self.notifyObservers('files_added', ())
+
+    # rev_index specifies which one of the items should be treated as a reverse sequencing read.  If
+    # index < 0 or index > 1, neither item will be marked as a reverse read.
+    def associateItems(self, items, node_name):
+        # verify we only got two rows
+        if len(items) != 2:
+            raise Exception()
+
+        # get treestore references to the selected rows
+        f1 = items[0].getTsiter()
+        f2 = items[1].getTsiter()
+
+        # make sure they are both files
+        if not(items[0].isFile()) or not(items[1].isFile()):
+            raise Exception()
+
+        # make sure they are both at the root level
+        if (items[0].hasParent()) or (items[1].hasParent()):
+            raise Exception()
+
+        # create a new associative node and add the selected nodes as children
+        parent = self.ts.insert_before(None, f1, (node_name, 'frwdrev', self.idnum, False, '', '', False, '', False))
+        self.idnum += 1
+
+        self.moveRowToParent(f1, parent)
+        self.moveRowToParent(f2, parent)
+
+        self.setSaveState(False)
+
+        return TreeStoreProjectItem(parent, self)
 
     def setSortBy(self, item_property, order):
         self.ts.set_sort_column_id(item_property, order)
@@ -266,6 +402,12 @@ class SequenceTraceProject(Observable):
     def setConsensSeqSettings(self, settings):
         self.consseqsettings = settings
         self.consseqsettings.registerObserver('settings_change', (lambda: self.setSaveState(False)))
+
+    def getFont(self):
+        return self.default_font
+
+    def setFont(self, fontdesc):
+        self.default_font = fontdesc
 
     def getSaveState(self):
         return self.save_state
@@ -350,131 +492,6 @@ class SequenceTraceProject(Observable):
 
     def getItemByTsiter(self, tsiter):
         return TreeStoreProjectItem(tsiter, self)
-
-    def clearProject(self, notify=True):
-        # start numbering for node IDs at 0 by default
-        self.idnum = 0
-        self.project_file = ''
-        self.trace_file_dir = '.'
-
-        self.fwd_trace_searchstr = '_F'
-        self.rev_trace_searchstr = '_R'
-
-        settings = ConsensSeqSettings()
-        self.consseqsettings.copyFrom(settings)
-
-        self.ts.clear()
-        self.num_files = 0
-
-        self.setSaveState(True)
-        if notify:
-           self.notifyObservers('project_cleared', ())
-
-    def isProjectEmpty(self):
-        return self.ts.get_iter_first() == None
-
-    def loadProjectFile(self, filename):
-        reader = SeqTraceProjReader()
-
-        try:
-            reader.readFile(filename)
-        except:
-            raise
-
-        self.setTraceFileDir(reader.getProperty('trace_file_dir'))
-        self.setFwdTraceSearchStr(reader.getProperty('fwd_trace_searchstr'))
-        self.setRevTraceSearchStr(reader.getProperty('rev_trace_searchstr'))
-
-        self.consseqsettings.copyFrom(reader.getConsensSeqSettings())
-
-        # load the data into the TreeStore
-        for item in reader:
-            row = self.ts.append(None, (item.getName(), item.getItemType(), self.idnum, item.getUseSequence(), 
-                item.getCompactConsSequence(), item.getFullConsSequence(), item.hasSequence(), item.getNotes(), item.getIsReverse()))
-            self.idnum += 1
-            if item.isFile():
-                self.num_files += 1
-
-            for child in item.getChildren():
-                self.ts.append(row, (child.getName(), child.getItemType(), self.idnum, child.getUseSequence(), 
-                child.getCompactConsSequence(), child.getFullConsSequence(), child.hasSequence(), child.getNotes(), child.getIsReverse()))
-                self.idnum += 1
-                self.num_files += 1
-
-        # store the full, normalized path for the project file
-        self.project_file = os.path.abspath(filename)
-        self.setSaveState(True)
-        self.notifyObservers('file_loaded', ())
-
-    def saveProjectFile(self, filename=''):
-        writer = SeqTraceProjWriter()
-
-        writer.addProperty('trace_file_dir', self.trace_file_dir)
-        writer.addProperty('fwd_trace_searchstr', self.fwd_trace_searchstr)
-        writer.addProperty('rev_trace_searchstr', self.rev_trace_searchstr)
-        writer.setConsensSeqSettings(self.consseqsettings)
-
-        # get each item from the project
-        for item in self:
-            writer.addProjectItem(item)
-
-        if filename == '':
-            filename = self.project_file
-
-        try:
-            writer.write(filename)
-        except:
-            raise
-
-        self.setSaveState(True)
-
-    def addFiles(self, filepaths):
-        for fpath in filepaths:
-            rel_fpath = os.path.relpath(fpath, self.getAbsTraceFileDir())
-
-            # Consider newly-added trace files to be forward reads by default..
-            is_rev = False
-            # unless they match the reverse search string.
-            if os.path.basename(rel_fpath).find(self.getRevTraceSearchStr()) != -1:
-                is_rev = True
-
-            # add the new trace file
-            self.ts.append(None, (rel_fpath, 'file', self.idnum, False, '', '', False, '', is_rev))
-            self.idnum += 1
-            self.num_files += 1
-
-        self.setSaveState(False)
-        self.notifyObservers('files_added', ())
-
-    # rev_index specifies which one of the items should be treated as a reverse sequencing read.  If
-    # index < 0 or index > 1, neither item will be marked as a reverse read.
-    def associateItems(self, items, node_name):
-        # verify we only got two rows
-        if len(items) != 2:
-            raise Exception()
-
-        # get treestore references to the selected rows
-        f1 = items[0].getTsiter()
-        f2 = items[1].getTsiter()
-
-        # make sure they are both files
-        if not(items[0].isFile()) or not(items[1].isFile()):
-            raise Exception()
-
-        # make sure they are both at the root level
-        if (items[0].hasParent()) or (items[1].hasParent()):
-            raise Exception()
-
-        # create a new associative node and add the selected nodes as children
-        parent = self.ts.insert_before(None, f1, (node_name, 'frwdrev', self.idnum, False, '', '', False, '', False))
-        self.idnum += 1
-
-        self.moveRowToParent(f1, parent)
-        self.moveRowToParent(f2, parent)
-
-        self.setSaveState(False)
-
-        return TreeStoreProjectItem(parent, self)
 
     def removeAssociativeItem(self, item):
         # make sure it is a file association row

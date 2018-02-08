@@ -278,9 +278,12 @@ class ProjectViewer(Gtk.ScrolledWindow, Observable):
         if event.button == 1:
             # see if the click was on the forward/reverse arrow cell renderer
             if pathinfo[1] == self.col1:
-                # cell_area contains the coordinates (relative to the treeview widget) of the actual content of the cell
-                # (including both cell renderers), ignoring any space in the cell outside of the renderers (such as area
-                # for the tree expanders).  renderer_width is the width the specified renderer occupies inside of the cell_area.
+                # cell_area contains the coordinates (relative to the treeview
+                # widget) of the actual content of the cell (including both
+                # cell renderers), ignoring any space in the cell outside of
+                # the renderers (such as area for the tree expanders).
+                # renderer_width is the width the specified renderer occupies
+                # inside of the cell_area.
                 cell_area = self.treeview.get_cell_area(path, self.col1)
                 renderer_width = pathinfo[1].cell_get_position(self.isrev_ren)[1]
                 if (x > cell_area.x) and (x < (cell_area.x + renderer_width)):

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Copyright (C) 2018 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,11 +14,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from seqtrace.core.stproject import *
-
 import unittest
-
 import os
+import gi
+gi.require_version('Pango', '1.0')
+from gi.repository import Pango
+
+from seqtrace.core.stproject import *
+from seqtrace.gui import getDefaultFont
 
 
 # This test fixture provides fairly complete coverage of project functionality, project iterators,
@@ -41,6 +43,8 @@ class TestProject(unittest.TestCase):
         self.assertEqual(self.proj.getTraceFileDir(), '.')
         self.assertEqual(self.proj.getAbsTraceFileDir(), os.getcwd())
 
+        self.assertIsInstance(self.proj.getFont(), Pango.FontDescription)
+
         csettings = self.proj.getConsensSeqSettings()
         self.assertEqual(csettings.getMinConfScore(), 30)
         self.assertEqual(csettings.getConsensusAlgorithm(), 'Bayesian')
@@ -53,7 +57,9 @@ class TestProject(unittest.TestCase):
         self.assertTrue(csettings.getDoQualityTrim())
         self.assertEqual(csettings.getQualityTrimParams(), (10, 8))
 
-        self.assertEqual(self.proj.getProjectFileName(), os.path.abspath(self.filename))
+        self.assertEqual(
+            self.proj.getProjectFileName(), os.path.abspath(self.filename)
+        )
         self.assertEqual(self.proj.getProjectDir(), os.getcwd())
         self.assertTrue(self.proj.getSaveState())
         self.assertTrue(self.proj.isProjectEmpty())
@@ -117,8 +123,9 @@ class TestProject(unittest.TestCase):
         # but don't pair up with any other names
         extnames = ['F_12S_.ab1', '16S_R_10.ab1']
 
-        # add the names to the project (note that the names without 'R' in them will sort to the
-        # top of the project and so be chosen first for matching)
+        # Add the names to the project (note that the names without 'R' in them
+        # will sort to the top of the project and so be chosen first for
+        # matching).
         for names in pairs:
             self.proj.addFiles(names[0:2])
         for name in extnames:
@@ -133,7 +140,8 @@ class TestProject(unittest.TestCase):
 
         self.assertRaises(StopIteration, miter.next)
 
-        # swap forward and reverse search strings and test if all matches are still found
+        # Swap forward and reverse search strings and test if all matches are
+        # still found.
         self.proj.setFwdTraceSearchStr('R_')
         self.proj.setRevTraceSearchStr('F_')
         miter = self.proj.getFwdRevMatchIter()
@@ -222,10 +230,17 @@ class TestProject(unittest.TestCase):
         self.assertEqual(cnt, len(self.tracefiles) - 1)
 
     def test_clearProject(self):
+        # First, set all of the various project settings.
         self.proj.addFiles(self.tracefiles)
         self.proj.setFwdTraceSearchStr('_F_')
         self.proj.setFwdTraceSearchStr('_R_')
         self.proj.setTraceFileDir('tracedir')
+
+        newfont = getDefaultFont()
+        default_font_str = newfont.to_string()
+        newfont.set_size(newfont.get_size() + 1)
+        self.proj.setFont(newfont)
+        self.assertNotEqual(default_font_str, self.proj.getFont().to_string())
 
         csettings = self.proj.getConsensSeqSettings()
         csettings.setMinConfScore(20)
@@ -241,6 +256,8 @@ class TestProject(unittest.TestCase):
 
         self.proj.clearProject()
 
+        # Now make sure the project is empty and all settings have default
+        # values.
         self.assertTrue(self.proj.isProjectEmpty())
         for file in self.tracefiles:
             self.assertFalse(self.proj.isFileInProject(file))
@@ -249,6 +266,8 @@ class TestProject(unittest.TestCase):
         self.assertEqual(self.proj.getRevTraceSearchStr(), '_R')
         self.assertEqual(self.proj.getTraceFileDir(), '.')
         self.assertEqual(self.proj.getAbsTraceFileDir(), os.getcwd())
+
+        self.assertEqual(default_font_str, self.proj.getFont().to_string())
 
         csettings = self.proj.getConsensSeqSettings()
         self.assertEqual(csettings.getMinConfScore(), 30)
@@ -435,14 +454,4 @@ class TestProject(unittest.TestCase):
 
         # remove the test project file
         os.unlink(self.proj.getProjectFileName())
-
-
-
-
-
-
-if __name__ == '__main__':
-    #unittest.main()
-    suite = unittest.defaultTestLoader.loadTestsFromName(__name__)
-    unittest.TextTestRunner(verbosity=2).run(suite)
 

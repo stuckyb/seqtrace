@@ -20,9 +20,10 @@ from seqtrace.core.consens import ConsensSeqSettings
 
 class SeqTraceProjWriter:
     """
-    Writes project data to an external file.  The pickle module is currently used to serialize the
-    data to a file, but no class instances are serialized directly.  Instead, only the relevant data are
-    serialized, which makes the file format independent of any future changes to the names or structure of
+    Writes project data to an external file.  The pickle module is currently
+    used to serialize the data to a file, but no class instances are serialized
+    directly.  Instead, only the relevant data are serialized, which makes the
+    file format independent of any future changes to the names or structure of
     the project classes, modules, or packages.
     """
     def __init__(self):
