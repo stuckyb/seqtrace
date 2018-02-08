@@ -726,6 +726,7 @@ class MainWindow(Gtk.Window, CommonDialogs):
         # create a new trace window
         newwin = self.tw_manager.newTraceWindow(csb)
         newwin.show()
+        newwin.set_focus(None)
 
     def newProject(self, widget):
         # if a project is already open, try to close it first
@@ -981,7 +982,9 @@ class MainWindow(Gtk.Window, CommonDialogs):
                         csb.setConsensSequence(fullcons)
                         loaded_fullcons = True
                     except Exception:
-                        self.showMessage('The saved consensus sequence cannot be used because its size is incorrect.  A new consensus sequence will be generated.')
+                        self.showMessage(
+                            'The saved consensus sequence cannot be used because its size is incorrect.  A new consensus sequence will be generated.'
+                        )
 
                 # Create a new trace window and add event handlers.
                 newwin = self.tw_manager.newTraceWindow(csb, idnum)
@@ -991,7 +994,9 @@ class MainWindow(Gtk.Window, CommonDialogs):
                     # start with "Save" button disabled.
                     newwin.setSaveEnabled(False)
 
+                newwin.setSeqFont(self.project.getFont())
                 newwin.show()
+                newwin.set_focus(None)
             else:
                 # Show the existing trace window.
                 searchres.present()

@@ -50,12 +50,12 @@ class SequenceTraceLayout(Gtk.VBox):
         self.pack_start(self.consv, False, True, 0)
 
         # If there are two trace viewers, initialize synchronized scrolling.
+        self.scroll_locked = False
         if len(self.seqt_viewers) == 2:
-            # Initialize the synchronized scrolling when the VBox requests to be
-            # mapped to the display so that we get the correct adjustment values.
+            # Initialize the synchronized scrolling when the VBox requests to
+            # be mapped to the display so that we get the correct adjustment
+            # values.
             self.connect('map', self.initializeLockedScrolling)
-        else:
-            self.scroll_locked = False
 
         # Register callbacks for the consensus sequence viewer.
         self.consv.getConsensusSequenceViewer().registerObserver(
@@ -73,10 +73,14 @@ class SequenceTraceLayout(Gtk.VBox):
         """
         return self.seqt_viewers[0].getFontDescription()
 
-    def setFontDescription(self, fontdesc):
+    def setFontDescription(self, fontdesc, adjust_scroll=True):
         """
         Sets the font description to be used by the layout components
         (SequenceTraceViewer(s) and the ScrolledConsensusSequenceViewer).
+
+        fontdesc: A Pango.FontDescription object.
+        adjust_scroll: If True, the scroll bar positions of the trace and
+            sequence viewers will be adjusted.
         """
         # If there are two trace viewers and their scrolling is synchronized,
         # unlock them before changing the font.
@@ -85,13 +89,13 @@ class SequenceTraceLayout(Gtk.VBox):
             self.unlockScrolling()
 
         for viewer in self.seqt_viewers:
-            viewer.setFontDescriptionAndRescale(fontdesc)
+            viewer.setFontDescriptionAndRescale(fontdesc, adjust_scroll)
 
         # Relock the scrollbars, if needed.
         if relock:
             self.lockScrolling()
 
-        self.consv.setFontDescription(fontdesc)
+        self.consv.setFontDescription(fontdesc, adjust_scroll)
 
     def alignmentClicked(self, seqnum, seq1index, seq2index):
         # If there are two trace viewers and their scrolling is synchronized,

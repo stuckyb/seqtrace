@@ -93,20 +93,24 @@ class ScrolledConsensusSequenceViewer(Gtk.ScrolledWindow):
     def getConsensusSequenceViewer(self):
         return self.da
 
-    def setFontDescription(self, fontdesc):
+    def setFontDescription(self, fontdesc, adjust_scroll=False):
         """
         Sets a new font description for the consensus sequence display and
         tracks display size changes so that the scroll bar position can be
-        ajusted to try to keep the same part of the sequence visible.
-        """
-        # Get the old scrollbar position information.
-        adj = self.get_hadjustment()
-        page_size = adj.get_page_size()
-        center = adj.get_value() + (page_size / 2)
+        adjusted to try to keep the same part of the sequence visible.
 
-        self.rescrolldata.oldpos = float(center) / adj.get_upper()
-        self.rescrolldata.oldwidth = self.da.get_allocated_width()
-        self.rescrolldata.fontchanged = True
+        fontdesc: A Pango.FontDescription object.
+        adjust_scroll: If True, the scroll bar position will be adjusted.
+        """
+        if adjust_scroll:
+            # Get the old scrollbar position information.
+            adj = self.get_hadjustment()
+            page_size = adj.get_page_size()
+            center = adj.get_value() + (page_size / 2)
+
+            self.rescrolldata.oldpos = float(center) / adj.get_upper()
+            self.rescrolldata.oldwidth = self.da.get_allocated_width()
+            self.rescrolldata.fontchanged = True
 
         # Set the font, which will resize the viewer.
         self.da.setFontDescription(fontdesc)

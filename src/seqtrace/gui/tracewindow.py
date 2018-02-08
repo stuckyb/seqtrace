@@ -172,7 +172,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             <menuitem action="Recalc_Consens" />
         </menu>
         <menu action="View">
-            <menuitem action="Select_Font" />
+            <menuitem action="Change_Font" />
             <separator />
             <menuitem action="Scroll_Lock" />
         </menu>
@@ -212,7 +212,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             ('Copy_Raw', None, 'Co_py raw sequence(s)', None, 'Copy the raw sequence(s) to the clipboard', self.copyRawSequences),
             ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
             ('View', None, '_View'),
-            ('Select_Font', None, 'Select _font...', None, 'Select the font to use for the sequencing trace display', self.selectFont)
+            ('Change_Font', None, 'Change _font...', None, 'Select the font to use for the sequencing trace display', self.selectFont)
         ])
 
         # These actions are enabled only when there are two sequencing traces
@@ -257,18 +257,19 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         toolbar_hbox.pack_start(self.uim.get_widget('/toolbar'), False, False, 0)
         self.vbox.pack_start(toolbar_hbox, False, False, 0)
 
-        # disable some menus/toolbar buttons by default
+        # Disable some menus/toolbar buttons by default.
         self.edit_ag.get_action('Undo').set_sensitive(False)
         self.edit_ag.get_action('Redo').set_sensitive(False)
         self.sel_edit_ag.set_sensitive(False)
 
         self.loadSequenceTraces()
 
-        # If there is only one trace file, disable the actions that require two traces.
+        # If there is only one trace file, disable the actions that require two
+        # traces.
         if self.numseqs < 2:
             self.twotrace_ag.set_sensitive(False)
 
-        # get the trace file(s) toolbar
+        # Get the trace file(s) toolbar.
         trace_tb = self.stlayout.getTraceToolBar()
         for cnt in range(0, 2):
             blank = Gtk.SeparatorToolItem()
@@ -277,19 +278,17 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
             trace_tb.insert(blank, 0)
         toolbar_hbox.pack_start(trace_tb, True, True, 0)
 
-        # add a consensus sequence status bar at the bottom of the window
+        # Add a consensus sequence status bar at the bottom of the window.
         sbar = ConsensSeqStatusBar(self.cons)
         self.vbox.pack_start(sbar, False, True, 0)
 
         self.vbox.show_all()
         self.vbox.show()
 
-        # by default, do not show the "Save_Consens" action UI elements
+        # By default, do not show the "Save_Consens" action UI elements.
         self.main_ag.get_action('Save_Consens').set_visible(False)
 
         self.setDefaultGeometry()
-
-        self.set_focus(None)
 
     def setDefaultGeometry(self):
         #print self.get_size()
@@ -297,10 +296,11 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
 
         screen = self.get_screen()
 
-        # calculate the default width based on the screen size
+        # Calculate the default width based on the screen size.
         new_width = (screen.get_width() * 5) / 6
 
-        # calculate the default height based on the preferred size of the sequence trace viewers
+        # Calculate the default height based on the preferred size of the
+        # sequence trace viewers.
         v_height = self.viewers[0].getDefaultHeight()
         v_pref_height = self.viewers[0].getPreferredHeight()
         diff = v_pref_height - v_height
@@ -311,23 +311,37 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         self.set_default_size(new_width, new_height)
         self.set_position(Gtk.WindowPosition.CENTER)
 
+    def setSeqFont(self, fontdesc):
+        """
+        Sets the font to use for sequence and quality score displays.
+        """
+        # If the window is not yet visible, don't worry about the trace and
+        # sequence viewer scrollbar positions.
+        if self.is_visible():
+            self.stlayout.setFontDescription(fontdesc, True)
+        else:
+            self.stlayout.setFontDescription(fontdesc, False)
+
     def setSaveEnabled(self, state):
         self.main_ag.get_action('Save_Consens').set_sensitive(state)
         
     def registerObserver(self, event_name, handler):
         """
-        Extends the registerObserver() method in Observable to allow GUI elements to respond
-        to observer registration.
+        Extends the registerObserver() method in Observable to allow GUI
+        elements to respond to observer registration.
         """
         Observable.registerObserver(self, event_name, handler)
 
         if event_name == 'consensus_saved':
-            # Show the "Save_Consens" action UI elements since someone's actually listening for this signal.
+            # Show the "Save_Consens" action UI elements since someone's
+            # actually listening for this signal.
             self.main_ag.get_action('Save_Consens').set_visible(True)
 
     def saveConsensus(self, widget):
-        self.notifyObservers('consensus_saved',
-                (self, self.cons.getCompactConsensus(), self.cons.getConsensus()))
+        self.notifyObservers(
+            'consensus_saved',
+            (self, self.cons.getCompactConsensus(), self.cons.getConsensus())
+        )
 
     def getIdNum(self):
         return self.id_num

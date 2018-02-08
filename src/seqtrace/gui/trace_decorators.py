@@ -132,10 +132,15 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
 
         return 2.6 * (cbarwidth / 12.8)
 
-    def setFontDescriptionAndRescale(self, fontdesc):
+    def setFontDescriptionAndRescale(self, fontdesc, adjust_scroll=True):
         """
         Sets the font description that the underlying SequenceTraceViewer
         should use and rescaled the view window to match the new font metrics.
+
+        fontdesc: A Pango.FontDescription object.
+        adjust_scroll: If True, the scroll bar position will be adjusted to
+            keep the same part of the trace centered in the viewport (if
+            possible).
         """
         self.viewer.setFontDescription(fontdesc)
 
@@ -144,41 +149,48 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
             # We need to rescale the window, so use the zoom() method to handle
             # the rescale.
             self.zoom_100 = new_zoom_100
-            self.zoom(self.zoom_level)
+            self.zoom(self.zoom_level, adjust_scroll)
         else:
             # No need to rescale, so just force a repaint of the trace viewer's
             # drawing area.
             self.viewer.getWidget().queue_draw()
 
-    def zoom(self, level):
+    def zoom(self, level, adjust_scroll=True):
+        """
+        adjust_scroll: If True, the scroll bar position will be adjusted to
+            keep the same part of the trace centered in the viewport (if
+            possible).
+        """
         z_scale = float(level) / 100 * self.zoom_100
 
-        # calculate the new width for the sequence trace viewer
+        # Calculate the new width for the sequence trace viewer.
         new_width = int(self.viewer.getSequenceTrace().getTraceLength() * z_scale)
 
-        # calculate the new position for the scrollbar to keep the view centered
-        # around its current location
-        adj = self.scrolledwin.get_hadjustment()
-        page_size = adj.get_page_size()
-        center = adj.get_value() + (page_size / 2)
-        pos = float(center) / adj.get_upper()
-        newpos = new_width * pos
-        new_adjval = int(newpos - (page_size / 2))
-        if new_adjval < 0:
-            new_adjval = 0
-        elif new_adjval > (new_width - page_size):
-            new_adjval = new_width - page_size
+        if adjust_scroll:
+            # Calculate the new position for the scrollbar to keep the view
+            # centered around its current location.
+            adj = self.scrolledwin.get_hadjustment()
+            page_size = adj.get_page_size()
+            center = adj.get_value() + (page_size / 2)
+            pos = float(center) / adj.get_upper()
+            newpos = new_width * pos
+            new_adjval = int(newpos - (page_size / 2))
+            if new_adjval < 0:
+                new_adjval = 0
+            elif new_adjval > (new_width - page_size):
+                new_adjval = new_width - page_size
 
-        # resize the sequence trace viewer
+        # Resize the sequence trace viewer.
         oldwidth, oldheight = self.viewer.getWidget().get_size_request()
         self.viewer.getWidget().set_size_request(new_width, oldheight)
 
-        # Allow the resize to complete before repositioning the scrollbar.
-        while Gtk.events_pending():
-           Gtk.main_iteration()
-        adj.set_value(new_adjval)
+        if adjust_scroll:
+            # Allow the resize to complete before repositioning the scrollbar.
+            while Gtk.events_pending():
+               Gtk.main_iteration()
 
-        self.zoom_level = level
+            adj.set_value(new_adjval)
+            self.zoom_level = level
 
     def scrollTo(self, basenum):
         adj = self.scrolledwin.get_hadjustment()
