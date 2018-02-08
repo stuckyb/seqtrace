@@ -25,231 +25,20 @@ import os.path
 
 from seqtrace.core import sequencetrace
 from seqtrace.core.consens import ConsensSeqBuilder, ModifiableConsensSeqBuilder
-from seqtrace.core import stproject
 from seqtrace.core.stproject import SequenceTraceProject
 from seqtrace.core import stproject_io
 from seqtrace.core import seqwriter
 from seqtrace.core.consens import ConsensSeqSettings
-from seqtrace.core.observable import Observable
 
 import seqtrace.gui.dialgs as dialgs
 from seqtrace.gui.dialgs import CommonDialogs, EntryDialog, ProgressBarDialog
 from seqtrace.gui.statusbar import ProjectStatusBar
 from seqtrace.gui.projsettingsdialg import ProjectSettingsDialog
 from seqtrace.gui.tracewindow_mgr import TraceWindowManager
+from seqtrace.gui.projviewer import ProjectViewer
 
 # Get the location of the GUI image files.
 from seqtrace.gui import images_folder
-
-
-# Another way to detect if the forward/reverse arrow in the treeview is clicked.  I'm not sure which
-# approach is better, or "more correct".  For now, the method of testing the x/y coords of clicks on
-# the treeview itself is used, because it was simpler to integrate with already-existing code.
-#class CellRendererPixbufClickable(Gtk.CellRendererPixbuf):
-#    def __init__(self):
-#        GObject.GObject.__init__(self)
-#        self.set_property('mode', Gtk.CellRendererMode.ACTIVATABLE)
-#
-#    def do_activate(self, event, widget, path, background_area, cell_area, flags):
-#        if (event.x > cell_area.x) and (event.x < (cell_area.x + cell_area.width)):
-#            print 'clicked'
-#from gi.repository import GObject
-#GObject.type_register(CellRendererPixbufClickable)
-
-
-class ProjectViewer(Gtk.ScrolledWindow, Observable):
-    def __init__(self, project):
-        Gtk.ScrolledWindow.__init__(self)
-
-        self.project = project
-
-        # initialize the TreeView
-        self.treeview = Gtk.TreeView(self.project.getTreeStore())
-        self.treeview.set_enable_tree_lines(True)
-        self.treeview.set_grid_lines(Gtk.TreeViewGridLines.NONE)
-        self.treeview.set_rules_hint(True)
-
-        # first column: for item name and forward/reverse icons
-        self.col1 = Gtk.TreeViewColumn('Trace Files')
-        self.col1.set_expand(True)
-        self.col1.set_resizable(True)
-        #self.col1.set_clickable(True)
-        #self.col1.connect('clicked', self.colHeadClicked, stproject.FILE_NAME)
-        self.col1.set_sort_column_id(stproject.FILE_NAME)
-
-        # set up cell renderer for forward/reverse icons
-        self.isfwdrev_both = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/isfwdrev_both.png')
-        self.isfwdrev_fwd = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/isfwdrev_fwd.png')
-        self.isfwdrev_rev = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/isfwdrev_rev.png')
-        self.isrev_ren = Gtk.CellRendererPixbuf()
-        self.col1.pack_start(self.isrev_ren, False)
-        self.col1.set_cell_data_func(self.isrev_ren, self.showFrwdRev)
-
-        # set up cell renderer for item name
-        nameren = Gtk.CellRendererText()
-        nameren.connect('edited', self.nameEdited)
-        self.col1.pack_start(nameren, True)
-        self.col1.add_attribute(nameren, 'text', stproject.FILE_NAME)
-        self.col1.set_cell_data_func(nameren, self.isRowFile)
-        self.treeview.append_column(self.col1)
-
-        # second column: for description/notes
-        notesren = Gtk.CellRendererText()
-        notesren.connect('edited', self.notesEdited)
-        notesren.set_property('editable', True)
-        self.col2 = Gtk.TreeViewColumn('Notes/Description', notesren, text=stproject.NOTES)
-        self.col2.set_expand(True)
-        self.col2.set_resizable(True)
-        self.col2.set_sort_column_id(stproject.NOTES)
-        self.treeview.append_column(self.col2)
-
-        # third column: for has sequence icons
-        hasseqren = Gtk.CellRendererPixbuf()
-        self.hasseq_no = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/hasseq_no.png')
-        self.hasseq_yes = GdkPixbuf.Pixbuf.new_from_file(images_folder + '/hasseq_yes.png')
-        col3 = Gtk.TreeViewColumn('Seq. Saved', hasseqren)
-        col3.set_cell_data_func(hasseqren, self.renderHasSeq)
-        col3.set_sort_column_id(stproject.HAS_CONS)
-        self.treeview.append_column(col3)
-
-        # fourth column: for use sequence checkbox
-        useseqren = Gtk.CellRendererToggle()
-        useseqren.set_property('activatable', True)
-        useseqren.connect('toggled', self.useseqToggled)
-        col4 = Gtk.TreeViewColumn('Use Seq.', useseqren, active=stproject.USE_CONS)
-        col4.set_cell_data_func(useseqren, self.renderUseSeq)
-        col4.set_sort_column_id(stproject.USE_CONS)
-        self.treeview.append_column(col4)
-
-        self.treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
-
-        # add the treeview to the scrolled window
-        self.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        self.add(self.treeview)
-
-        # connect to treeview signals
-        self.treeview.connect('button_press_event', self.mouseClick)
-        self.treeview.get_selection().connect('changed', self.selectChanged)
-
-        # initialize observable events
-        self.defineObservableEvents(['right_clicked', 'isfwdrew_clicked', 'item_renamed', 'notes_edited',
-                'selection_changed', 'useseq_changed'])
-
-    def useseqToggled(self, cell, path):
-        item = self.project.getItemByPath(path)
-        self.notifyObservers('useseq_changed', (item,))
-
-    def showFrwdRev(self, col, renderer, model, node, data):
-        item = self.project.getItemByTsiter(node)
-
-        if item.isFile():
-            renderer.set_property('visible', True)
-            if item.getIsReverse():
-                renderer.set_property('pixbuf', self.isfwdrev_rev)
-            else:
-                renderer.set_property('pixbuf', self.isfwdrev_fwd)
-        else:
-            renderer.set_property('pixbuf', self.isfwdrev_both)
-            #renderer.set_property('visible', False)
-
-    def isRowFile(self, col, renderer, model, node, data):
-        item = self.project.getItemByTsiter(node)
-
-        if item.isFile():
-            renderer.set_property('editable', False)
-        else:
-            renderer.set_property('editable', True)
-
-    def renderHasSeq(self, col, renderer, model, node, data):
-        item = self.project.getItemByTsiter(node)
-        self.setSeqRendererVisible(renderer, item)
-
-        if item.hasSequence():
-            renderer.set_property('pixbuf', self.hasseq_yes)
-        else:
-            renderer.set_property('pixbuf', self.hasseq_no)
-
-    def renderUseSeq(self, col, renderer, model, node, data):
-        item = self.project.getItemByTsiter(node)
-        self.setSeqRendererVisible(renderer, item)
-
-    def setSeqRendererVisible(self, renderer, item):
-        if item.hasParent():
-            renderer.set_property('visible', False)
-        else:
-            renderer.set_property('visible', True)
-
-    def expandAll(self):
-        self.treeview.expand_all()
-
-    def collapseAll(self):
-        self.treeview.collapse_all()
-
-    def requestEditSelectedRowName(self):
-        model, paths = self.treeview.get_selection().get_selected_rows()
-        if len(paths) != 1:
-            return
-
-        self.treeview.set_cursor(paths[0], self.col1, True)
-
-    def requestEditSelectedRowNotes(self):
-        model, paths = self.treeview.get_selection().get_selected_rows()
-        if len(paths) != 1:
-            return
-
-        self.treeview.set_cursor(paths[0], self.col2, True)
-
-    def nameEdited(self, cell, path, new_text):
-        item = self.project.getItemByPath(path)
-
-        self.notifyObservers('item_renamed', (item, new_text))
-
-    def notesEdited(self, cell, path, new_text):
-        item = self.project.getItemByPath(path)
-
-        self.notifyObservers('notes_edited', (item, new_text))
-
-    def mouseClick(self, viewer, event):
-        x = int(event.x)
-        y = int(event.y)
-
-        # make sure an actual row was clicked
-        pathinfo = self.treeview.get_path_at_pos(x, y)
-        if pathinfo == None:
-            return
-
-        path = pathinfo[0]
-        item = self.project.getItemByPath(path)
-
-        # left click
-        if event.button == 1:
-            # see if the click was on the forward/reverse arrow cell renderer
-            if pathinfo[1] == self.col1:
-                # cell_area contains the coordinates (relative to the treeview
-                # widget) of the actual content of the cell (including both
-                # cell renderers), ignoring any space in the cell outside of
-                # the renderers (such as area for the tree expanders).
-                # renderer_width is the width the specified renderer occupies
-                # inside of the cell_area.
-                cell_area = self.treeview.get_cell_area(path, self.col1)
-                renderer_width = pathinfo[1].cell_get_position(self.isrev_ren)[1]
-                if (x > cell_area.x) and (x < (cell_area.x + renderer_width)):
-                    self.notifyObservers('isfwdrew_clicked', (item, event))
-
-        # right click
-        elif event.button == 3:
-            self.treeview.set_cursor(path)
-            self.notifyObservers('right_clicked', (item, event))
-
-    def getSelection(self):
-        model, paths = self.treeview.get_selection().get_selected_rows()
-
-        return self.project.getItemsByPaths(paths)
-
-    def selectChanged(self, selection):
-        sel_cnt = selection.count_selected_rows()
-
-        self.notifyObservers('selection_changed', (sel_cnt,))
 
 
 class MainWindow(Gtk.Window, CommonDialogs):
@@ -263,9 +52,15 @@ class MainWindow(Gtk.Window, CommonDialogs):
 
         self.fextension = '.str'
         self.wintitle = 'SeqTrace'
-        self.project.registerObserver('save_state_change', self.projSaveStateChanged)
-        self.project.registerObserver('project_filename_change', self.projFilenameChanged)
-        self.project.getConsensSeqSettings().registerObserver('settings_change', self.consSeqSettingsChanged)
+        self.project.registerObserver(
+            'save_state_change', self.projSaveStateChanged
+        )
+        self.project.registerObserver(
+            'project_filename_change', self.projFilenameChanged
+        )
+        self.project.getConsensSeqSettings().registerObserver(
+            'settings_change', self.consSeqSettingsChanged
+        )
 
         # initialize the window GUI elements
         self.connect('delete-event', self.deleteEvent)
@@ -349,7 +144,7 @@ class MainWindow(Gtk.Window, CommonDialogs):
             <separator />
             <toolitem action="Export_All" />
         </toolbar>'''
-        # these actions are always enabled
+        # These actions are always enabled.
         self.main_ag = Gtk.ActionGroup('main_actions')
         self.main_ag.add_actions([
             ('File', None, '_File'),
@@ -363,7 +158,7 @@ class MainWindow(Gtk.Window, CommonDialogs):
             ('Help', None, '_Help'),
             ('About', Gtk.STOCK_ABOUT, '_About...', None, 'Display information about this program', self.showAbout)])
 
-        # these actions are generally only enabled when a project is open
+        # These actions are generally only enabled when a project is open.
         self.main_proj_ag = Gtk.ActionGroup('project_actions')
         self.main_proj_ag.add_actions([
             ('Close', Gtk.STOCK_CLOSE, '_Close project', None, 'Close the current project', self.closeProject),
@@ -390,7 +185,8 @@ class MainWindow(Gtk.Window, CommonDialogs):
                 self.generateAllSequences)
             ])
 
-        # these actions are only enabled when one or more trace files in the project are selected
+        # These actions are only enabled when one or more trace files in the
+        # project are selected.
         self.sel_proj_ag = Gtk.ActionGroup('project_actions_selected')
         self.sel_proj_ag.add_actions([
             ('Export_Selected', None, 'From _selected trace files...', None, 'Export all selected in-use sequences',
@@ -413,7 +209,7 @@ class MainWindow(Gtk.Window, CommonDialogs):
                 self.generateSelectedSequences)
             ])
 
-        # these actions are specific to the project viewer context popup menu
+        # These actions are specific to the project viewer context popup menu.
         self.popup_proj_ag = Gtk.ActionGroup('project_actions_popup')
         self.popup_proj_ag.add_actions([
             ('Popup_Remove_File', Gtk.STOCK_REMOVE, '_Remove trace file', None, 'Remove the selected trace file from the project',
