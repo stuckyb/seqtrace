@@ -15,6 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+from gi.repository import GdkPixbuf
+
+import sys
+import os.path
+
 from seqtrace.core import sequencetrace
 from seqtrace.core.consens import ConsensSeqBuilder, ModifiableConsensSeqBuilder
 from seqtrace.core import stproject
@@ -24,75 +32,14 @@ from seqtrace.core import seqwriter
 from seqtrace.core.consens import ConsensSeqSettings
 from seqtrace.core.observable import Observable
 
-from seqtrace.gui.tracewindow import TraceWindow
 import seqtrace.gui.dialgs as dialgs
 from seqtrace.gui.dialgs import CommonDialogs, EntryDialog, ProgressBarDialog
 from seqtrace.gui.statusbar import ProjectStatusBar
 from seqtrace.gui.projsettingsdialg import ProjectSettingsDialog
+from seqtrace.gui.tracewindow_mgr import TraceWindowManager
 
-# get the location of the GUI image files
+# Get the location of the GUI image files.
 from seqtrace.gui import images_folder
-
-import gi
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
-from gi.repository import GdkPixbuf
-from gi.repository import Pango
-
-import sys
-import os.path
-
-
-
-class TraceWindowManager:
-    def __init__(self):
-        self.tracewindows = {}
-        self.last_id = 0
-
-    def newTraceWindow(self, mod_cons_seq, project_rowid=-1):
-        newwin = TraceWindow(mod_cons_seq, is_mainwindow=False, id_num=self.last_id)
-        newwin.connect('destroy', self.traceWindowDestroyed)
-
-        self.tracewindows[self.last_id] = (newwin, project_rowid)
-        self.last_id += 1
-
-        return newwin
-
-    def findByItemId(self, rowid):
-        for tw_id in self.tracewindows.keys():
-            if self.tracewindows[tw_id][1] == rowid:
-                return self.tracewindows[tw_id][0]
-
-        return None
-
-    def getItemId(self, tracewindow):
-        tw_id = tracewindow.getIdNum()
-
-        return self.tracewindows[tw_id][1]
-
-    def closeByItemId(self, rowid):
-        tw = self.findByItemId(rowid)
-
-        if tw != None:
-            tw.destroy()
-
-    def closeProjectTraceWindows(self):
-        # close all project-related trace windows that are still open
-        idnums = self.tracewindows.keys()
-        for idnum in idnums:
-            if self.tracewindows[idnum][1] != -1:
-                self.tracewindows[idnum][0].destroy()
-
-    def closeAllTraceWindows(self):
-        # close any trace windows that are still open
-        idnums = self.tracewindows.keys()
-        for idnum in idnums:
-            self.tracewindows[idnum][0].destroy()
-
-    def traceWindowDestroyed(self, window):
-        idnum = window.getIdNum()
-        #print idnum
-        del self.tracewindows[idnum]
 
 
 # Another way to detect if the forward/reverse arrow in the treeview is clicked.  I'm not sure which
@@ -1003,9 +950,12 @@ class MainWindow(Gtk.Window, CommonDialogs):
     def projectViewFiles(self, widget):
         items = self.projview.getSelection()
 
-        # if there are a lot of items selected, make sure the user wants to proceed
+        # If there are a lot of items selected, make sure the user wants to
+        # proceed.
         if len(items) > 4:
-            response = self.showYesNoDialog('This will open ' + str(len(items)) + ' trace file windows.  Do you want to continue?')
+            response = self.showYesNoDialog(
+                'This will open ' + str(len(items)) + ' trace file windows.  Do you want to continue?'
+            )
             if response != Gtk.ResponseType.YES:
                 return
 
@@ -1020,9 +970,11 @@ class MainWindow(Gtk.Window, CommonDialogs):
                 if seqtraces == None:
                     continue
 
-                csb = ModifiableConsensSeqBuilder(seqtraces, self.project.getConsensSeqSettings())
+                csb = ModifiableConsensSeqBuilder(
+                    seqtraces, self.project.getConsensSeqSettings()
+                )
 
-                # try to load the saved consensus sequence, if it exists
+                # Try to load the saved consensus sequence, if it exists.
                 if fullcons != '':
                     try:
                         csb.setConsensSequence(fullcons)
@@ -1030,14 +982,15 @@ class MainWindow(Gtk.Window, CommonDialogs):
                     except Exception:
                         self.showMessage('The saved consensus sequence cannot be used because its size is incorrect.  A new consensus sequence will be generated.')
 
-                # create a new trace window and add event handlers
+                # Create a new trace window and add event handlers.
                 newwin = self.tw_manager.newTraceWindow(csb, idnum)
                 newwin.registerObserver('consensus_saved', self.traceWindowConsensusSaved)
                 if loaded_fullcons:
-                    # the saved consensus sequence was successfully loaded, so start with "Save" button disabled
+                    # The saved consensus sequence was successfully loaded, so
+                    # start with "Save" button disabled.
                     newwin.setSaveEnabled(False)
             else:
-                # show the existing trace window
+                # Show the existing trace window.
                 searchres.present()
 
     def getSeqTraces(self, projectitem):
