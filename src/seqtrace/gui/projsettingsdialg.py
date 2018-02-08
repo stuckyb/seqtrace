@@ -14,15 +14,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from seqtrace.core.consens import ConsensSeqBuilder
-from seqtrace.gui.dialgs import CommonDialogs
-
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
-
 import os.path
 import re
+
+from seqtrace.core.consens import ConsensSeqBuilder
+from seqtrace.gui.dialgs import CommonDialogs
 
 
 class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
@@ -172,7 +171,9 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
         hb1.pack_start(Gtk.Label('Consensus algorithm:  '), False, True, 0)
         self.cons_bayes_rb = Gtk.RadioButton(label='Bayesian   ')
         hb1.pack_start(self.cons_bayes_rb, False, True, 0)
-        self.cons_legacy_rb = Gtk.RadioButton(group=self.cons_bayes_rb, label='SeqTrace 0.8')
+        self.cons_legacy_rb = Gtk.RadioButton(
+            group=self.cons_bayes_rb, label='SeqTrace 0.8'
+        )
 
         if cssettings.getConsensusAlgorithm() == 'Bayesian':
             self.cons_bayes_rb.set_active(True)
@@ -200,7 +201,9 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
         self.trimprimers_checkbox = Gtk.CheckButton('Trim primers if ')
         self.trimprimers_checkbox.set_active(cssettings.getTrimPrimers())
         hb2.pack_start(self.trimprimers_checkbox, False, True, 0)
-        self.primermatch_th_adj = Gtk.Adjustment(int(cssettings.getPrimerMatchThreshold() * 100), 1, 100, 1)
+        self.primermatch_th_adj = Gtk.Adjustment(
+            int(cssettings.getPrimerMatchThreshold() * 100), 1, 100, 1
+        )
         self.primermatch_th_spin = Gtk.SpinButton(
             adjustment=self.primermatch_th_adj, climb_rate=0, digits=0
         )
@@ -222,7 +225,9 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
         self.qualtrim_checkbox = Gtk.CheckButton('Trim until at least ')
         self.qualtrim_checkbox.set_active(cssettings.getDoQualityTrim())
         hb2.pack_start(self.qualtrim_checkbox, False, True, 0)
-        self.qualtrim_basecnt_adj = Gtk.Adjustment(qualtrim_basecnt, 1, qualtrim_winsize, 1)
+        self.qualtrim_basecnt_adj = Gtk.Adjustment(
+            qualtrim_basecnt, 1, qualtrim_winsize, 1
+        )
         self.qualtrim_basecnt_spin = Gtk.SpinButton(
             adjustment=self.qualtrim_basecnt_adj, climb_rate=0, digits=0
         )
@@ -306,9 +311,9 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
 
     def checkSettingsValues(self):
         """
-        Checks some of the project settings inputs for validity.  If any problems are
-        found, an appropriate message is displayed, and the method returns False.
-        Otherwise, the method returns True.
+        Checks some of the project settings inputs for validity.  If any
+        problems are found, an appropriate message is displayed, and the method
+        returns False.  Otherwise, the method returns True.
         """
         tffpath = os.path.abspath(
                 os.path.join(self.project.getProjectDir(), self.getTraceFileFolder())
@@ -326,8 +331,8 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
             self.showMessage('You must specify a search string for identifying reverse sequencing trace files.')
             return False
 
-        # Build a regular expression object for checking if the characters in the primer
-        # sequence strings are all valid bases.
+        # Build a regular expression object for checking if the characters in
+        # the primer sequence strings are all valid bases.
         reo = re.compile('[' + ''.join(ConsensSeqBuilder.allbases) + ']*')
 
         # Check the forward primer string.
@@ -342,7 +347,8 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
             self.showMessage('The reverse primer sequence contains invalid characters.  You may only use IUPAC nucleotide codes.')
             return False
 
-        # If primer trimming is enabled, make sure that we have sequences for both primers.
+        # If primer trimming is enabled, make sure that we have sequences for
+        # both primers.
         if self.trimprimers_checkbox.get_active():
             if self.getForwardPrimerStr() == '' or self.getReversePrimerStr() == '':
                 # Create a customized error message.
@@ -368,7 +374,7 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
 
         cssettings = self.project.getConsensSeqSettings()
 
-        # set all consensus sequence settings at once to only trigger a single
+        # Set all consensus sequence settings at once to only trigger a single
         # update event for any listeners
         cssettings.setAll(
             self.getMinConfScore(),
@@ -383,7 +389,7 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
         )
 
     def chooseDirectory(self, widget, entry):
-        # create a file chooser dialog to get a directory name from the user
+        # Create a file chooser dialog to get a directory name from the user.
         fc = Gtk.FileChooserDialog(
             'Choose Trace Files Location', self, Gtk.FileChooserAction.SELECT_FOLDER,
             (Gtk.STOCK_OK, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -396,10 +402,12 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
             return
 
         if self.fc_checkbox.get_active():
-            # On Windows, there is no root location for all drives, so getting a relative path between
-            # drives is impossible.  So, we need to check if the CWD and the chosen directory are on
-            # different drives, and if so, switch to using an absolute path.  We can check this by seeing
-            # if relpath throws a ValueError exception, then toggle the "relative path" checkbox if needed.
+            # On Windows, there is no root location for all drives, so getting
+            # a relative path between drives is impossible.  So, we need to
+            # check if the CWD and the chosen directory are on different
+            # drives, and if so, switch to using an absolute path.  We can
+            # check this by seeing if relpath throws a ValueError exception,
+            # then toggle the "relative path" checkbox if needed.
             try:
                 tmpname = os.path.relpath(fname, self.project.getProjectDir())
                 fname = tmpname
@@ -411,12 +419,14 @@ class ProjectSettingsDialog(Gtk.Dialog, CommonDialogs):
         entry.set_text(fname)
 
     def useRelPathToggled(self, button):
-        # toggle the display of the currently-selected trace file folder, making sure that paths
-        # are always relative to the location of the project file
+        # Toggle the display of the currently-selected trace file folder,
+        # making sure that paths are always relative to the location of the
+        # project file.
         if self.fc_checkbox.get_active():
-            # On Windows, there is no root location for all drives, so getting a relative path between
-            # drives is impossible.  We can check for this by seeing if relpath throws a ValueError
-            # exception, then uncheck the "relative path" checkbox if needed.
+            # On Windows, there is no root location for all drives, so getting
+            # a relative path between drives is impossible.  We can check for
+            # this by seeing if relpath throws a ValueError exception, then
+            # uncheck the "relative path" checkbox if needed.
             try:
                 tmpname = os.path.relpath(self.fc_entry.get_text(), self.project.getProjectDir())
                 self.fc_entry.set_text(tmpname)
