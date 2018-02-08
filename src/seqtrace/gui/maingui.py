@@ -724,7 +724,8 @@ class MainWindow(Gtk.Window, CommonDialogs):
         csb = ModifiableConsensSeqBuilder((seqt,), settings)
 
         # create a new trace window
-        self.tw_manager.newTraceWindow(csb)
+        newwin = self.tw_manager.newTraceWindow(csb)
+        newwin.show()
 
     def newProject(self, widget):
         # if a project is already open, try to close it first
@@ -989,6 +990,8 @@ class MainWindow(Gtk.Window, CommonDialogs):
                     # The saved consensus sequence was successfully loaded, so
                     # start with "Save" button disabled.
                     newwin.setSaveEnabled(False)
+
+                newwin.show()
             else:
                 # Show the existing trace window.
                 searchres.present()

@@ -289,7 +289,6 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
 
         self.setDefaultGeometry()
 
-        self.show()
         self.set_focus(None)
 
     def setDefaultGeometry(self):
@@ -662,28 +661,4 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
 
         if self.is_mainwindow:
             Gtk.main_quit()
-            
 
-
-
-if __name__ == '__main__':
-    #print sequencetrace.SequenceTraceFactory.getTraceFileType('forward.ztr')
-
-    #seqt1 = sequencetrace.ZTRSequenceTrace()
-    #seqt1.loadFile('forward.ztr')
-    seqt1 = sequencetrace.ABISequenceTrace()
-    seqt1.loadFile('forward.ab1')
-    #seqt1.reverseComplement()
-    #seqt2 = sequencetrace.ZTRSequenceTrace()
-    #seqt2.loadFile('reverse.ztr')
-    #seqt2.reverseComplement()
-
-    #seqt1 = sequencetrace.SequenceTraceFactory.loadTraceFile('forward.scf')
-
-
-    from seqtrace.core import consens
-    cons = consens.ModifiableConsensSeqBuilder((seqt1,))
-    #cons = ModifiableConsensSeqBuilder((seqt1, seqt2))
-
-    mainwin = TraceWindow(cons, is_mainwindow=True)
-    Gtk.main()
