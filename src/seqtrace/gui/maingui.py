@@ -444,6 +444,7 @@ class MainWindow(Gtk.Window, CommonDialogs):
             for item in items:
                 if not(item.isFile()):
                     enabled = True
+                    break
             if enabled != dissoc_files.get_sensitive():
                 dissoc_files.set_sensitive(enabled)
 
