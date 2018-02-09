@@ -201,15 +201,15 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         self.main_ag = Gtk.ActionGroup('main_actions')
         self.main_ag.add_actions([
             ('File', None, '_File'),
-            ('Save_Consens', Gtk.STOCK_SAVE, '_Save working sequence to project', None, 'Save the working sequence to the project', self.saveConsensus),
-            ('Export_Consensus', None, 'Export w_orking sequence...', None, 'Export the working sequence to a file', self.exportConsensus),
+            ('Save_Consens', Gtk.STOCK_SAVE, '_Save edited sequence to project', None, 'Save the edited sequence to the project', self.saveConsensus),
+            ('Export_Consensus', None, 'Export _edited sequence...', None, 'Export the edited sequence to a file', self.exportConsensus),
             ('Export_Raw', None, 'Export _raw sequence(s)...', None, 'Export the un-edited sequence(s) to a file', self.exportRawSequence),
             ('File_Info', Gtk.STOCK_INFO, '_Information...', None, 'View detailed information about the file(s)', self.fileInfo),
             ('Close', Gtk.STOCK_CLOSE, '_Close', None, 'Close this window', self.closeWindow),
             ('Edit', None, '_Edit'),
-            ('Copy_Consens', None, 'C_opy working sequence', None, 'Copy the working sequence to the clipboard', self.copyFullConsensus),
+            ('Copy_Consens', None, 'C_opy edited sequence', None, 'Copy the edited sequence to the clipboard', self.copyFullConsensus),
             ('Copy_Raw', None, 'Co_py raw sequence(s)', None, 'Copy the raw sequence(s) to the clipboard', self.copyRawSequences),
-            ('Recalc_Consens', None, '_Recalculate working seq.', None, 'Recalculate the working sequence', self.recalcConsensus),
+            ('Recalc_Consens', None, '_Recalculate edited seq.', None, 'Recalculate the edited sequence', self.recalcConsensus),
             ('View', None, '_View'),
             ('Change_Font', None, 'Change _font...', None, 'Select the font to use for the sequencing trace display', self.selectFont)
         ])
@@ -228,15 +228,15 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         # These actions are for common edit commands.
         self.edit_ag = Gtk.ActionGroup('edite_actions')
         self.edit_ag.add_actions([
-            ('Undo', Gtk.STOCK_UNDO, '_Undo', '<ctl>z', 'Undo the last change to the working sequence', self.undoConsChange),
-            ('Redo', Gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the working sequence', self.redoConsChange)
+            ('Undo', Gtk.STOCK_UNDO, '_Undo', '<ctl>z', 'Undo the last change to the edited sequence', self.undoConsChange),
+            ('Redo', Gtk.STOCK_REDO, '_Redo', '<ctl>y', 'Redo the last change to the edited sequence', self.redoConsChange)
         ])
 
         # These actions are only enabled when there is an active selection.
         self.sel_edit_ag = Gtk.ActionGroup('selected_edit_actions')
         self.sel_edit_ag.add_actions([
             ('Copy', Gtk.STOCK_COPY, '_Copy selected base(s)', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
-            ('Delete', Gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the working sequence', self.deleteConsBases),
+            ('Delete', Gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the edited sequence', self.deleteConsBases),
             ('Modify', Gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)
         ])
 
@@ -546,7 +546,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         self.setSaveEnabled(True)
 
     def recalcConsensus(self, widget):
-        response = self.showYesNoDialog('Are you sure you want to recalculate the working sequence?  This will overwrite any edits you have made.')
+        response = self.showYesNoDialog('Are you sure you want to recalculate the edited sequence?  This will overwrite any edits you have made.')
         if response != Gtk.ResponseType.YES:
             return
 

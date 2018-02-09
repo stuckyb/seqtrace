@@ -88,7 +88,7 @@ class ConsensSeqStatusBar(GenericStatusBar):
 
         self.align_label.set_text(msgstr + str(len(self.cons.getAlignedSequence(0))) + ' b')
         
-        self.cons_label.set_text('working seq. length: ' + str(self.cons_len) + ' b')
+        self.cons_label.set_text('edited seq. length: ' + str(self.cons_len) + ' b')
 
     def consChanged(self, startindex, endindex):
         # clear the status label
@@ -99,7 +99,7 @@ class ConsensSeqStatusBar(GenericStatusBar):
             self.setSeqLabelTexts()
 
     def consSettingsChanged(self):
-        warnstr = '<span foreground="#AA0000">working sequence settings have changed</span>'
+        warnstr = '<span foreground="#AA0000"> Sequence consensus/trimming settings have changed!</span>'
         self.status_label.set_markup(warnstr)
 
 
