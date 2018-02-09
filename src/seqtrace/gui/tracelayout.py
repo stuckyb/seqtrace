@@ -278,7 +278,7 @@ class SequenceTraceLayout(Gtk.VBox):
         hslider.set_draw_value(False)
         self.initYScaleSlider(self.selected_seqtv)
 
-        sizereq = hslider.size_request()
+        sizereq = hslider.get_size_request()
         hslider.set_size_request(60, sizereq.height)
 
         self.y_slider = Gtk.ToolItem()
