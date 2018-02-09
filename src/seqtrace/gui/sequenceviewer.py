@@ -468,9 +468,6 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         if oldwidth != newwidth or oldheight != newheight:
             self.setDrawingSize()
 
-        cr = cairo.Context(self.surface)
-        self.drawConsensus(start, end, cr)
-
         alend = self.fheight*self.numseqs + self.al_top
         x = start*self.fwidth
         dwidth = (end - start + 1) * self.fwidth
