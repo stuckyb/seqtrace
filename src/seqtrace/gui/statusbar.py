@@ -19,7 +19,6 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
 
-
 class GenericStatusBar(Gtk.Frame):
     """
     Implements the appearance and layout of a generic status bar.  Not intended
@@ -37,8 +36,11 @@ class GenericStatusBar(Gtk.Frame):
         self.add(self.hbox)
 
     def addStatusArea(self, expand=False):
-        """ Adds an independent message area to the status bar.  Returns a reference to a label for managing the
-        text displayed by the message area. """
+        """
+        Adds an independent message area to the status bar.  Returns a
+        reference to a label for managing the text displayed by the message
+        area.
+        """
         frame = Gtk.Frame()
         frame.set_shadow_type(Gtk.ShadowType.IN)
         frame.set_border_width(1)
@@ -52,8 +54,10 @@ class GenericStatusBar(Gtk.Frame):
 
 
 class ConsensSeqStatusBar(GenericStatusBar):
-    """ A status bar that tracks the sequence lengths and settings state of a consensus
-    sequence builder. """
+    """
+    A status bar that tracks the sequence lengths and settings state of a
+    consensus sequence builder.
+    """
     def __init__(self, consens_seq_builder):
         GenericStatusBar.__init__(self)
 
@@ -61,7 +65,9 @@ class ConsensSeqStatusBar(GenericStatusBar):
         self.cons_len = len(self.cons.getCompactConsensus())
 
         self.cons.registerObserver('consensus_changed', self.consChanged)
-        self.cons.getSettings().registerObserver('settings_change', self.consSettingsChanged)
+        self.cons.getSettings().registerObserver(
+            'settings_change', self.consSettingsChanged
+        )
         self.connect('destroy', self.onDestroy)
 
         # the alignment/raw length
@@ -76,7 +82,8 @@ class ConsensSeqStatusBar(GenericStatusBar):
         self.setSeqLabelTexts()
 
     def onDestroy(self, widget):
-        # unregister this object as an observer of the consensus sequence settings and consensus sequence
+        # Unregister this object as an observer of the consensus sequence
+        # settings and consensus sequence.
         self.cons.getSettings().unregisterObserver('settings_change', self.consSettingsChanged)
         self.cons.unregisterObserver('consensus_changed', self.consChanged)
 
@@ -104,7 +111,9 @@ class ConsensSeqStatusBar(GenericStatusBar):
 
 
 class ProjectStatusBar(GenericStatusBar):
-    """ A status bar that tracks the number of files in a project. """
+    """
+    A status bar that tracks the number of files in a project.
+    """
     def __init__(self, project):
         GenericStatusBar.__init__(self)
 

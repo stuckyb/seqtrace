@@ -111,16 +111,18 @@ class SequenceTraceLayout(Gtk.VBox):
             self.seqt_viewers[1].scrollTo(seq2index)
             self.seqt_viewers[1].getViewer().highlightBase(seq2index)
 
-        # If scroll synchronization was initially enabled, relock the scrollbars.
+        # If scroll synchronization was initially enabled, relock the
+        # scrollbars.
         if relock:
             self.lockScrolling()
 
     def initializeLockedScrolling(self, widget):
         """
-        Initializes synchronized scrolling for two trace viewers.  Initially locks
-        the traces at the location of the first shared position in the alignment.
-        This does not result in perfect matching throughout the traces, but is still
-        more useful than initially locking them both at their beginnings.
+        Initializes synchronized scrolling for two trace viewers.  Initially
+        locks the traces at the location of the first shared position in the
+        alignment.  This does not result in perfect matching throughout the
+        traces, but is still more useful than initially locking them both at
+        their beginnings.
         """
         # Create lists for the scroll adjustments and signal handler IDs.
         self.adjs = []
@@ -128,10 +130,14 @@ class SequenceTraceLayout(Gtk.VBox):
 
         # Retrieve the scroll adjustments and set up the event handlers.
         self.adjs.append(self.seqt_viewers[0].scrolledwin.get_hadjustment())
-        self.adj_hids.append(self.adjs[0].connect('value_changed', self.traceScrolled, 0))
+        self.adj_hids.append(
+            self.adjs[0].connect('value_changed', self.traceScrolled, 0)
+        )
 
         self.adjs.append(self.seqt_viewers[1].scrolledwin.get_hadjustment())
-        self.adj_hids.append(self.adjs[1].connect('value_changed', self.traceScrolled, 1))
+        self.adj_hids.append(
+            self.adjs[1].connect('value_changed', self.traceScrolled, 1)
+        )
 
         # A list to track the offsets between the two scroll adjustments when
         # they are locked together.
@@ -217,7 +223,10 @@ class SequenceTraceLayout(Gtk.VBox):
         value2 = adj.get_value() - self.adj_offsets[index]
 
         # Update the other scroll adjustment if we're not outside of its bounds.
-        if value2 >= 0.0 and value2 <= (self.adjs[index2].get_upper() - self.adjs[index2].get_page_size()):
+        if (
+            value2 >= 0.0 and
+            value2 <= (self.adjs[index2].get_upper() - self.adjs[index2].get_page_size())
+        ):
             self.adjs[index2].set_value(value2)
 
         # Re-enable the signal handler for the adjustment.
@@ -253,7 +262,8 @@ class SequenceTraceLayout(Gtk.VBox):
         self.zoom_combo.set_active(self.curr_zoom)
         self.zoom_combo.connect('changed', self.zoomComboBox)
 
-        # place the combo box in a VButtonBox to prevent it from expanding vertically
+        # Place the combo box in a VButtonBox to prevent it from expanding
+        # vertically.
         vbox = Gtk.VButtonBox()
         vbox.pack_start(self.zoom_combo, False, True, 0)
         t_item = Gtk.ToolItem()
@@ -270,11 +280,9 @@ class SequenceTraceLayout(Gtk.VBox):
         toolbar.insert(t_item, -1)
 
         self.vscale_adj = Gtk.Adjustment(0, 0, 0)
-        # It appears that there is currently no Python-style constructor
-        # available for Gtk.Scale(), so instead of the commented-out line
-        # below, we have to explicitly use the C constructor.
-        hslider = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=self.vscale_adj)
-        #hslider = Gtk.Scale.new(Gtk.Orientation.HORIZONTAL, self.vscale_adj)
+        hslider = Gtk.Scale(
+            orientation=Gtk.Orientation.HORIZONTAL, adjustment=self.vscale_adj
+        )
         hslider.set_draw_value(False)
         self.initYScaleSlider(self.selected_seqtv)
 
@@ -296,7 +304,8 @@ class SequenceTraceLayout(Gtk.VBox):
         toggle.set_active(True)
         toggle.connect('toggled', self.showConfToggled)
 
-        # place the toggle button in a VButtonBox to prevent it from expanding vertically
+        # Place the toggle button in a VButtonBox to prevent it from expanding
+        # vertically.
         vbox = Gtk.VButtonBox()
         vbox.pack_start(toggle, False, True, 0)
         t_item = Gtk.ToolItem()
@@ -320,7 +329,8 @@ class SequenceTraceLayout(Gtk.VBox):
             trace_combo.set_active(0)
             trace_combo.connect('changed', self.traceComboBox)
 
-            # place the combo box in a VButtonBox to prevent it from expanding vertically
+            # Place the combo box in a VButtonBox to prevent it from expanding
+            # vertically.
             vbox = Gtk.VButtonBox()
             vbox.pack_start(trace_combo, False, True, 0)
             t_item = Gtk.ToolItem()
@@ -364,16 +374,16 @@ class SequenceTraceLayout(Gtk.VBox):
 
     def zoomButtons(self, button, increment):
         """
-        Handles clicks on the "+"/"-" zoom buttons by translating them to changes
-        of the zoom level combo box, which manages the actual zooming.
+        Handles clicks on the "+"/"-" zoom buttons by translating them to
+        changes of the zoom level combo box, which manages the actual zooming.
         """
         self.zoom_combo.set_active(self.curr_zoom + increment)
 
     def zoomComboBox(self, combobox):
         """
-        Responds to changes of the zoom level combo box by enabling or disabling
-        the "+"/"-" zoom buttons as appropriate and triggering the change in zoom
-        level on the selected trace viewer(s).
+        Responds to changes of the zoom level combo box by enabling or
+        disabling the "+"/"-" zoom buttons as appropriate and triggering the
+        change in zoom level on the selected trace viewer(s).
         """
         self.curr_zoom = self.zoom_combo.get_active()
 
@@ -407,5 +417,7 @@ class SequenceTraceLayout(Gtk.VBox):
 
     def destroyed(self, widget):
         # Unregister this widget as an observer of the consensus sequence viewer.
-        self.consv.getConsensusSequenceViewer().unregisterObserver('alignment_clicked', self.alignmentClicked)
+        self.consv.getConsensusSequenceViewer().unregisterObserver(
+            'alignment_clicked', self.alignmentClicked
+        )
 
