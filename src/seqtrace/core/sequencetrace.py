@@ -31,7 +31,7 @@ class UnknownFileTypeError(TraceFileError):
         return 'The file format was not recognized.  Please convert the file to a supported format and try again.'
 
 
-# constants for sequence trace file types
+# Constants for sequence trace file types.
 ST_UNKNOWN = 0
 ST_ZTR = 1
 ST_ABI = 2
@@ -91,16 +91,14 @@ rclookup = {
 
 def reverseCompSequence(sequence):
     """
-    Defines a generic method for reverse complementing a sequence of
-    nucleotide codes.  This method fully supports all of the IUPAC
-    ambiguity codes.
+    Defines a generic method for reverse complementing a sequence of nucleotide
+    codes.  This method fully supports all of the IUPAC ambiguity codes.
     """
     tmp = list()
     for cnt in reversed(range(len(sequence))):
         tmp.append(rclookup[sequence[cnt]])
 
     return ''.join(tmp)
-
 
 
 class SequenceTrace:
@@ -126,8 +124,8 @@ class SequenceTrace:
 
     def reverseComplement(self):
         """
-        Reverse complements the trace data, including the actual sequencing traces,
-        the base calls, and the quality scores.
+        Reverse complements the trace data, including the actual sequencing
+        traces, the base calls, and the quality scores.
         """
         # reverse the DNA sequence
         self.basecalls = reverseCompSequence(self.basecalls)
@@ -187,10 +185,11 @@ class SequenceTrace:
     def getBaseCallConf(self, index):
         return self.bcconf[index]
 
-    # If sampnum < the first base call location, returns the first base call location.
+    # If sampnum < the first base call location, returns the first base call
+    # location.
     def getPrevBaseCallIndex(self, sampnum):
-        # do a binary search for the index of the base call located at,
-        # or immediately before, sampnum
+        # Do a binary search for the index of the base call located at, or
+        # immediately before, sampnum.
         minv = 0
         maxv = len(self.basepos) - 1
 
@@ -209,10 +208,11 @@ class SequenceTrace:
         else:
             return minv
 
-    # If sampnum > the last base call location, returns the last base call location.
+    # If sampnum > the last base call location, returns the last base call
+    # location.
     def getNextBaseCallIndex(self, sampnum):
-        # do a binary search for the index of the base call located at,
-        # or immediately after, sampnum
+        # Do a binary search for the index of the base call located at, or
+        # immediately after, sampnum.
         minv = 0
         maxv = len(self.basepos) - 1
 
@@ -345,10 +345,11 @@ class ZTRSequenceTrace(SequenceTrace):
             basenum += 1
 
     def zlibUncompress(self, cdata):
-        # In examining the Staden package source code, it appears that the 4-byte data length integer is not
-        # guaranteed to be in big-endian byte order.  Might this be a bug in the Staden code?  For this reason,
-        # native byte order is used here (in fact, using big-endian order will cause this to fail on an
-        # x86 machine).
+        # In examining the Staden package source code, it appears that the
+        # 4-byte data length integer is not guaranteed to be in big-endian byte
+        # order.  Might this be a bug in the Staden code?  For this reason,
+        # native byte order is used here (in fact, using big-endian order will
+        # cause this to fail on an x86 machine).
         udatalen = unpack('I', cdata[:4])[0]
     
         udata = zlib.decompress(cdata[4:])
@@ -361,10 +362,11 @@ class ZTRSequenceTrace(SequenceTrace):
         return udata
     
     def RLEUncompress(self, cdata):
-        # In examining the Staden package source code, it appears that the 4-byte data length integer is not
-        # guaranteed to be in big-endian byte order.  Might this be a bug in the Staden code?  For this reason,
-        # native byte order is used here (in fact, using big-endian order will cause this to fail on an
-        # x86 machine).
+        # In examining the Staden package source code, it appears that the
+        # 4-byte data length integer is not guaranteed to be in big-endian byte
+        # order.  Might this be a bug in the Staden code?  For this reason,
+        # native byte order is used here (in fact, using big-endian order will
+        # cause this to fail on an x86 machine).
         udatalen = unpack('I', cdata[:4])[0]
         guard = cdata[4]
         #print unpack_from('=bIb', data[:6])
@@ -539,7 +541,6 @@ class ZTRSequenceTrace(SequenceTrace):
     
         return ''.join(tmpdata)
     
-    
     def readChunk(self, fp):
         # get the chunk descriptor
         chtype = fp.read(4)
@@ -569,8 +570,8 @@ class ZTRSequenceTrace(SequenceTrace):
         if datalen != len(data):
             raise ZTRMissingDataError(datalen, len(data))
     
-        # iteratively process the chunk data until we get the "raw",
-        # uncompressed data
+        # Iteratively process the chunk data until we get the "raw",
+        # uncompressed data.
         dataformat = unpack('b', data[0])[0]
         while dataformat != 0:
             #print 'data format:', dataformat
@@ -731,11 +732,15 @@ class ABISequenceTrace(SequenceTrace):
     
         return entries
     
-    # Attempts to get a bunch of information about the sequencing run from the ABI file.  As much as possible,
-    # the keys used for individual comment values correspond with the keys used for the same values by the
-    # Staden software package.  However, this method also retrieves some comments that are not read by the
-    # Staden package.  To avoid confusion, these additional comment values are not given 4-letter keys.
     def readComments(self):
+        """
+        Attempts to get a bunch of information about the sequencing run from
+        the ABI file.  As much as possible, the keys used for individual
+        comment values correspond with the keys used for the same values by the
+        Staden software package.  However, this method also retrieves some
+        comments that are not read by the Staden package.  To avoid confusion,
+        these additional comment values are not given 4-letter keys.
+        """
         # get the sample name
         entry = self.getIndexEntry('SMPL', 1)
         if entry:
@@ -768,7 +773,8 @@ class ABISequenceTrace(SequenceTrace):
         entry = self.getIndexEntry('SPAC', 1)
         if entry:
             spacing = self.read4ByteFloats(entry)[0]
-            # if spacing is invalid, estimate it ourselves (the Staden code [seqIOABI.c] indicates this is a possibility)
+            # If spacing is invalid, estimate it ourselves (the Staden code
+            # [seqIOABI.c] indicates this is a possibility).
             if spacing < 0:
                 spacing = float(self.basepos[-1] - self.basepos[0]) / (len(self.basepos) - 1)
             self.comments['SPAC'] = '{0:.2f}'.format(spacing)
@@ -825,16 +831,16 @@ class ABISequenceTrace(SequenceTrace):
         if entry:
             self.comments['Plate size'] = str(self.read4ByteInts(entry)[0])
 
-        # get the gel name
-        # This is included here because it is read by the Staden package, but it does not appear to be
-        # included in the modern ABIF documentation.
+        # Get the gel name.
+        # This is included here because it is read by the Staden package, but
+        # it does not appear to be included in the modern ABIF documentation.
         entry = self.getIndexEntry('GELN', 1)
         if entry:
             self.comments['GELN'] = self.readString(entry)
 
-        # get the instrument (matrix) file
-        # This is included here because it is read by the Staden package, but it does not appear to be
-        # included in the modern ABIF documentation.
+        # Get the instrument (matrix) file.
+        # This is included here because it is read by the Staden package, but
+        # it does not appear to be included in the modern ABIF documentation.
         entry = self.getIndexEntry('MTXF', 1)
         if entry:
             self.comments['MTXF'] = self.readString(entry)
@@ -867,9 +873,10 @@ class ABISequenceTrace(SequenceTrace):
             raise ABIError('Index entry contains an invalid data type for character data.')
     
         if indexrow['dlen'] <= 4:
-            # The actual data are stored in the offset field of the index entry.  Because the offset
-            # was read as an unsigned, big-endian integer, the bytes should be in the correct order for
-            # the following bit shift operations.
+            # The actual data are stored in the offset field of the index
+            # entry.  Because the offset was read as an unsigned, big-endian
+            # integer, the bytes should be in the correct order for the
+            # following bit shift operations.
             lst = list()
             for cnt in range(0, indexrow['dcnt']):
                 val = (indexrow['offset'] >> ((3 - cnt) * 8)) & 0xff
@@ -884,9 +891,9 @@ class ABISequenceTrace(SequenceTrace):
         if indexrow['dlen'] != len(strval):
             raise ABIDataError(indexrow['dlen'], len(strval))
 
-        # If this is a Pascal-style string (format 18), then remove the first character (which specifies
-        # the string length).  If this is a C-style string (format 19), then remove the trailing
-        # null character.
+        # If this is a Pascal-style string (format 18), then remove the first
+        # character (which specifies the string length).  If this is a C-style
+        # string (format 19), then remove the trailing null character.
         if indexrow['dformat'] == 18:
             strval = strval[1:]
         elif indexrow['dformat'] == 19:
@@ -909,11 +916,12 @@ class ABISequenceTrace(SequenceTrace):
         lst = list()
     
         if indexrow['dlen'] <= 4:
-            # The actual data are stored in the offset field of the index entry.  Because the offset
-            # was read as an unsigned, big-endian integer, the bytes should be in the correct order for
-            # the following bit shift operations.
-            # First, repack the integer to deal with the possibility of signed integers (shift operations
-            # would only return positive values).
+            # The actual data are stored in the offset field of the index
+            # entry.  Because the offset was read as an unsigned, big-endian
+            # integer, the bytes should be in the correct order for the
+            # following bit shift operations.
+            # First, repack the integer to deal with the possibility of signed
+            # integers (shift operations would only return positive values).
             data = pack('>I', indexrow['offset'])
             for cnt in range(0, indexrow['dcnt']):
                 val = unpack(formatstr, data[cnt:cnt+1])[0]
@@ -944,11 +952,12 @@ class ABISequenceTrace(SequenceTrace):
         lst = list()
     
         if indexrow['dlen'] <= 4:
-            # The actual data are stored in the offset field of the index entry.  Because the offset
-            # was read as an unsigned, big-endian integer, the bytes should be in the correct order for
-            # the following operations.
-            # First, repack the integer to deal with the possibility of signed integers (shift operations
-            # would only return positive values).
+            # The actual data are stored in the offset field of the index
+            # entry.  Because the offset was read as an unsigned, big-endian
+            # integer, the bytes should be in the correct order for the
+            # following operations.
+            # First, repack the integer to deal with the possibility of signed
+            # integers (shift operations would only return positive values).
             data = pack('>I', indexrow['offset'])
             for cnt in range(0, indexrow['dcnt']):
                 val = unpack(formatstr, data[cnt*2:cnt*2+2])[0]
@@ -973,9 +982,10 @@ class ABISequenceTrace(SequenceTrace):
         lst = list()
     
         if indexrow['dlen'] == 4:
-            # The actual data are stored in the offset field of the index entry.  In the case of 4-byte
-            # ints, the offset value is the data value.  It must be repacked, though, to reinterpret it
-            # as a signed integer.
+            # The actual data are stored in the offset field of the index
+            # entry.  In the case of 4-byte ints, the offset value is the data
+            # value.  It must be repacked, though, to reinterpret it as a
+            # signed integer.
             data = pack('>I', indexrow['offset'])
             val = unpack('>i', data)[0]
             lst.append(val)
@@ -1013,13 +1023,17 @@ class ABISequenceTrace(SequenceTrace):
     
         return lst
 
-    # According to the ABIF documentation, ABIF files (after base calling) should contain two base
-    # call entries ("PBAS"): one containing "sequence characters edited by user" (entry number 1),
-    # and one containing "sequence characters as called by Basecaller" (entry number 2).  These
-    # two entries will, in most cases, contain identical sequence data.  This method follows the same
-    # convention used by the Staden package (see seqIOABI.c), which is to only look at entry 1 (the
-    # user-edited sequence) and ignore entry 2.
     def readBaseCalls(self):
+        """
+        According to the ABIF documentation, ABIF files (after base calling)
+        should contain two base call entries ("PBAS"): one containing "sequence
+        characters edited by user" (entry number 1), and one containing
+        "sequence characters as called by Basecaller" (entry number 2).  These
+        two entries will, in most cases, contain identical sequence data.  This
+        method follows the same convention used by the Staden package (see
+        seqIOABI.c), which is to only look at entry 1 (the user-edited
+        sequence) and ignore entry 2.
+        """
         row = self.getIndexEntry('PBAS', 1)
         if row is None:
             raise ABIError('No base call data were found in the ABI file.  The file might be damaged.')
@@ -1027,19 +1041,26 @@ class ABISequenceTrace(SequenceTrace):
         # read the base calls from the file
         self.basecalls = self.readString(row).upper()
     
-    # There is an inconsistency in the ABIF file format documentation regarding the data format of the
-    # confidence scores.  The data format ID (as actually found in a .ab1 file) is 2, indicating the
-    # values are signed 1-byte integers.  The ABIF documentation, however, sugggests the values can range
-    # from 0-255 (i.e., an unsigned 1-byte integer).  In practice, the actual values do not appear to
-    # exceed 61, making the distinction between signed/unsigned irrelevant.  For now, the data format ID
-    # is taken as the correct indication of the underlying data format.
-    #
-    # According to the ABIF documentation, ABIF files (after base calling) should contain two quality
-    # value (QV) entries ("PCON"): one containing QVs "as edited by user" (entry number 1), and one
-    # containing QVs "as called by Basecaller" (entry number 2).  These two entries will, in most cases,
-    # contain identical values.  This method follows the same convention used by the Staden package
-    # (see seqIOABI.c), which is to only look at entry 1 (the user-edited QVs) and ignore entry 2.
     def readConfScores(self):
+        """
+        There is an inconsistency in the ABIF file format documentation
+        regarding the data format of the confidence scores.  The data format ID
+        (as actually found in a .ab1 file) is 2, indicating the values are
+        signed 1-byte integers.  The ABIF documentation, however, sugggests the
+        values can range from 0-255 (i.e., an unsigned 1-byte integer).  In
+        practice, the actual values do not appear to exceed 61, making the
+        distinction between signed/unsigned irrelevant.  For now, the data
+        format ID is taken as the correct indication of the underlying data
+        format.
+    
+        According to the ABIF documentation, ABIF files (after base calling)
+        should contain two quality value (QV) entries ("PCON"): one containing
+        QVs "as edited by user" (entry number 1), and one containing QVs "as
+        called by Basecaller" (entry number 2).  These two entries will, in
+        most cases, contain identical values.  This method follows the same
+        convention used by the Staden package (see seqIOABI.c), which is to
+        only look at entry 1 (the user-edited QVs) and ignore entry 2.
+        """
         row = self.getIndexEntry('PCON', 1)
         if row is None:
             raise ABIError('No confidence score data were found in the ABI file.  SeqTrace requires confidence scores for all base calls.')
@@ -1049,23 +1070,27 @@ class ABISequenceTrace(SequenceTrace):
     
         return True
     
-    # According to the ABIF documentation, ABIF files (after base calling) should contain two peak
-    # location (PL) entries ("PLOC"): one containing PLs "edited by user" (entry number 1), and one
-    # containing PLs "as called by Basecaller" (entry number 2).  These two entries will, in most cases,
-    # contain identical information.  This method follows the same convention used by the Staden package
-    # (see seqIOABI.c), which is to only look at entry 1 (the user-edited PLs) and ignore entry 2.
     def readBaseLocations(self):
+        """
+        According to the ABIF documentation, ABIF files (after base calling)
+        should contain two peak location (PL) entries ("PLOC"): one containing
+        PLs "edited by user" (entry number 1), and one containing PLs "as
+        called by Basecaller" (entry number 2).  These two entries will, in
+        most cases, contain identical information.  This method follows the
+        same convention used by the Staden package (see seqIOABI.c), which is
+        to only look at entry 1 (the user-edited PLs) and ignore entry 2.
+        """
         row = self.getIndexEntry('PLOC', 1)
         if row is None:
             raise ABIError('No base location data were found in the ABI file.  The file might be damaged.')
     
-        # read the base call locations from the file
+        # Read the base call locations from the file.
         self.basepos = self.read2ByteInts(row)
 
         return True
 
     def getBaseDataOrder(self):
-        # retrieve the "filter wheel order" row from the file index
+        # Retrieve the "filter wheel order" row from the file index.
         rows = self.getIndexEntriesById('FWO_')
     
         if len(rows) > 1:
@@ -1073,7 +1098,8 @@ class ABISequenceTrace(SequenceTrace):
         if rows[0]['dlen'] != 4:
             raise ABIError('Incorrect data length for filter wheel order index entry.')
     
-        # the data length is only 4 bytes, so the actual data is stored in the offset
+        # The data length is only 4 bytes, so the actual data are stored in the
+        # offset.
         val = rows[0]['offset']
     
         base_order = list()
@@ -1089,11 +1115,12 @@ class ABISequenceTrace(SequenceTrace):
         base_order = self.getBaseDataOrder()
         maxval = 0
         
-        # This is the ID for the first 'DATA' index entry that points to the processed
-        # trace data.  The man page for the Staden program convert_trace states
-        # that IDs 9-12 contain the processed data; IDs 1-4 contain the raw data.
-        # The ABIF documentation from ABI also suggests that IDs 1-8 will always contain
-        # raw data, and 9-12 will contain the processed data.  Is this always correct?
+        # This is the ID for the first 'DATA' index entry that points to the
+        # processed trace data.  The man page for the Staden program
+        # convert_trace states that IDs 9-12 contain the processed data; IDs
+        # 1-4 contain the raw data.  The ABIF documentation from ABI also
+        # suggests that IDs 1-8 will always contain raw data, and 9-12 will
+        # contain the processed data.  Is this always correct?
         start_id = 9
     
         for cnt in range(0, 4):
@@ -1274,16 +1301,17 @@ class SCFSequenceTrace(SequenceTrace):
             if base in ('A','C','G','T'):
                 cscores.append(scfbaseprobs[base][cnt])
             elif base in codes_to_sum:
-                # This is an ambiguous base call, so sum the derived probabilities
-                # for each possible base.  This is a bit tricky, because we first
-                # need to use the phred-type score to calculate the probability
-                # that each base call would be correct, sum these probabilities,
-                # then convert the sum back to an error probability and a final
-                # phred-type score.
+                # This is an ambiguous base call, so sum the derived
+                # probabilities for each possible base.  This is a bit tricky,
+                # because we first need to use the phred-type score to
+                # calculate the probability that each base call would be
+                # correct, sum these probabilities, then convert the sum back
+                # to an error probability and a final phred-type score.
                 probsum = 0.0
                 for sbase in codes_to_sum[base]:
                     probsum += 1.0 - (10.0 ** (scfbaseprobs[sbase][cnt] / -10.0))
-                # Convert the sum back to an error probability and a phred score.
+                # Convert the sum back to an error probability and a phred
+                # score.
                 qscore = int(round(-10 * math.log10(1.0 - probsum), 0))
                 cscores.append(qscore)
             else:
@@ -1312,7 +1340,8 @@ class SCFSequenceTrace(SequenceTrace):
             except struct.error:
                 raise SCFDataError((numsamps * sampsize), (len(samps) * sampsize))
 
-            # sample values are double-delta encoded (i.e., two successive rounds of differences)
+            # Sample values are double-delta encoded (i.e., two successive
+            # rounds of differences).
             if sampsize == 1:
                 self.decode8BitDoubleDelta(samps)
             else:
@@ -1363,12 +1392,11 @@ class SCFSequenceTrace(SequenceTrace):
         also end with a '\\n', but this seems to be the common interpretation
         in actual SCF files.  However, some software does not end the last
         comments entry with a '\\n' and instead ends it with the zero
-        terminator.  The code in this method tries to accomodate these
+        terminator.  The code in this method tries to accommodate these
         variations in interpretation as much as possible.
         """
         self.tf.seek(commentsstart, 0)
 
-        final_charval = -1
         commentssec = self.tf.read(commentslen)
         readsize = len(commentssec)
         #print readsize, commentslen
@@ -1400,11 +1428,6 @@ class SCFSequenceTrace(SequenceTrace):
                 key, sep, value = line.partition('=')
                 #print key + ': ' + value
                 self.comments[key] = value
-
-
-
-
-
 
 
 
