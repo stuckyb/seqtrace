@@ -29,11 +29,45 @@ class GenericStatusBar(Gtk.Frame):
     def __init__(self):
         Gtk.Frame.__init__(self)
 
-        self.set_shadow_type(Gtk.ShadowType.OUT)
+        self.set_shadow_type(Gtk.ShadowType.OUT )
 
         self.hbox = Gtk.HBox(False, 0)
 
-        self.add(self.hbox)
+        # Use a VBox to get some padding at the top and bottom of the status
+        # areas.
+        vbox = Gtk.VBox(False, 0)
+        vbox.pack_start(self.hbox, False, False, 4)
+        self.add(vbox)
+
+        self.status_area_cnt = 0
+
+        # Set up a custom CSS provider for drawing the status bar borders.
+        self.css_provider = Gtk.CssProvider()
+        self.css_provider.load_from_data("""
+            GtkFrame.main {
+                border-style: solid;
+                border-width: 1px 0 0 0;
+            }
+            
+            GtkFrame.status_area {
+                padding: 1px 8px 1px 8px;
+            }
+            
+            GtkFrame.first_area {
+                border-width: 0;
+            }
+            
+            GtkFrame.next_area {
+                border-style: groove;
+                border-width: 0 0 0 2px;
+            }"""
+        )
+
+        scontext = self.get_style_context()
+        scontext.add_class('main')
+        scontext.add_provider(
+            self.css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
 
     def addStatusArea(self, expand=False):
         """
@@ -43,12 +77,25 @@ class GenericStatusBar(Gtk.Frame):
         """
         frame = Gtk.Frame()
         frame.set_shadow_type(Gtk.ShadowType.IN)
-        frame.set_border_width(1)
         label = Gtk.Label()
-        label.set_padding(4, 1)
+        label.set_padding(0, 0)
         label.set_alignment(0, 0)
         frame.add(label)
+
         self.hbox.pack_start(frame, expand, True, 0)
+
+        scontext = frame.get_style_context()
+        scontext.add_class('status_area')
+        if self.status_area_cnt > 0:
+            scontext.add_class('next_area')
+        else:
+            scontext.add_class('first_area')
+
+        scontext.add_provider(
+            self.css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        self.status_area_cnt += 1
 
         return label
 
