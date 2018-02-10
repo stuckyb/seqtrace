@@ -54,7 +54,10 @@ class TraceFileInfoWin(Gtk.Window):
             'VER2': 'Basecaller version'
             }
 
-    disp_order = ['MACH', 'MODL', 'VER1', 'BCAL', 'VER2', 'DYEP', 'RUND', 'DATE', 'NAME', 'LANE', 'SIGN', 'SPAC']
+    disp_order = [
+        'MACH', 'MODL', 'VER1', 'BCAL', 'VER2', 'DYEP', 'RUND', 'DATE', 'NAME',
+        'LANE', 'SIGN', 'SPAC'
+    ]
 
     def __init__(self, seqtraces):
         Gtk.Window.__init__(self, Gtk.WindowType.TOPLEVEL)
@@ -236,7 +239,7 @@ class TraceWindow(Gtk.Window, CommonDialogs, Observable):
         self.sel_edit_ag = Gtk.ActionGroup('selected_edit_actions')
         self.sel_edit_ag.add_actions([
             ('Copy', Gtk.STOCK_COPY, '_Copy selected base(s)', '<ctl>c', 'Copy the selected base(s) to the system clipboard', self.copyConsBases),
-            ('Delete', Gtk.STOCK_DELETE, '_Delete selected base(s)', None, 'Delete the selected base(s) from the edited sequence', self.deleteConsBases),
+            ('Delete', Gtk.STOCK_DELETE, '_Delete selected base(s)', 'Delete', 'Delete the selected base(s) from the edited sequence', self.deleteConsBases),
             ('Modify', Gtk.STOCK_EDIT, '_Modify selected base(s)...', None, 'Edit the selected base(s)', self.editConsBases)
         ])
 
