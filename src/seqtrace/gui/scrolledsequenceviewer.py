@@ -73,7 +73,7 @@ class ScrolledConsensusSequenceViewer(Gtk.ScrolledWindow):
         """
         new_width = self.da.get_allocated_width()
 
-        if self.rescrolldata.fontchanged == True:
+        if self.rescrolldata.fontchanged:
             if self.rescrolldata.oldwidth != new_width:
                 # Calculate the new position for the scrollbar to keep the view
                 # centered around its previous location.
