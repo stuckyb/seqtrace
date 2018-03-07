@@ -29,6 +29,10 @@ class ObserverStub:
         self.notified_cnt += 1
         self.received_vals = (arg1, arg2)
 
+    def event2Fired(self, regid, arg1, arg2):
+        self.notified_cnt += 1
+        self.received_vals = (regid, arg1, arg2)
+
 
 class TestObservable(unittest.TestCase):
     def setUp(self):
@@ -72,9 +76,14 @@ class TestObservable(unittest.TestCase):
         obs.registerObserver('event1', observer.event1Fired)
         self.assertEqual(1, len(obs._observers['event1']))
 
+        # Verify that registering the same observer twice with different
+        # registration IDs does result in two registrations.
+        obs.registerObserver('event1', observer.event1Fired, 2)
+        self.assertEqual(2, len(obs._observers['event1']))
+
         observer2 = ObserverStub()
         obs.registerObserver('event1', observer2.event1Fired)
-        self.assertEqual(2, len(obs._observers['event1']))
+        self.assertEqual(3, len(obs._observers['event1']))
 
     def test_unregisterObserver(self):
         obs = Observable()
@@ -88,14 +97,16 @@ class TestObservable(unittest.TestCase):
 
         obs.unregisterObserver('event1', observer2.event1Fired)
         self.assertEqual(1, len(obs._observers['event1']))
-        self.assertTrue(observer.event1Fired in obs._observers['event1'])
+        self.assertTrue(
+            observer.event1Fired == list(obs._observers['event1'])[0][0]
+        )
 
         obs.unregisterObserver('event1', observer.event1Fired)
         self.assertEqual(0, len(obs._observers['event1']))
 
     def test_notifyObservers(self):
         obs = Observable()
-        obs.defineObservableEvents(['event1'])
+        obs.defineObservableEvents(['event1', 'event2'])
         observer = ObserverStub()
         obs.registerObserver('event1', observer.event1Fired)
 
@@ -106,4 +117,10 @@ class TestObservable(unittest.TestCase):
 
         self.assertEqual(1, observer.notified_cnt)
         self.assertEqual(('arg1val', 2), observer.received_vals)
+
+        obs.registerObserver('event2', observer.event2Fired, 1)
+        obs.notifyObservers('event2', (3, 'arg2val'))
+
+        self.assertEqual(2, observer.notified_cnt)
+        self.assertEqual((1, 3, 'arg2val'), observer.received_vals)
 

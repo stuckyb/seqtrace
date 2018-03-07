@@ -46,7 +46,7 @@ class Observable(object):
             if event_name not in self._observers:
                 self._observers[event_name] = set()
 
-    def registerObserver(self, event_name, observer):
+    def registerObserver(self, event_name, observer, regID = None):
         """
         Registers a new observer that will be notified whenever event_name
         occurs.
@@ -54,9 +54,12 @@ class Observable(object):
         event_name (string): The event name to observe.
         observer: A callable object (typically a function or method) with an
             interface that matches the arguments passed when event_name occurs.
+        regID: A value that serves as an identifier for this observer
+            registration.  If provided, the ID will always be passed to
+            observers when a notification occurs.
         """
         try:
-            self._observers[event_name].add(observer)
+            self._observers[event_name].add((observer, regID))
         except KeyError:
             raise UnrecognizedEventError(event_name)
 
@@ -66,8 +69,14 @@ class Observable(object):
         when event_name occurs.
         """
         try:
-            if observer in self._observers[event_name]:
-                self._observers[event_name].remove(observer)
+            to_delete = []
+            for observer_reg in self._observers[event_name]:
+                if observer_reg[0] == observer:
+                    to_delete.append(observer_reg)
+
+            for observer_reg in to_delete:
+                self._observers[event_name].remove(observer_reg)
+
         except KeyError:
             raise UnrecognizedEventError(event_name)
 
@@ -75,14 +84,18 @@ class Observable(object):
         """
         Notify all observers registered for event_name.  Notification arguments
         are provided as an iterable that will be unpacked when calling the
-        observer.
+        observer.  If a registration ID was provided when the observer was
+        registered, it will be passed as the first argument to the observer.
 
         event_name (string): The event name for which to send notifications.
         args: An iterable of arguments to send to the observer.
         """
         try:
-            for observer in self._observers[event_name]:
-                observer(*args)
+            for observer_reg in self._observers[event_name]:
+                if observer_reg[1] is not None:
+                    observer_reg[0](observer_reg[1], *args)
+                else:
+                    observer_reg[0](*args)
         except KeyError as e:
             raise UnrecognizedEventError(event_name)
 
