@@ -767,7 +767,9 @@ class ABISequenceTrace(SequenceTrace):
             for cnt in range(0, len(order)):
                 sigst[order[cnt]] = stvals[cnt]
 
-            self.comments['SIGN'] = 'A={0},C={1},G={2},T={3}'.format(sigst['A'], sigst['C'], sigst['G'], sigst['T'])
+            self.comments['SIGN'] = 'A={0},C={1},G={2},T={3}'.format(
+                sigst['A'], sigst['C'], sigst['G'], sigst['T']
+            )
 
         # get the average peak spacing
         entry = self.getIndexEntry('SPAC', 1)
@@ -783,8 +785,12 @@ class ABISequenceTrace(SequenceTrace):
         d_entries = self.getIndexEntriesById('RUND')
         t_entries = self.getIndexEntriesById('RUNT')
         if (len(d_entries) > 1) and (len(t_entries) > 1):
-            sdate = self.readDateTime(self.getIndexEntry('RUND', 1), self.getIndexEntry('RUNT', 1))
-            edate = self.readDateTime(self.getIndexEntry('RUND', 2), self.getIndexEntry('RUNT', 2))
+            sdate = self.readDateTime(
+                self.getIndexEntry('RUND', 1), self.getIndexEntry('RUNT', 1)
+            )
+            edate = self.readDateTime(
+                self.getIndexEntry('RUND', 2), self.getIndexEntry('RUNT', 2)
+            )
             #print sdate, edate
             self.comments['RUND'] = sdate.strftime('%Y%m%d.%H%M%S') + ' - ' + edate.strftime('%Y%m%d.%H%M%S')
             self.comments['DATE'] = sdate.strftime('%a %d %b %H:%M:%S %Y') + ' to ' + edate.strftime('%a %d %b %H:%M:%S %Y')
@@ -845,7 +851,8 @@ class ABISequenceTrace(SequenceTrace):
         if entry:
             self.comments['MTXF'] = self.readString(entry)
 
-        # 'APrX' points to a long XML string with detailed information about the analysis protocol used
+        # 'APrX' points to a long XML string with detailed information about
+        # the analysis protocol used.
         #entry = self.getIndexEntry('APrX', 1)
         #if entry:
         #    self.readString(entry)
@@ -861,8 +868,11 @@ class ABISequenceTrace(SequenceTrace):
         #   bits 15-8: seconds
         datenum = self.read4ByteInts(dateindexrow)[0]
         timenum = self.read4ByteInts(timeindexrow)[0]
-        dateobj = datetime(year=(datenum >> 16), month=((datenum >> 8) & 0xff), day=(datenum & 0xff),
-                hour=(timenum >> 24), minute=((timenum >> 16) & 0xff), second=((timenum >> 8) & 0xff))
+        dateobj = datetime(
+            year=(datenum >> 16), month=((datenum >> 8) & 0xff),
+            day=(datenum & 0xff), hour=(timenum >> 24),
+            minute=((timenum >> 16) & 0xff), second=((timenum >> 8) & 0xff)
+        )
 
         return dateobj
 
@@ -1208,13 +1218,17 @@ class SCFSequenceTrace(SequenceTrace):
             raise SCFVersionError(version[0], version[2:])
 
         if samplesize not in (1, 2):
-            raise SCFError('Invalid sample size value in SCF header.  The size specified was ' +
-                    str(samplesize) + ', but must be either 1 or 2.')
+            raise SCFError(
+                'Invalid sample size value in SCF header.  The size specified was ' +
+                str(samplesize) + ', but must be either 1 or 2.'
+            )
 
         if codeset not in self.CODE_SETS:
-            raise SCFError('Invalid code set specified in SCF header.  This file uses code set ' +
-                    str(codeset) + ', but this software only recognizes the following code sets: ' +
-                    str(self.CODE_SETS) + '.')
+            raise SCFError(
+                'Invalid code set specified in SCF header.  This file uses code set ' +
+                str(codeset) + ', but this software only recognizes the following code sets: ' +
+                str(self.CODE_SETS) + '.'
+            )
 
         self.readBasesData(numbases, basesstart)
         self.readTraceData(numsamps, sampstart, samplesize)
