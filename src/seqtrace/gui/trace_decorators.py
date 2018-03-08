@@ -18,6 +18,8 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
+from seqtrace.core.observable import Observable
+
 
 class SequenceTraceViewerDecorator(object):
     """
@@ -81,7 +83,26 @@ class FwdRevSTVDecorator(SequenceTraceViewerDecorator):
         return self.hbox
 
 
-class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
+class _STVRescrollData:
+    """
+    A simple struct-like class used by ScrollAndZoomSTVDecorator to store size
+    and scroll state information to properly handle zoom events or font changes
+    that change the size of the underlying SequenceTraceViewer's DrawingArea.
+    """
+    def __init__(self):
+        # The old allocated width of the SequenceTraceViewer's DrawingArea.
+        self.oldwidth = 0
+
+        # A float between 0 and 1.0 that specifies the x position (as a
+        # proportion of total width) of the SequenceTraceViewer's DrawingArea
+        # to center in the visible part of the scrolled view.
+        self.oldpos = 0.0
+
+        # Indicates whether the scroll position should be updated.
+        self.updatescroll = False
+
+
+class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator, Observable):
     """
     Adds scroll and zoom functionality to a SequenceTraceViewer.  Also manages
     font changes and associated rescaling.
@@ -101,14 +122,41 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
 
         oldwidth, oldheight = self.viewer.getWidget().get_size_request()
         #oldheight = 200
-        self.viewer.getWidget().set_size_request(int(seqt.getTraceLength() * self.zoom_100), oldheight)
+        self.viewer.getWidget().set_size_request(
+            int(seqt.getTraceLength() * self.zoom_100), oldheight
+        )
         innerhbox = Gtk.HBox(False)
         innerhbox.pack_start(self.viewer.getWidget(), False, False, 0)
         self.scrolledwin.set_policy(Gtk.PolicyType.ALWAYS, Gtk.PolicyType.NEVER)
         self.scrolledwin.add_with_viewport(innerhbox)
 
+        self.rescrolldata = _STVRescrollData()
+
+        self.viewer.getWidget().connect(
+            'configure-event', self.traceViewerConfigured
+        )
+
+        # Define an event that is triggered when the trace viewport is
+        # externally scrolled; that is, when it is not auto-scrolled by code in
+        # this class (e.g., as part of a zoom event).
+        self.defineObservableEvents(['scroll_external'])
+        self.internal_scroll = False
+
+        self.scrolledwin.get_hadjustment().connect(
+            'value_changed', self.adjustmentChanged
+        )
+
     def getWidget(self):
         return self.scrolledwin
+
+    def adjustmentChanged(self, adj):
+        if self.internal_scroll:
+            self.internal_scroll = False
+        else:
+            self.notifyObservers('scroll_external', (adj,))
+
+        # Allow this event to propagate to other handlers.
+        return False
 
     def calcZoom100ScaleFactor(self):
         """
@@ -154,6 +202,33 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
             # drawing area.
             self.viewer.getWidget().queue_draw()
 
+    def traceViewerConfigured(self, widget, event):
+        """
+        Responds to size changes of the DrawingArea of the underlying
+        SequenceTraceViewer to ensure that the correct part of the viewer
+        remains centered in the visible part of the window.
+        """
+        if self.rescrolldata.updatescroll:
+            new_width = self.viewer.getWidget().get_allocated_width()
+
+            if self.rescrolldata.oldwidth != new_width:
+                # Calculate the new position for the scrollbar to keep the view
+                # centered around its previous location.
+                adj = self.scrolledwin.get_hadjustment()
+                page_size = adj.get_page_size()
+    
+                newpos = new_width * self.rescrolldata.oldpos
+                new_adjval = int(newpos - (page_size / 2))
+                if new_adjval < 0:
+                    new_adjval = 0
+                elif new_adjval > (new_width - page_size):
+                    new_adjval = new_width - page_size
+
+                self.internal_scroll = True
+                adj.set_value(new_adjval)
+
+            self.rescrolldata.updatescroll = False
+
     def zoom(self, level, adjust_scroll=True):
         """
         adjust_scroll: If True, the scroll bar position will be adjusted to
@@ -162,34 +237,27 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
         """
         z_scale = float(level) / 100 * self.zoom_100
 
+        da = self.viewer.getWidget()
+
         # Calculate the new width for the sequence trace viewer.
         new_width = int(self.viewer.getSequenceTrace().getTraceLength() * z_scale)
 
         if adjust_scroll:
-            # Calculate the new position for the scrollbar to keep the view
-            # centered around its current location.
+            # Get the old scrollbar position information.
             adj = self.scrolledwin.get_hadjustment()
             page_size = adj.get_page_size()
             center = adj.get_value() + (page_size / 2)
-            pos = float(center) / adj.get_upper()
-            newpos = new_width * pos
-            new_adjval = int(newpos - (page_size / 2))
-            if new_adjval < 0:
-                new_adjval = 0
-            elif new_adjval > (new_width - page_size):
-                new_adjval = new_width - page_size
+
+            self.rescrolldata.oldpos = float(center) / adj.get_upper()
+            self.rescrolldata.oldwidth = da.get_allocated_width()
+            self.rescrolldata.updatescroll = True
 
         # Resize the sequence trace viewer.
-        oldwidth, oldheight = self.viewer.getWidget().get_size_request()
-        self.viewer.getWidget().set_size_request(new_width, oldheight)
+        oldwidth, oldheight = da.get_size_request()
+        if oldwidth != new_width:
+            self.viewer.getWidget().set_size_request(new_width, oldheight)
 
-        if adjust_scroll:
-            # Allow the resize to complete before repositioning the scrollbar.
-            while Gtk.events_pending():
-               Gtk.main_iteration()
-
-            adj.set_value(new_adjval)
-            self.zoom_level = level
+        self.zoom_level = level
 
     def scrollTo(self, basenum):
         adj = self.scrolledwin.get_hadjustment()
@@ -217,6 +285,8 @@ class ScrollAndZoomSTVDecorator(SequenceTraceViewerDecorator):
             x = 0
         elif x > scend:
             x = scend
+
         #print adj.lower, adj.upper, adj.value
+        self.internal_scroll = True
         adj.set_value(x)
 

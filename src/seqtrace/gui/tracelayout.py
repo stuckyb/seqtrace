@@ -124,19 +124,24 @@ class SequenceTraceLayout(Gtk.VBox):
         traces, but is still more useful than initially locking them both at
         their beginnings.
         """
-        # Create lists for the scroll adjustments and signal handler IDs.
+        # Create lists for the scroll adjustments and scroll_external observer
+        # registrations IDs.
         self.adjs = []
-        self.adj_hids = []
+        self.scroll_hids = []
 
         # Retrieve the scroll adjustments and set up the event handlers.
         self.adjs.append(self.seqt_viewers[0].scrolledwin.get_hadjustment())
-        self.adj_hids.append(
-            self.adjs[0].connect('value_changed', self.traceScrolled, 0)
+        self.scroll_hids.append(
+            self.seqt_viewers[0].registerObserver(
+                'scroll_external', self.traceScrolled, 0
+            )
         )
 
         self.adjs.append(self.seqt_viewers[1].scrolledwin.get_hadjustment())
-        self.adj_hids.append(
-            self.adjs[1].connect('value_changed', self.traceScrolled, 1)
+        self.scroll_hids.append(
+            self.seqt_viewers[1].registerObserver(
+                'scroll_external', self.traceScrolled, 1
+            )
         )
 
         # A list to track the offsets between the two scroll adjustments when
@@ -189,9 +194,6 @@ class SequenceTraceLayout(Gtk.VBox):
         if self.scroll_locked:
             return
 
-        self.adjs[0].handler_unblock(self.adj_hids[0])
-        self.adjs[1].handler_unblock(self.adj_hids[1])
-
         # Save the offsets between the positions of the two adjustments.
         self.adj_offsets[0] = self.adjs[0].get_value() - self.adjs[1].get_value()
         self.adj_offsets[1] = self.adjs[1].get_value() - self.adjs[0].get_value()
@@ -202,12 +204,17 @@ class SequenceTraceLayout(Gtk.VBox):
         if not(self.scroll_locked):
             return
 
-        self.adjs[0].handler_block(self.adj_hids[0])
-        self.adjs[1].handler_block(self.adj_hids[1])
-
         self.scroll_locked = False
 
-    def traceScrolled(self, adj, index):
+    def traceScrolled(self, index, adj):
+        """
+        Responds to 'scroll_external' events from the contained sequence trace
+        viewers (only if there are two trace viewers) to keep the two trace
+        viewers' scroll positions synchronized.
+        """
+        if not(self.scroll_locked):
+            return
+
         #print 'min', index, adj.get_lower()
         #print 'max:', adj.get_upper()
         #print 'page size:', adj.get_page_size()
@@ -217,7 +224,7 @@ class SequenceTraceLayout(Gtk.VBox):
         index2 = (index + 1) % 2
 
         # Avoid triggering a cascade of events.
-        self.adjs[index2].handler_block(self.adj_hids[index2])
+        self.seqt_viewers[index2].blockObserver(self.scroll_hids[index2])
 
         # Calculate the position of the other scrollbar adjustment.
         value2 = adj.get_value() - self.adj_offsets[index]
@@ -229,8 +236,8 @@ class SequenceTraceLayout(Gtk.VBox):
         ):
             self.adjs[index2].set_value(value2)
 
-        # Re-enable the signal handler for the adjustment.
-        self.adjs[index2].handler_unblock(self.adj_hids[index2])
+        # Re-enable scroll observation for the other trace viewer.
+        self.seqt_viewers[index2].unblockObserver(self.scroll_hids[index2])
 
     def getTraceToolBar(self):
         return self.toolbar
