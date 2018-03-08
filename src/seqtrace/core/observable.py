@@ -26,6 +26,46 @@ class UnrecognizedEventError(ObservableError):
         return ('The event name "' + self.event_name + 
                 '" is not a recognized observable event supported by this class.')
 
+class InvaledRegistrationIDError(ObservableError):
+    def __init__(self, reg_id):
+        self.reg_id = reg_id
+
+    def __str__(self):
+        return (
+            'The registration ID {0} is not a valid registration ID for this '
+            'observable.'.format(self.reg_id)
+        )
+
+
+class _ObserverReg(object):
+    """
+    A simple struct-like class that contains the data for a single observer
+    registration.
+    """
+    def __init__(self, reg_id, observer, dataval):
+        self.reg_id = reg_id
+        self.observer = observer
+        self.dataval = dataval
+
+    def __eq__(self, other):
+        """
+        Use only the observer and dataval values for hashing and equality
+        comparisons, because the registration ID is not semantically meaningful
+        for deciding equality.
+        """
+        return (
+            (self.observer == other.observer) and
+            (self.dataval == other.dataval)
+        )
+
+    def __hash__(self):
+        """
+        Use only the observer and dataval values for hashing and equality
+        comparisons, because the registration ID is not semantically meaningful
+        for deciding equality.
+        """
+        return hash((self.observer, self.dataval))
+
 
 class Observable(object):
     """
@@ -35,8 +75,20 @@ class Observable(object):
     """
     def defineObservableEvents(self, event_names):
         """
+        This method initializes the Observable and defines the event names.
+        This method must be called prior to registering any observers.
+
         event_names: A list of event name strings.
         """
+        # An incrementing integer for generating new observer registration IDs.
+        self._cur_reg_id = 0
+
+        # A set of all registration IDs in current use.
+        self._reg_ids = set()
+
+        # A set of all blocked observer registrations.
+        self._blocked_reg_ids = set()
+
         try:
             self._observers
         except AttributeError:
@@ -46,45 +98,80 @@ class Observable(object):
             if event_name not in self._observers:
                 self._observers[event_name] = set()
 
-    def registerObserver(self, event_name, observer, regID = None):
+    def registerObserver(self, event_name, observer, dataval=None):
         """
         Registers a new observer that will be notified whenever event_name
-        occurs.
+        occurs.  Returns the ID for the registration if the registration
+        succeeded, return -1 otherwise (i.e., if the observer/dataval pair is
+        already registered).
 
         event_name (string): The event name to observe.
         observer: A callable object (typically a function or method) with an
             interface that matches the arguments passed when event_name occurs.
-        regID: A value that serves as an identifier for this observer
-            registration.  If provided, the ID will always be passed to
-            observers when a notification occurs.
+        dataval: A data value to pass to observers at event notifications.
         """
-        try:
-            self._observers[event_name].add((observer, regID))
-        except KeyError:
+        if event_name not in self._observers:
             raise UnrecognizedEventError(event_name)
+
+        new_reg = _ObserverReg(self._cur_reg_id, observer, dataval)
+
+        if new_reg not in self._observers[event_name]:
+            self._observers[event_name].add(new_reg)
+            self._reg_ids.add(self._cur_reg_id)
+            self._cur_reg_id += 1
+
+            return self._cur_reg_id - 1
+        else:
+            return -1
 
     def unregisterObserver(self, event_name, observer):
         """
-        Removes an observer from the list of observers that will be notified
-        when event_name occurs.
+        Removes all registrations for an observer from the set of observers
+        that will be notified when event_name occurs.
         """
         try:
             to_delete = []
             for observer_reg in self._observers[event_name]:
-                if observer_reg[0] == observer:
+                if observer_reg.observer == observer:
                     to_delete.append(observer_reg)
 
             for observer_reg in to_delete:
+                self._reg_ids.remove(observer_reg.reg_id)
+                if observer_reg.reg_id in self._blocked_reg_ids:
+                    self._blocked_reg_ids.remove(observer_reg.reg_id)
                 self._observers[event_name].remove(observer_reg)
 
         except KeyError:
             raise UnrecognizedEventError(event_name)
 
+    def blockObserver(self, reg_id):
+        """
+        Prevents an observer from being notified of events.
+
+        reg_id: The registration ID to block.
+        """
+        if reg_id not in self._reg_ids:
+            raise InvaledRegistrationIDError(reg_id)
+
+        self._blocked_reg_ids.add(reg_id)
+
+    def unblockObserver(self, reg_id):
+        """
+        Restores notifications to an observer.
+
+        reg_id: The registration ID to unblock.
+        """
+        if reg_id not in self._reg_ids:
+            raise InvaledRegistrationIDError(reg_id)
+
+        if reg_id in self._blocked_reg_ids:
+            self._blocked_reg_ids.remove(reg_id)
+
     def notifyObservers(self, event_name, args):
         """
         Notify all observers registered for event_name.  Notification arguments
         are provided as an iterable that will be unpacked when calling the
-        observer.  If a registration ID was provided when the observer was
+        observer.  If a data value was provided when the observer was
         registered, it will be passed as the first argument to the observer.
 
         event_name (string): The event name for which to send notifications.
@@ -92,10 +179,11 @@ class Observable(object):
         """
         try:
             for observer_reg in self._observers[event_name]:
-                if observer_reg[1] is not None:
-                    observer_reg[0](observer_reg[1], *args)
-                else:
-                    observer_reg[0](*args)
+                if observer_reg.reg_id not in self._blocked_reg_ids:
+                    if observer_reg.dataval is not None:
+                        observer_reg.observer(observer_reg.dataval, *args)
+                    else:
+                        observer_reg.observer(*args)
         except KeyError as e:
             raise UnrecognizedEventError(event_name)
 

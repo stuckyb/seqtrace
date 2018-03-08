@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from seqtrace.core.observable import Observable
+from seqtrace.core.observable import Observable, InvaledRegistrationIDError
 import unittest
 
 
@@ -66,24 +66,33 @@ class TestObservable(unittest.TestCase):
 
         obs.defineObservableEvents(['event1'])
         self.assertEqual(0, len(obs._observers['event1']))
+        self.assertEqual(0, len(obs._reg_ids))
 
         observer = ObserverStub()
-        obs.registerObserver('event1', observer.event1Fired)
+        reg_id = obs.registerObserver('event1', observer.event1Fired)
         self.assertEqual(1, len(obs._observers['event1']))
+        self.assertEqual(1, len(obs._reg_ids))
+        self.assertEqual(0, reg_id)
 
         # Verify that registering the same observer twice doesn't result in
         # duplication.
-        obs.registerObserver('event1', observer.event1Fired)
+        reg_id = obs.registerObserver('event1', observer.event1Fired)
         self.assertEqual(1, len(obs._observers['event1']))
+        self.assertEqual(1, len(obs._reg_ids))
+        self.assertEqual(-1, reg_id)
 
         # Verify that registering the same observer twice with different
-        # registration IDs does result in two registrations.
-        obs.registerObserver('event1', observer.event1Fired, 2)
+        # data values does result in two registrations.
+        reg_id = obs.registerObserver('event1', observer.event1Fired, 2)
         self.assertEqual(2, len(obs._observers['event1']))
+        self.assertEqual(2, len(obs._reg_ids))
+        self.assertEqual(1, reg_id)
 
         observer2 = ObserverStub()
-        obs.registerObserver('event1', observer2.event1Fired)
+        reg_id = obs.registerObserver('event1', observer2.event1Fired)
         self.assertEqual(3, len(obs._observers['event1']))
+        self.assertEqual(3, len(obs._reg_ids))
+        self.assertEqual(2, reg_id)
 
     def test_unregisterObserver(self):
         obs = Observable()
@@ -91,18 +100,22 @@ class TestObservable(unittest.TestCase):
 
         observer = ObserverStub()
         observer2 = ObserverStub()
-        obs.registerObserver('event1', observer.event1Fired)
+        reg_id1 = obs.registerObserver('event1', observer.event1Fired)
         obs.registerObserver('event1', observer2.event1Fired)
         self.assertEqual(2, len(obs._observers['event1']))
+        self.assertEqual(2, len(obs._reg_ids))
 
         obs.unregisterObserver('event1', observer2.event1Fired)
         self.assertEqual(1, len(obs._observers['event1']))
+        self.assertEqual(1, len(obs._reg_ids))
+        self.assertTrue(reg_id1 in obs._reg_ids)
         self.assertTrue(
-            observer.event1Fired == list(obs._observers['event1'])[0][0]
+            observer.event1Fired == list(obs._observers['event1'])[0].observer
         )
 
         obs.unregisterObserver('event1', observer.event1Fired)
         self.assertEqual(0, len(obs._observers['event1']))
+        self.assertEqual(0, len(obs._reg_ids))
 
     def test_notifyObservers(self):
         obs = Observable()
@@ -123,4 +136,50 @@ class TestObservable(unittest.TestCase):
 
         self.assertEqual(2, observer.notified_cnt)
         self.assertEqual((1, 3, 'arg2val'), observer.received_vals)
+
+    def test_blockObserver(self):
+        obs = Observable()
+        obs.defineObservableEvents(['event1'])
+        observer1 = ObserverStub()
+        reg_id1 = obs.registerObserver('event1', observer1.event1Fired, 'data1')
+        reg_id2 = obs.registerObserver('event1', observer1.event1Fired, 'data2')
+        observer2 = ObserverStub()
+        reg_id3 = obs.registerObserver('event1', observer2.event1Fired, 'data3')
+
+        obs.notifyObservers('event1', ('argval',))
+        self.assertEqual(2, observer1.notified_cnt)
+        self.assertEqual(1, observer2.notified_cnt)
+
+        # Test blocking and unblocking an observer with only 1 registration.
+        obs.blockObserver(reg_id3)
+
+        obs.notifyObservers('event1', ('argval',))
+        self.assertEqual(4, observer1.notified_cnt)
+        self.assertEqual(1, observer2.notified_cnt)
+
+        obs.unblockObserver(reg_id3)
+
+        obs.notifyObservers('event1', ('argval',))
+        self.assertEqual(6, observer1.notified_cnt)
+        self.assertEqual(2, observer2.notified_cnt)
+
+        # Test blocking and unblocking an observer with multiple registrations.
+        obs.blockObserver(reg_id2)
+
+        obs.notifyObservers('event1', ('argval',))
+        self.assertEqual(7, observer1.notified_cnt)
+        self.assertEqual(3, observer2.notified_cnt)
+
+        obs.unblockObserver(reg_id2)
+
+        obs.notifyObservers('event1', ('argval',))
+        self.assertEqual(9, observer1.notified_cnt)
+        self.assertEqual(4, observer2.notified_cnt)
+
+        # Test attempting to block and unblock an invalid registration ID.
+        with self.assertRaises(InvaledRegistrationIDError):
+            obs.blockObserver(-1)
+
+        with self.assertRaises(InvaledRegistrationIDError):
+            obs.unblockObserver(-1)
 
