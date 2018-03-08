@@ -21,7 +21,6 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Pango
 from gi.repository import PangoCairo
-import cairo
 
 from seqtrace.core.observable import Observable
 from colorfuncs import parseHTMLColorStr, getInverseColor
@@ -40,7 +39,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         self.cons = mod_consensseq_builder
         self.numseqs = self.cons.getNumSeqs()
         settings = self.cons.getSettings()
-        self.drawprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
+        self.drawprimers = (
+            settings.getForwardPrimer() != '' and
+            settings.getReversePrimer() != ''
+        )
 
         self.cons.registerObserver('consensus_changed', self.consensusChanged)
 
@@ -152,7 +154,9 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         self.defineObservableEvents([
             'alignment_clicked',
             'consensus_clicked',
-            'selection_state'  # triggered when the selection state changes from no selection to one or more bases selected
+            # The 'selection_state' event is triggered when the selection state
+            # changes from no selection to one or more bases selected.
+            'selection_state'
             ])
 
     def onDestroy(self, widget):
@@ -203,7 +207,9 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
                     self.redrawAlignmentPos(self.highlighted)
 
                 self.highlighted = bindex
-                self.notifyObservers('alignment_clicked', (seqnum, seq1index, seq2index))
+                self.notifyObservers(
+                    'alignment_clicked', (seqnum, seq1index, seq2index)
+                )
             elif (event.y > (alend + self.padding)) and (event.y < consend):
                 # The mouse was clicked on the consensus sequence display, so
                 # initiate a new consensus selection.
@@ -221,9 +227,11 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         elif event.button == 3:
             if (event.y > (alend + self.padding)) and (event.y < consend):
-                # the mouse is over the consensus sequence display and was right clicked
+                # The mouse is over the consensus sequence display and was
+                # right clicked.
                 self.notifyObservers(
-                    'consensus_clicked', (self.consselect_start, self.consselect_end, event)
+                    'consensus_clicked',
+                    (self.consselect_start, self.consselect_end, event)
                 )
 
     def mouseRelease(self, da, event):
@@ -411,12 +419,12 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
     def setFontDescription(self, fontdesc):
         """
-        Sets the font size to use for drawing sequences, calculates the character
-        size in pixels, and resizes the DrawingArea to fit the sequence(s).  Note
-        that for most fonts, the character "W" will actually be slightly wider than
-        the character width calculated by this method.  However, "W"s are uncommon
-        in trace data, and sizing the character to fit "W"s makes the other characters
-        too far apart (in my opinion!).
+        Sets the font size to use for drawing sequences, calculates the
+        character size in pixels, and resizes the DrawingArea to fit the
+        sequence(s).  Note that for most fonts, the character "W" will actually
+        be slightly wider than the character width calculated by this method.
+        However, "W"s are uncommon in trace data, and sizing the character to
+        fit "W"s makes the other characters too far apart (in my opinion).
         """
         fheight_old = self.fheight
         fwidth_old = self.fwidth
@@ -444,7 +452,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         (width, height).
         """
         settings = self.cons.getSettings()
-        haveprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
+        haveprimers = (
+            settings.getForwardPrimer() != '' and
+            settings.getReversePrimer() != ''
+        )
         
         totalheight = self.fheight*(self.numseqs+1) + self.margins*2 + self.padding
         if haveprimers:
@@ -454,14 +465,18 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
     def setDrawingSize(self):
         """
-        Sets the size request for the viewer to accomodate all displayable components
-        of the consensus sequence object.  The total size is determined by the method
-        getSizeRequirements().  Also updates the location of the top of the alignment
-        and the flag indicating whether primers should be displayed.
+        Sets the size request for the viewer to accomodate all displayable
+        components of the consensus sequence object.  The total size is
+        determined by the method getSizeRequirements().  Also updates the
+        location of the top of the alignment and the flag indicating whether
+        primers should be displayed.
         """
         # Determine whether primers should be drawn.
         settings = self.cons.getSettings()
-        self.drawprimers = settings.getForwardPrimer() != '' and settings.getReversePrimer() != ''
+        self.drawprimers = (
+            settings.getForwardPrimer() != '' and
+            settings.getReversePrimer() != ''
+        )
 
         # Set the location of the top of the alignment.
         self.al_top = self.margins
