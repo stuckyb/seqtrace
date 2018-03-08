@@ -105,6 +105,10 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
 
         self.txtlayout = Pango.Layout(self.create_pango_context())
 
+        # The working width and height of the current font, in pixels.
+        self.fheight = -1
+        self.fwidth = -1
+
         # Get the default font used by Gtk+ and use it as the default for the
         # sequence display.
         self.setFontDescription(getDefaultFont())
@@ -414,6 +418,9 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         in trace data, and sizing the character to fit "W"s makes the other characters
         too far apart (in my opinion!).
         """
+        fheight_old = self.fheight
+        fwidth_old = self.fwidth
+
         # Set up sequence display font properties.
         self.fontdesc = fontdesc.copy()
         #self.fontdesc.set_size(20*Pango.SCALE)
@@ -422,7 +429,12 @@ class ConsensusSequenceViewer(Gtk.DrawingArea, Observable):
         self.fheight = self.txtlayout.get_pixel_size()[1]
         self.fwidth = self.txtlayout.get_pixel_size()[0]
 
-        self.setDrawingSize()
+        if (fheight_old != self.fheight) or (fwidth_old != self.fwidth):
+            self.setDrawingSize()
+        else:
+            # The font dimensions didn't change, so just redraw the sequence(s)
+            # without a resize request.
+            self.queue_draw()
 
     def getSizeRequirements(self):
         """
