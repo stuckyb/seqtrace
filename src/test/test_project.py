@@ -485,7 +485,8 @@ class TestProject(unittest.TestCase):
 
     def test_readVer9Project(self):
         """
-        Tests reading a version 0.9 project file and conversion to 0.10 format.
+        Tests reading a version 0.9 project file and conversion to 1.0.0
+        format.
         """
         self.proj.loadProjectFile('test_data/test_project-0.9.str')
         
@@ -523,7 +524,8 @@ class TestProject(unittest.TestCase):
 
     def test_readVer8Project(self):
         """
-        Tests reading a version 0.8 project file and conversion to 0.10 format.
+        Tests reading a version 0.8 project file and conversion to 1.0.0
+        format.
         """
         self.proj.loadProjectFile('test_data/test_project-0.8.str')
         

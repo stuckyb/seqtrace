@@ -20,8 +20,8 @@ from seqtrace.gui import getDefaultFont
 
 
 # Define the supported file format versions and the current version.
-SUPPORTED_VERSIONS = ('0.8', '0.9', '0.10')
-CURRENT_VERSION = '0.10'
+SUPPORTED_VERSIONS = ('0.8', '0.9', '1.0.0')
+CURRENT_VERSION = '1.0.0'
 
 
 class SeqTraceProjWriter:
@@ -123,7 +123,7 @@ class SeqTraceProjReader:
         if self.proj_data['formatversion'] == '0.9':
             fontstr = getDefaultFont().to_string()
             self.proj_data['properties']['default_font'] = fontstr
-            self.proj_data['formatversion'] = '0.10'
+            self.proj_data['formatversion'] = CURRENT_VERSION
 
     def convertSettings8To9(self):
         """
