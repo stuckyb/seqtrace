@@ -14,7 +14,7 @@ SeqTrace is written in [Python](http://www.python.org/), uses [PyGTK](http://www
 
 ### January 11, 2018: SeqTrace 0.9.1 released
 
-SeqTrace 0.9.1 is now [available for download](http://code.google.com/p/seqtrace/downloads/list).  This new release does not introduce any major new features, but it does include several important improvements and bug fixes.  For many users, the most notable improvements are likely to be the various ways in which support for SCF input files has been enhanced.  SeqTrace 0.9.1 also fixes a critical bug that caused some of the settings controls to display incorrectly under recent versions of the GTK+ toolkit on Linux.  For full details of the improvements in 0.9.1, see the [release history](https://github.com/stuckyb/seqtrace/wiki/Release-History).
+SeqTrace 0.9.1 is now [available for download](http://code.google.com/p/seqtrace/downloads/list).  This new release does not introduce any major new features, but it does include several important improvements and bug fixes.  For many users, the most notable improvements are likely to be the various ways in which support for SCF input files has been enhanced.  SeqTrace 0.9.1 also fixes a critical bug that caused some of the settings controls to display incorrectly under recent versions of the GTK+ toolkit on Linux.  For full details of the improvements in 0.9.1, see the [release history](https://github.com/stuckyb/seqtrace/wiki/Release-History).  This will be the last release of SeqTrace to use the [GTK+ 2 toolkit](https://developer.gnome.org/gtk2/) and [PyGTK](http://www.pygtk.org/).
 
 ### January 14, 2014: SeqTrace 0.9.0 released
 
