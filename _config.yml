@@ -1,1 +1,3 @@
 theme: jekyll-theme-slate
+title: SeqTrace
+description: User-friendly software for viewing and processing Sanger DNA sequencing trace files.
