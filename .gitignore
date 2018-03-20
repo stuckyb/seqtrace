@@ -10,3 +10,7 @@ __pycache__/
 build/
 *.so
 
+# Files related to the SeqTrace website.
+Gemfile.lock
+_site/
+
