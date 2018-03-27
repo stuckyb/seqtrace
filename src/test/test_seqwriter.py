@@ -18,6 +18,7 @@
 from seqtrace.core import seqwriter
 
 import unittest
+import tempfile
 import os
 
 
@@ -50,7 +51,11 @@ class TestSequenceWriter(unittest.TestCase):
     def test_plainText(self):
         sw = seqwriter.SequenceWriterFactory.getSequenceWriter(seqwriter.FORMAT_PLAINTEXT)
 
-        sw.open('test.txt')
+        # Get a temporary file.
+        tmpfd, tmpfpath = tempfile.mkstemp()
+        os.close(tmpfd)
+
+        sw.open(tmpfpath)
 
         # write the data to the file, testing both addUnalignedSequences() and addAlignedSequences()
         cnt = 0
@@ -63,7 +68,7 @@ class TestSequenceWriter(unittest.TestCase):
 
         sw.write()
 
-        sfile = open('test.txt')
+        sfile = open(tmpfpath)
 
         cnt = 0
         line = '\n'
@@ -88,12 +93,16 @@ class TestSequenceWriter(unittest.TestCase):
         self.assertEqual(len(self.testseqs), cnt)
 
         sfile.close()
-        os.unlink('test.txt')
+        os.unlink(tmpfpath)
 
     def test_FASTA(self):
         sw = seqwriter.SequenceWriterFactory.getSequenceWriter(seqwriter.FORMAT_FASTA)
 
-        sw.open('test.fasta')
+        # Get a temporary file.
+        tmpfd, tmpfpath = tempfile.mkstemp()
+        os.close(tmpfd)
+
+        sw.open(tmpfpath)
 
         # write the data to the file, testing both addUnalignedSequences() and addAlignedSequences()
         cnt = 0
@@ -106,7 +115,7 @@ class TestSequenceWriter(unittest.TestCase):
 
         sw.write()
 
-        sfile = open('test.fasta')
+        sfile = open(tmpfpath)
 
         cnt = 0
         line = '\n'
@@ -137,12 +146,16 @@ class TestSequenceWriter(unittest.TestCase):
         self.assertEqual(len(self.testseqs), cnt)
 
         sfile.close()
-        os.unlink('test.fasta')
+        os.unlink(tmpfpath)
 
     def test_NEXUS(self):
         sw = seqwriter.SequenceWriterFactory.getSequenceWriter(seqwriter.FORMAT_NEXUS)
 
-        sw.open('test.nex')
+        # Get a temporary file.
+        tmpfd, tmpfpath = tempfile.mkstemp()
+        os.close(tmpfd)
+
+        sw.open(tmpfpath)
 
         # write the data to the file, testing both addUnalignedSequences() and addAlignedSequences()
         cnt = 0
@@ -155,7 +168,7 @@ class TestSequenceWriter(unittest.TestCase):
 
         sw.write()
 
-        sfile = open('test.nex')
+        sfile = open(tmpfpath)
 
         # read the NEXUS file and make sure all of the data is correct
         cnt = 0
@@ -216,7 +229,7 @@ class TestSequenceWriter(unittest.TestCase):
         self.assertEqual(len(self.testseqs), cnt)
 
         sfile.close()
-        os.unlink('test.nex')
+        os.unlink(tmpfpath)
 
     def readNEXUSMatrix(self, sfile, line):
         res = list()
