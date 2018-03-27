@@ -1,4 +1,5 @@
 #!/usr/bin/python
+
 # Copyright (C) 2018 Brian J. Stucky
 #
 # This program is free software: you can redistribute it and/or modify
@@ -22,31 +23,59 @@ import tempfile
 import os
 
 
-# This test fixture tests all concrete SequenceWriter subclasses.  Both addAlignedSequence() and addUnalignedSequence()
-# are tested.  The general approach is to send a bunch of test sequence data to the SequenceWriter, write the file, then
-# read the file back and test the data.
-# Note that in the case of structured sequence file formats, such as NEXUS, these tests make no attempt to
-# thoroughly verify that the structure of the generated file conforms to specifications.  They instead focus on ensuring
-# that the data read back from the file exactly matches the original data that was sent to the SequenceWriter.
+# This test fixture tests all concrete SequenceWriter subclasses.  Both
+# addAlignedSequence() and addUnalignedSequence() are tested.  The general
+# approach is to send a bunch of test sequence data to the SequenceWriter,
+# write the file, then read the file back and check the data.  Note that in the
+# case of structured sequence file formats, such as NEXUS, these tests make no
+# attempt to thoroughly verify that the structure of the generated file
+# conforms to specifications.  They instead focus on ensuring that the data
+# read back from the file exactly matches the original data that was sent to
+# the SequenceWriter.
 class TestSequenceWriter(unittest.TestCase):
-    # define a bunch of test sequence data
+    # Define a bunch of test sequence data.
     numaligned = 2
     testseqs = [
             # The first two sequences are for testing addAlignedSequence().
-            {'desc': 'test sequence 3', 'filename': 'fakefile3.ztr', 'seq': 'NAAANTAANNNNTNTTTTTAANNATATTTATTTTTCAAATTATTTCAATTTTCTTTCACAATACTACTCAACTATAATTTAAATTATTTTTTCTTTATAAAATACTAAAACAAAAATTATTATAATTATTTTTAATAATTTATTAAAACTAAAAAAAAATTAATAAATAAAACATAATCAA'},
-            {'desc': 'test sequence 4', 'filename': 'fakefile4.ztr', 'seq': 'NCNACTACACCTAAAATTATATCTTAATCCAACATCGAGGTCGCAATCTTTTTTATTGATATGAACTCTCCAAAAAAATTACGCTGTTATCCCTAAAGTAACTTATTTTTTTAATCGTTATTAACGGATCAATTTTCCATAAATTAATGTAAAAAAAAATTAAAAGTTATTCAAATTTTAA'},
+            {
+                'desc': 'test sequence 3', 'filename': 'fakefile3.ztr',
+                'seq': 'NAAANTAANNNNTNTTTTTAANNATATTTATTTTTCAAATTATTTCAATTTTCTTTCACAATACTACTCAACTATAATTTAAATTATTTTTTCTTTATAAAATACTAAAACAAAAATTATTATAATTATTTTTAATAATTTATTAAAACTAAAAAAAAATTAATAAATAAAACATAATCAA'
+            },
+            {
+                'desc': 'test sequence 4', 'filename': 'fakefile4.ztr',
+                'seq': 'NCNACTACACCTAAAATTATATCTTAATCCAACATCGAGGTCGCAATCTTTTTTATTGATATGAACTCTCCAAAAAAATTACGCTGTTATCCCTAAAGTAACTTATTTTTTTAATCGTTATTAACGGATCAATTTTCCATAAATTAATGTAAAAAAAAATTAAAAGTTATTCAAATTTTAA'
+            },
 
             # The last six sequences are all for testing addUnalignedSequence().
-            {'desc': 'test sequence 1', 'filename': 'fakefile1.ztr', 'seq': 'AANTAANNTTTNTTTTTAAATATTTATTTTTCAANTTATTTCAATTTTCTTTCACAATACTATTCAACTATAATTAAAATTATTTTTTCTTTATAAAATACTAAAACAAAAATTTATTATAATTATTTTTAATAATTTATTTAACCAAAAAAAAATTTAATAAATAAAACACAATCAATTTATATTGATTTGCACAAAAATCTTTTCAATGTAAATGAAATACTTTACTTAATAAGCTTTAAATTGCATTCTAGATACACTTTCCAGTACATCTACTATGTTACGACTTATCTTACCTTAATAGCAAGAGTGACGGGCGATGTGTGCATATTTTAGAGCTAAAATCAAATTATTTATCTTTATAATTTTACTATCAAATCCACCTTCAATAAAAATTTCAAATTTATATCCATTTTAAATAATTTTATTGTAACCCATTAATACTTAAATATAAGCTACACCTTGATCTGATATACTTTCATTTTTAAAATTATGAAAATTAACATTCTTATAAAATATTCTAATAACGACGGTATATAAACTGAATACAAATTTAAGTAAGGTCCATCGTGGATTATCGATTATAAAACAGGTTCCTCTGAATAGACTAAAATACCGCCAAATTTTTTAAGTTTTAAGAACATAACTNATACTACCTTAGTTTTTATATTTACNTTTTAAATAANNNNNNNNNNNNNCCNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAA'},
-            {'desc': 'test sequence 2', 'filename': 'fakefile2.ztr', 'seq': 'TNNAAACTTAAAAAATTTGGCGGTATTTTAGTCTATTCAGAGGAACCTGTTTTATAATCGATAATCCACGATGGACCTTACTTAAATTTGTATTCAGTTTATATACCGTCGTTATTAGAATATTTCATAAGAATGTTAATTTTCATAATTTTAAAAATGAAAGTATATCAGATCAAGGTGTAGCTTATATTTAAGTATTAATGGGTTACAATAAAATTATTTAAGATGGATATAAATTTGAAATTTTTATTGAAGGTGGATTTGATAGTAAAATTATAAAGATAAATAATTTGATTTTAGCTCTAAAATATGCACACATCGCCCGTCACTCTTTCTATTAAGGTAAGATAAGTCGTAACATAGTAGATGTACTGGAAAGTGTATCTAGAATGCAATTTAAAGCTTATTAAGTAAAGTATTTCATTTACATTGAAAAGATTTTTGTGCAAATCAATATAAATTGATTATGTTTTATTTATTAATTTTTTTTTAGTTTTGATAAATTATTAAAAATAATTATAATAATTTTTGTTTTAGTATTTTATAAAGAAAAAATAATTTAAATTATAGTTGAGTAGTATTGTGAAAGAAAATTGAAATAATTTGAAAAATAAATATTTAAAAANAAANNTTANTTT'},
-            {'desc': 'test sequence 3', 'filename': 'fakefile3.ztr', 'seq': 'NAAANTAANNNNTNTTTTTAANNATATTTATTTTTCAAATTATTTCAATTTTCTTTCACAATACTACTCAACTATAATTTAAATTATTTTTTCTTTATAAAATACTAAAACAAAAATTATTATAATTATTTTTAATAATTTATTAAAACTAAAAAAAAATTAATAAATAAAACATAATCAATTTATATTGATTTGCACAAAAATCTTTTCAATGTAAATGAAATACTTTACTTAATAAGCTTTAAATTGCATTCTAGGTACACTTTCCAGTACATCTACTATGTTACGACTTATCTTACCTTAATAGAAAGAGTGACGGGCGATGTGTGCATATTTTAGAGCTAAAATCAAATTATTTATCTTTATAATTTTACTATCAAATCCACCTTCAATAAAAATTTCAAATTTATATCCATCTTAAATAATTTTATTGTAACCCATTAATACTTAAATATAAGCTACACCTTGATCTGATATACTTTCATTTTTAAAATTATGAAAATTAACATTCTTATGAAATATTCTAATAACGACGGTATATAAACTGAATACAAATTTAAGTAAGGTCCATCGTGGATTATCGATTATAAAACAGGTTCCTCTGAATAGACTAAAATACCGCCAAATTTTTTAAGTTTTAANAANATAACNNATACNNANNNTANTTTTTATACTTACNNTT'},
-            # has exactly one base beyond an integral multiple of 80 (for testing FASTA)
-            {'desc': 'test sequence 4', 'filename': 'fakefile4.ztr', 'seq': 'NCNACTACACCTAAAATTATATCTTAATCCAACATCGAGGTCGCAATCTTTTTTATTGATATGAACTCTCCAAAAAAATTACGCTGTTATCCCTAAAGTAACTTATTTTTTTAATCGTTATTAACGGATCAATTTTCCATAAATTAATGTAAAAAAAAATTAAAAGTTATTCAAATTTTAATATCACCCCAATAAAATATAATAAATTATTACAATAAAAAAAATCTACAAAATTATAATAATATAGATATAAAGATTTATAGGGTCTTCTCGTCTTTTAATTTTATTTTAGCGTTTTAACTAAAAAATAAAATTCTAATATAAATTTTAATGAAACAGTTAATATCTCGTCCAACCATTCATTCCAGCCTCCAATTAAAAGACTAATGATTATGCTACCTTTGCACAGTTAATATACTGCGGCCATTTAAAAATTATTCAGTGGGCAGGTTAGACTTAAAATAAAATTCAAAAAGACATG'},
-            # has exactly 80 bases (for testing FASTA)
-            {'desc': 'test sequence 5', 'filename': 'fakefile5.ztr', 'seq': 'NCNACTACACCTAAAATTATATCTTAATCCAACATCGAGGTCGCAATCTTTTTTATTGATATGAACTCTCCAAAAAAATT'},
-            # less than 80 bases (for testing FASTA)
-            {'desc': 'test sequence 6', 'filename': 'fakefile6.ztr', 'seq': 'TTAATCCAACATCGAGGTCGCAATCTTTTTTA'}
-            ]
+            {
+                'desc': 'test sequence 1', 'filename': 'fakefile1.ztr',
+                'seq': 'AANTAANNTTTNTTTTTAAATATTTATTTTTCAANTTATTTCAATTTTCTTTCACAATACTATTCAACTATAATTAAAATTATTTTTTCTTTATAAAATACTAAAACAAAAATTTATTATAATTATTTTTAATAATTTATTTAACCAAAAAAAAATTTAATAAATAAAACACAATCAATTTATATTGATTTGCACAAAAATCTTTTCAATGTAAATGAAATACTTTACTTAATAAGCTTTAAATTGCATTCTAGATACACTTTCCAGTACATCTACTATGTTACGACTTATCTTACCTTAATAGCAAGAGTGACGGGCGATGTGTGCATATTTTAGAGCTAAAATCAAATTATTTATCTTTATAATTTTACTATCAAATCCACCTTCAATAAAAATTTCAAATTTATATCCATTTTAAATAATTTTATTGTAACCCATTAATACTTAAATATAAGCTACACCTTGATCTGATATACTTTCATTTTTAAAATTATGAAAATTAACATTCTTATAAAATATTCTAATAACGACGGTATATAAACTGAATACAAATTTAAGTAAGGTCCATCGTGGATTATCGATTATAAAACAGGTTCCTCTGAATAGACTAAAATACCGCCAAATTTTTTAAGTTTTAAGAACATAACTNATACTACCTTAGTTTTTATATTTACNTTTTAAATAANNNNNNNNNNNNNCCNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAA'
+            },
+            {
+                'desc': 'test sequence 2', 'filename': 'fakefile2.ztr',
+                'seq': 'TNNAAACTTAAAAAATTTGGCGGTATTTTAGTCTATTCAGAGGAACCTGTTTTATAATCGATAATCCACGATGGACCTTACTTAAATTTGTATTCAGTTTATATACCGTCGTTATTAGAATATTTCATAAGAATGTTAATTTTCATAATTTTAAAAATGAAAGTATATCAGATCAAGGTGTAGCTTATATTTAAGTATTAATGGGTTACAATAAAATTATTTAAGATGGATATAAATTTGAAATTTTTATTGAAGGTGGATTTGATAGTAAAATTATAAAGATAAATAATTTGATTTTAGCTCTAAAATATGCACACATCGCCCGTCACTCTTTCTATTAAGGTAAGATAAGTCGTAACATAGTAGATGTACTGGAAAGTGTATCTAGAATGCAATTTAAAGCTTATTAAGTAAAGTATTTCATTTACATTGAAAAGATTTTTGTGCAAATCAATATAAATTGATTATGTTTTATTTATTAATTTTTTTTTAGTTTTGATAAATTATTAAAAATAATTATAATAATTTTTGTTTTAGTATTTTATAAAGAAAAAATAATTTAAATTATAGTTGAGTAGTATTGTGAAAGAAAATTGAAATAATTTGAAAAATAAATATTTAAAAANAAANNTTANTTT'
+            },
+            {
+                'desc': 'test sequence 3', 'filename': 'fakefile3.ztr',
+                'seq': 'NAAANTAANNNNTNTTTTTAANNATATTTATTTTTCAAATTATTTCAATTTTCTTTCACAATACTACTCAACTATAATTTAAATTATTTTTTCTTTATAAAATACTAAAACAAAAATTATTATAATTATTTTTAATAATTTATTAAAACTAAAAAAAAATTAATAAATAAAACATAATCAATTTATATTGATTTGCACAAAAATCTTTTCAATGTAAATGAAATACTTTACTTAATAAGCTTTAAATTGCATTCTAGGTACACTTTCCAGTACATCTACTATGTTACGACTTATCTTACCTTAATAGAAAGAGTGACGGGCGATGTGTGCATATTTTAGAGCTAAAATCAAATTATTTATCTTTATAATTTTACTATCAAATCCACCTTCAATAAAAATTTCAAATTTATATCCATCTTAAATAATTTTATTGTAACCCATTAATACTTAAATATAAGCTACACCTTGATCTGATATACTTTCATTTTTAAAATTATGAAAATTAACATTCTTATGAAATATTCTAATAACGACGGTATATAAACTGAATACAAATTTAAGTAAGGTCCATCGTGGATTATCGATTATAAAACAGGTTCCTCTGAATAGACTAAAATACCGCCAAATTTTTTAAGTTTTAANAANATAACNNATACNNANNNTANTTTTTATACTTACNNTT'
+            },
+            # Has exactly one base beyond an integral multiple of 80 (for
+            # testing FASTA).
+            {
+                'desc': 'test sequence 4', 'filename': 'fakefile4.ztr',
+                'seq': 'NCNACTACACCTAAAATTATATCTTAATCCAACATCGAGGTCGCAATCTTTTTTATTGATATGAACTCTCCAAAAAAATTACGCTGTTATCCCTAAAGTAACTTATTTTTTTAATCGTTATTAACGGATCAATTTTCCATAAATTAATGTAAAAAAAAATTAAAAGTTATTCAAATTTTAATATCACCCCAATAAAATATAATAAATTATTACAATAAAAAAAATCTACAAAATTATAATAATATAGATATAAAGATTTATAGGGTCTTCTCGTCTTTTAATTTTATTTTAGCGTTTTAACTAAAAAATAAAATTCTAATATAAATTTTAATGAAACAGTTAATATCTCGTCCAACCATTCATTCCAGCCTCCAATTAAAAGACTAATGATTATGCTACCTTTGCACAGTTAATATACTGCGGCCATTTAAAAATTATTCAGTGGGCAGGTTAGACTTAAAATAAAATTCAAAAAGACATG'
+            },
+            # Has exactly 80 bases (for testing FASTA).
+            {
+                'desc': 'test sequence 5', 'filename': 'fakefile5.ztr',
+                'seq': 'NCNACTACACCTAAAATTATATCTTAATCCAACATCGAGGTCGCAATCTTTTTTATTGATATGAACTCTCCAAAAAAATT'
+            },
+            # Less than 80 bases (for testing FASTA).
+            {
+                'desc': 'test sequence 6', 'filename': 'fakefile6.ztr',
+                'seq': 'TTAATCCAACATCGAGGTCGCAATCTTTTTTA'
+            }
+        ]
 
     def test_plainText(self):
         sw = seqwriter.SequenceWriterFactory.getSequenceWriter(seqwriter.FORMAT_PLAINTEXT)
@@ -57,7 +86,8 @@ class TestSequenceWriter(unittest.TestCase):
 
         sw.open(tmpfpath)
 
-        # write the data to the file, testing both addUnalignedSequences() and addAlignedSequences()
+        # Write the data to the file, testing both addUnalignedSequences() and
+        # addAlignedSequences().
         cnt = 0
         for seq in self.testseqs:
             if cnt > 1:
@@ -73,11 +103,11 @@ class TestSequenceWriter(unittest.TestCase):
         cnt = 0
         line = '\n'
 
-        # read each sequence from the file and make sure the data is correct
+        # Read each sequence from the file and make sure the data are correct.
         while line != '':
             line = sfile.readline()
 
-            # test the next sequence
+            # Test the next sequence.
             if line.startswith('Description: '):
                 seq = self.testseqs[cnt]
 
@@ -89,7 +119,7 @@ class TestSequenceWriter(unittest.TestCase):
 
                 cnt += 1
 
-        # make sure we got back the correct number of sequences
+        # Make sure we got back the correct number of sequences.
         self.assertEqual(len(self.testseqs), cnt)
 
         sfile.close()
@@ -104,7 +134,8 @@ class TestSequenceWriter(unittest.TestCase):
 
         sw.open(tmpfpath)
 
-        # write the data to the file, testing both addUnalignedSequences() and addAlignedSequences()
+        # Write the data to the file, testing both addUnalignedSequences() and
+        # addAlignedSequences().
         cnt = 0
         for seq in self.testseqs:
             if cnt > 1:
@@ -120,11 +151,11 @@ class TestSequenceWriter(unittest.TestCase):
         cnt = 0
         line = '\n'
 
-        # read each sequence from the file and make sure the data is correct
+        # Read each sequence from the file and make sure the data are correct.
         while line != '':
             line = sfile.readline()
 
-            # test the next sequence
+            # Test the next sequence.
             if line.startswith('>'):
                 seq = self.testseqs[cnt]
 
@@ -132,7 +163,7 @@ class TestSequenceWriter(unittest.TestCase):
                 self.assertEqual('>' + seq['desc'], desc)
                 self.assertEqual(seq['filename'], filename)
 
-                # read the sequence
+                # Read the sequence.
                 fseq = ''
                 while line != '\n':
                     line = sfile.readline()
@@ -142,7 +173,7 @@ class TestSequenceWriter(unittest.TestCase):
 
                 cnt += 1
 
-        # make sure we got back the correct number of sequences
+        # Make sure we got back the correct number of sequences.
         self.assertEqual(len(self.testseqs), cnt)
 
         sfile.close()
@@ -157,7 +188,8 @@ class TestSequenceWriter(unittest.TestCase):
 
         sw.open(tmpfpath)
 
-        # write the data to the file, testing both addUnalignedSequences() and addAlignedSequences()
+        # Write the data to the file, testing both addUnalignedSequences() and
+        # addAlignedSequences().
         cnt = 0
         for seq in self.testseqs:
             if cnt > 1:
@@ -170,13 +202,13 @@ class TestSequenceWriter(unittest.TestCase):
 
         sfile = open(tmpfpath)
 
-        # read the NEXUS file and make sure all of the data is correct
+        # Read the NEXUS file and make sure all of the data are correct.
         cnt = 0
         line = '\n'
         while line != '':
             line = sfile.readline()
 
-            # test the taxa labels
+            # Test the taxa labels.
             if line.endswith('TAXLABELS\n'):
                 line = sfile.readline()
                 line = line.strip(" \n'")
@@ -188,44 +220,46 @@ class TestSequenceWriter(unittest.TestCase):
                     self.assertEqual(self.testseqs[cnt]['filename'], filename)
                     cnt += 1
                     if cnt == 4:
-                        # need to jump ahead in the testseqs list because of the order in which the labels were added
+                        # We need to jump ahead in the testseqs list because of
+                        # the order in which the labels were added.
                         cnt = 6
 
-                # make sure we got back the correct number of labels
+                # Make sure we got back the correct number of labels.
                 self.assertEqual(len(self.testseqs), cnt)
 
-            # test the aligned sequence data
+            # Test the aligned sequence data.
             if line.endswith('CHARACTERS;\n'):
                 data = self.readNEXUSMatrix(sfile, line)
                 cnt = 0
                 for item in data:
-                    # test the label and sequence
+                    # Test the label and sequence.
                     self.assertEqual(self.testseqs[cnt]['desc'], item['label']['desc'])
                     self.assertEqual(self.testseqs[cnt]['filename'], item['label']['filename'])
                     self.assertEqual(self.testseqs[cnt]['seq'], item['seq'])
 
                     cnt += 1
 
-                # make sure we got back the correct number of sequences
+                # Make sure we got back the correct number of sequences.
                 self.assertEqual(self.numaligned, len(data))
 
-            # test the unaligned sequence data
+            # Test the unaligned sequence data.
             if line.endswith('UNALIGNED;\n'):
                 data = self.readNEXUSMatrix(sfile, line)
                 cnt = self.numaligned
                 for item in data:
-                    # test the label and sequence
+                    # Test the label and sequence.
                     self.assertEqual(self.testseqs[cnt]['desc'], item['label']['desc'])
                     self.assertEqual(self.testseqs[cnt]['filename'], item['label']['filename'])
                     self.assertEqual(self.testseqs[cnt]['seq'], item['seq'])
 
                     cnt += 1
 
-                # make sure we got back the correct number of sequences
+                # Make sure we got back the correct number of sequences.
                 self.assertEqual(len(self.testseqs) - self.numaligned, len(data))
 
-        # a final test to make sure we actually read sequence data (the similar tests inside of the loop
-        # will never run if none of the if statements match)
+        # A final test to make sure we actually read sequence data (the similar
+        # tests inside of the loop will never run if none of the if statements
+        # match).
         self.assertEqual(len(self.testseqs), cnt)
 
         sfile.close()
@@ -239,11 +273,11 @@ class TestSequenceWriter(unittest.TestCase):
 
         line = sfile.readline()
         while not(line.endswith(';\n')):
-            # get the label and sequence
+            # Get the label and sequence.
             line = line.strip(" \n'")
             label, sep, seq = line.partition("' ")
 
-            # get the label parts
+            # Get the label parts.
             desc, sep, filename = label.partition(': ')
 
             res.append({'label': {'desc': desc, 'filename': filename}, 'seq': seq})
