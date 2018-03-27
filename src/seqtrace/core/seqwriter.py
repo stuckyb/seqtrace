@@ -49,8 +49,11 @@ class SequenceWriterFactory:
         return writer
 
 
-# An abstract class that should not be instantiated directly.
 class SequenceWriter:
+    """
+    The base class for all concrete SequenceWriters.  This is an abstract class
+    that should not be instantiated directly.
+    """
     def __init__(self):
         self.a_sequences = list()
         self.u_sequences = list()
@@ -63,7 +66,9 @@ class SequenceWriter:
 
         # make sure all aligned sequence lengths match
         if len(seqstr) != self.a_length:
-            raise SequenceWriterError('All aligned sequences must be the same length.')
+            raise SequenceWriterError(
+                'All aligned sequences must be the same length.'
+            )
 
         self.a_sequences.append({
             'seq': seqstr, 'filename': filename, 'desc': description
@@ -80,8 +85,8 @@ class SequenceWriter:
         except IOError:
             raise
 
-    # Returns a single string that contains both the provided description and filename(s),
-    # formatted in a nice way.
+    # Returns a single string that contains both the provided description and
+    # filename(s), formatted in a nice way.
     def getDescStr(self, sequence):
         name = sequence['desc']
         if len(sequence['filename']) != 0:
@@ -92,15 +97,19 @@ class SequenceWriter:
         return name
 
 
-# This class does not write data in any specific format supported by other software;
-# instead, it simply writes out all data in a plain text format that is easy to read
-# and edit manually.
 class PlainTextSeqWriter(SequenceWriter):
+    """
+    This class does not write data in any specific format supported by other
+    software; instead, it simply writes out all data in a plain text format
+    that is easy to read and edit manually.
+    """
     def write(self):
         dt = datetime.now()
-        self.fh.write('Date and time: ' + dt.strftime('%B %d, %Y %I:%M:%S %p') + '\n\n')
+        self.fh.write(
+            'Date and time: ' + dt.strftime('%B %d, %Y %I:%M:%S %p') + '\n\n'
+        )
 
-        # write the sequence data
+        # Write the sequence data.
         if len(self.a_sequences) != 0:
             self.writeAlignedSeqs()
 
@@ -127,6 +136,9 @@ class PlainTextSeqWriter(SequenceWriter):
 
 
 class FASTASeqWriter(SequenceWriter):
+    """
+    Writes the sequences in FASTA format, using a line length of 80.
+    """
     fasta_linelen = 80
 
     def write(self):
@@ -139,7 +151,8 @@ class FASTASeqWriter(SequenceWriter):
         self.fh.close()
 
     def writeSequence(self, sequence):
-        # write the sequence description
+        # Write the sequence description, truncating it if it is longer than
+        # the target line length.
         desc_str = '>' + self.getDescStr(sequence)
 
         if len(desc_str) > self.fasta_linelen:
@@ -147,31 +160,38 @@ class FASTASeqWriter(SequenceWriter):
         else:
             self.fh.write(desc_str + '\n')
 
-        # write the sequence data
+        # Write the sequence data.
         cnt = 0
         while cnt < len(sequence['seq']):
             if (cnt + self.fasta_linelen) > len(sequence['seq']):
                 self.fh.write(sequence['seq'][cnt:] + '\n')
             else:
-                self.fh.write(sequence['seq'][cnt:cnt+self.fasta_linelen] + '\n')
+                self.fh.write(
+                    sequence['seq'][cnt:cnt+self.fasta_linelen] + '\n'
+                )
             cnt += self.fasta_linelen
         self.fh.write('\n')
 
 
-# This class makes some simplifying assumptions about the data it will be getting (e.g.,
-# that missing bases are always indicated with 'N').  As defined in the published NEXUS file
-# specification, all unaligned sequences are placed in an UNALIGNED block.  Interestingly,
-# Mesquite produces the error "Unrecognized Block: UNALIGNED" when it attempts to open a file
-# with an UNALIGNED block!
 class NEXUSSeqWriter(SequenceWriter):
+    """
+    Writes the sequences in NEXUS format.  This class makes some simplifying
+    assumptions about the data it will be getting (e.g., that missing bases are
+    always indicated with 'N').  As defined in the published NEXUS file
+    specification, all unaligned sequences are placed in an UNALIGNED block.
+    Interestingly, Mesquite produces the error "Unrecognized Block: UNALIGNED"
+    when it attempts to open a file with an UNALIGNED block!
+     """
     def write(self):
         self.fh.write('#NEXUS\n')
 
-        # add date/time info to the file
+        # Add date/time info to the file.
         dt = datetime.now()
-        self.fh.write('[file written on ' + dt.strftime('%B %d, %Y %I:%M:%S %p') + ']\n\n')
+        self.fh.write(
+            '[file written on ' + dt.strftime('%B %d, %Y %I:%M:%S %p') + ']\n\n'
+        )
 
-        # first, get all unique taxa names
+        # First, get all unique taxa names.
         names = list()
         for sequence in self.a_sequences:
             name = self.getTaxaName(sequence)
@@ -182,7 +202,7 @@ class NEXUSSeqWriter(SequenceWriter):
             if name not in names:
                 names.append(name)
 
-        # write the TAXA block
+        # Write the TAXA block.
         self.fh.write('BEGIN TAXA;\n')
         self.fh.write('    DIMENSIONS NTAX=' + str(len(names)) + ';\n')
         self.fh.write('    TAXLABELS\n    ')
@@ -190,7 +210,7 @@ class NEXUSSeqWriter(SequenceWriter):
             self.fh.write(name + ' ')
         self.fh.write('\n    ;\nEND;\n')
 
-        # write the sequence data
+        # Write the sequence data.
         if len(self.a_sequences) != 0:
             self.writeCharactersBlock()
 
@@ -204,7 +224,9 @@ class NEXUSSeqWriter(SequenceWriter):
         name = self.getDescStr(sequence)
 
         if len(name) == 0:
-            raise SequenceWriterError('NEXUS files require either a description or file name for each sequence.')
+            raise SequenceWriterError(
+                'NEXUS files require either a description or file name for each sequence.'
+            )
 
         return "'" + name + "'"
 
@@ -232,10 +254,13 @@ class NEXUSSeqWriter(SequenceWriter):
         self.fh.write('    ;\nEND;')
 
 
-# A file save/save as dialog that is aware of the various sequence formats
-# supported by this module.  It can also display additional options to the user.
-# Finally, it can ensure that all file names returned have an appropriate extension.
 class SeqWriterFileDialog(Gtk.FileChooserDialog):
+    """
+    A file save/save as dialog that is aware of the various sequence formats
+    supported by this module.  It can also display additional options to the
+    user.  Finally, it can ensure that all file names returned have an
+    appropriate extension.
+    """
     formats = {
             'FASTA (*.fasta)': [FORMAT_FASTA, '.fasta'],
             'NEXUS (*.nex)': [FORMAT_NEXUS, '.nex'],
@@ -243,23 +268,28 @@ class SeqWriterFileDialog(Gtk.FileChooserDialog):
             }
 
     def __init__(self, parent=None, title=None):
-        Gtk.FileChooserDialog.__init__(self, title, parent, Gtk.FileChooserAction.SAVE,
-                (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL))
+        Gtk.FileChooserDialog.__init__(
+            self, title, parent, Gtk.FileChooserAction.SAVE,
+            (Gtk.STOCK_SAVE, Gtk.ResponseType.OK, Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        )
 
         self.set_do_overwrite_confirmation(True)
 
         self.check_extension = True
         self.show_options = False
 
-        # add file filters for the supported sequence formats
+        # Add file filters for the supported sequence formats.
         for name, details in self.formats.items():
             ff = Gtk.FileFilter()
             ff.set_name(name)
             ff.add_pattern('*' + details[1])
             self.add_filter(ff)
 
-        # add a checkbox to allow the user to choose whether or not to include file names
-        self.fnames_toggle = Gtk.CheckButton("include trace file names in exported file")
+        # Add a checkbox to allow the user to choose whether or not to include
+        # file names.
+        self.fnames_toggle = Gtk.CheckButton(
+            "include trace file names in exported file"
+        )
         self.fnames_toggle.set_active(True)
         self.set_extra_widget(self.fnames_toggle)
         self.fnames_toggle.set_visible(self.show_options)
@@ -286,7 +316,8 @@ class SeqWriterFileDialog(Gtk.FileChooserDialog):
             ff = self.get_filter()
             extension = self.formats[ff.get_name()][1]
 
-            # make sure the file name has the proper extension for the chosen file type
+            # Make sure the file name has the proper extension for the chosen
+            # file type.
             if not(name.endswith(extension)):
                 name += extension
 
